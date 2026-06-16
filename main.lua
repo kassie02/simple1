@@ -8908,6 +8908,7 @@ local function createHelpRequestNotification(player)
 	
 	table.insert(ActiveHelpCards, card)
 	layoutActiveHelpCards()
+end
 
 local function checkHelpMessage(player, text)
 	if player == Players.LocalPlayer then return end
