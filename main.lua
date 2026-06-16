@@ -4046,21 +4046,26 @@ if isLegacyChat then
 end
 
 Players.PlayerRemoving:Connect(function(player)
-	if ESPenabled or CHMSenabled or COREGUI:FindFirstChild(player.Name..'_LC') then
+	if ESPenabled or CHMSenabled or TESPenabled or COREGUI:FindFirstChild(player.Name..'_LC') then
 		for i,v in pairs(COREGUI:GetChildren()) do
-			if v.Name == player.Name..'_ESP' or v.Name == player.Name..'_LC' or v.Name == player.Name..'_CHMS' then
+			if v.Name == player.Name..'_ESP' or v.Name == player.Name..'_TESP' or v.Name == player.Name..'_LC' or v.Name == player.Name..'_CHMS' then
 				v:Destroy()
 			end
 		end
 	end
 	if viewing ~= nil and player == viewing then
-		workspace.CurrentCamera.CameraSubject = Players.LocalPlayer.Character
+		local character = Players.LocalPlayer.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		workspace.CurrentCamera.CameraSubject = humanoid or character
 		viewing = nil
 		if viewDied then
 			viewDied:Disconnect()
 			viewChanged:Disconnect()
 		end
 		notify('Spectate','View turned off (player left)')
+	end
+	if StaffRolewatchData and StaffRolewatchData.Active then
+		task.spawn(updateStaffListUI)
 	end
 	eventEditor.FireEvent("OnLeave", player.Name)
 end)
@@ -5857,6 +5862,115 @@ function CHMS(plr)
 				addedFunc:Disconnect()
 				CHMSremoved:Disconnect()
 			end)
+		end
+	end)
+end
+
+TESPenabled = false
+function TESP(plr)
+	task.spawn(function()
+		for i,v in pairs(COREGUI:GetChildren()) do
+			if v.Name == plr.Name..'_TESP' then
+				v:Destroy()
+			end
+		end
+		wait()
+		if plr.Character and plr.Name ~= Players.LocalPlayer.Name and not COREGUI:FindFirstChild(plr.Name..'_TESP') then
+			local ESPholder = Instance.new("Folder")
+			ESPholder.Name = plr.Name..'_TESP'
+			ESPholder.Parent = COREGUI
+			repeat wait(1) until plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
+			local root = getRoot(plr.Character)
+			if root then
+				local isStaff = false
+				local success, inGroup17 = pcall(function() return plr:IsInGroup(17180419) end)
+				if success and inGroup17 then
+					local successRole, role = pcall(function() return plr:GetRoleInGroup(17180419) end)
+					if successRole and role and StaffRolewatchData.Roles[role] then
+						isStaff = true
+					end
+				else
+					local successOwner, inOwnerGroup = pcall(function()
+						return game.CreatorType == Enum.CreatorType.Group and plr:IsInGroup(game.CreatorId)
+					end)
+					if successOwner and inOwnerGroup then
+						local successRole, roleInfo = pcall(getStaffRole, plr)
+						if successRole and roleInfo.Staff then
+							isStaff = true
+						end
+					else
+						local successRoblox, inRoblox = pcall(function() return plr:IsInGroup(1200769) end)
+						if successRoblox and inRoblox then
+							isStaff = true
+						end
+					end
+				end
+
+				local BillboardGui = Instance.new("BillboardGui")
+				BillboardGui.Adornee = root
+				BillboardGui.Name = plr.Name
+				BillboardGui.Parent = ESPholder
+				BillboardGui.Size = UDim2.new(4.5, 0, 6, 0)
+				BillboardGui.AlwaysOnTop = true
+				
+				local color = isStaff and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 192, 203) -- Gold for Staff, Light Pink for others
+				
+				local function createLine(pos, size)
+					local line = Instance.new("Frame")
+					line.BackgroundColor3 = color
+					line.BorderSizePixel = 0
+					line.Position = pos
+					line.Size = size
+					line.Parent = BillboardGui
+				end
+				
+				local thickness = 2
+				local len = 0.2
+				
+				-- Top-Left
+				createLine(UDim2.new(0, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
+				createLine(UDim2.new(0, 0, 0, 0), UDim2.new(0, thickness, len, 0))
+				
+				-- Top-Right
+				createLine(UDim2.new(1 - len, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
+				createLine(UDim2.new(1, -thickness, 0, 0), UDim2.new(0, thickness, len, 0))
+				
+				-- Bottom-Left
+				createLine(UDim2.new(0, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
+				createLine(UDim2.new(0, 0, 1 - len, 0), UDim2.new(0, thickness, len, 0))
+				
+				-- Bottom-Right
+				createLine(UDim2.new(1 - len, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
+				createLine(UDim2.new(1, -thickness, 1 - len, 0), UDim2.new(0, thickness, len, 0))
+				
+				-- Text Label
+				local label = Instance.new("TextLabel")
+				label.BackgroundTransparency = 1
+				label.Position = UDim2.new(0.5, -75, 0, -20)
+				label.Size = UDim2.new(0, 150, 0, 15)
+				label.Font = Enum.Font.SourceSansSemibold
+				label.TextSize = 14
+				label.TextColor3 = color
+				label.TextStrokeTransparency = 0
+				label.Text = (isStaff and "[STAFF] " or "") .. plr.Name
+				label.Parent = BillboardGui
+				
+				local addedFunc
+				addedFunc = plr.CharacterAdded:Connect(function()
+					if TESPenabled or (StaffRolewatchData.Active and isStaff) then
+						ESPholder:Destroy()
+						repeat wait(1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
+						TESP(plr)
+						addedFunc:Disconnect()
+					else
+						addedFunc:Disconnect()
+					end
+				end)
+				
+				local CHMSremoved = ESPholder.AncestryChanged:Connect(function()
+					addedFunc:Disconnect()
+				end)
+			end
 		end
 	end)
 end
@@ -8070,6 +8184,24 @@ addcmd('noesp',{'unesp','unespteam'},function(args, speaker)
 	end
 end)
 
+addcmd('tesp',{'corneresp'},function(args, speaker)
+	TESPenabled = true
+	for i,v in pairs(Players:GetPlayers()) do
+		if v.Name ~= speaker.Name then
+			TESP(v)
+		end
+	end
+end)
+
+addcmd('untesp',{'notesp','nocorneresp'},function(args, speaker)
+	TESPenabled = false
+	for i,c in pairs(COREGUI:GetChildren()) do
+		if string.sub(c.Name, -5) == '_TESP' then
+			c:Destroy()
+		end
+	end
+end)
+
 addcmd("esptransparency", {}, function(args, speaker)
     espTransparency = tonumber(args[1]) or 0.3
     if ESPenabled then execCmd("esp") end
@@ -8207,12 +8339,14 @@ addcmd('view',{'spectate'},function(args, speaker)
 		viewing = Players[v]
 		local character = viewing.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
 		workspace.CurrentCamera.CameraSubject = humanoid or character
 		notify('Spectate','Viewing ' .. Players[v].Name)
 		local function viewDiedFunc()
 			repeat wait() until Players[v].Character ~= nil and getRoot(Players[v].Character)
 			local char = Players[v].Character
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
 			workspace.CurrentCamera.CameraSubject = hum or char
 		end
 		viewDied = Players[v].CharacterAdded:Connect(viewDiedFunc)
@@ -8221,6 +8355,7 @@ addcmd('view',{'spectate'},function(args, speaker)
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
 			local target = hum or char
 			if workspace.CurrentCamera.CameraSubject ~= target then
+				workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
 				workspace.CurrentCamera.CameraSubject = target
 			end
 		end
@@ -8234,6 +8369,7 @@ addcmd('viewpart',{'viewp'},function(args, speaker)
 		for i,v in pairs(workspace:GetDescendants()) do
 			if v.Name:lower() == getstring(1, args):lower() and v:IsA("BasePart") then
 				wait(0.1)
+				workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
 				workspace.CurrentCamera.CameraSubject = v
 			end
 		end
@@ -8252,6 +8388,7 @@ addcmd('unview',{'unspectate'},function(args, speaker)
 	end
 	local character = speaker.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
 	workspace.CurrentCamera.CameraSubject = humanoid or character
 end)
 
@@ -12380,6 +12517,107 @@ StaffRolewatchData = {
 	Leave = false
 }
 
+local function updateStaffListUI()
+	local frame = PARENT:FindFirstChild("StaffListFrame")
+	if not StaffRolewatchData.Active then
+		if frame then frame:Destroy() end
+		return
+	end
+	
+	if not frame then
+		frame = Instance.new("Frame")
+		frame.Name = "StaffListFrame"
+		frame.Position = UDim2.new(0, 10, 0, 80)
+		frame.Size = UDim2.new(0, 220, 0, 0)
+		frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+		frame.BackgroundTransparency = 0.2
+		frame.BorderSizePixel = 0
+		frame.AutomaticSize = Enum.AutomaticSize.Y
+		
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 6)
+		corner.Parent = frame
+		
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.fromRGB(255, 75, 75)
+		stroke.Thickness = 1
+		stroke.Parent = frame
+		
+		local layout = Instance.new("UIListLayout")
+		layout.Padding = UDim.new(0, 4)
+		layout.Parent = frame
+		
+		local pad = Instance.new("UIPadding")
+		pad.PaddingLeft = UDim.new(0, 10)
+		pad.PaddingRight = UDim.new(0, 10)
+		pad.PaddingTop = UDim.new(0, 8)
+		pad.PaddingBottom = UDim.new(0, 8)
+		pad.Parent = frame
+		
+		local header = Instance.new("TextLabel")
+		header.Name = "Header"
+		header.Size = UDim2.new(1, 0, 0, 18)
+		header.BackgroundTransparency = 1
+		header.Text = "🚨 ACTIVE STAFF (0)"
+		header.TextColor3 = Color3.fromRGB(255, 75, 75)
+		header.Font = Enum.Font.GothamBold
+		header.TextSize = 12
+		header.TextXAlignment = Enum.TextXAlignment.Left
+		header.Parent = frame
+		
+		frame.Parent = PARENT
+	end
+	
+	for _, child in pairs(frame:GetChildren()) do
+		if child:IsA("TextLabel") and child.Name ~= "Header" then
+			child:Destroy()
+		end
+	end
+	
+	local staffMembers = {}
+	for _, player in pairs(Players:GetPlayers()) do
+		local success, result = pcall(function()
+			return player:IsInGroup(StaffRolewatchData.Group)
+		end)
+		if success and result then
+			local successRole, role = pcall(function()
+				return player:GetRoleInGroup(StaffRolewatchData.Group)
+			end)
+			if successRole and role and StaffRolewatchData.Roles[role] then
+				table.insert(staffMembers, {Player = player, Role = role})
+			end
+		end
+	end
+	
+	frame.Header.Text = "🚨 ACTIVE STAFF (" .. #staffMembers .. ")"
+	
+	if #staffMembers == 0 then
+		local noneLabel = Instance.new("TextLabel")
+		noneLabel.Size = UDim2.new(1, 0, 0, 20)
+		noneLabel.BackgroundTransparency = 1
+		noneLabel.Text = "None detected"
+		noneLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+		noneLabel.Font = Enum.Font.Gotham
+		noneLabel.TextSize = 11
+		noneLabel.TextXAlignment = Enum.TextXAlignment.Left
+		noneLabel.Parent = frame
+	else
+		for _, data in pairs(staffMembers) do
+			local row = Instance.new("TextLabel")
+			row.Size = UDim2.new(1, 0, 0, 20)
+			row.BackgroundTransparency = 1
+			row.RichText = true
+			row.Text = "• <b>" .. data.Player.DisplayName .. "</b> (" .. data.Role .. ")"
+			row.TextColor3 = Color3.fromRGB(230, 230, 230)
+			row.Font = Enum.Font.Gotham
+			row.TextSize = 11
+			row.TextXAlignment = Enum.TextXAlignment.Left
+			row.TextWrapped = true
+			row.Parent = frame
+		end
+	end
+end
+
 local function createStaffWatchNotification(player, roleName)
 	local playerName = typeof(player) == "Instance" and player.Name or tostring(player)
 	local userId = typeof(player) == "Instance" and player.UserId or 0
@@ -12388,23 +12626,27 @@ local function createStaffWatchNotification(player, roleName)
 	if not container then
 		container = Instance.new("Frame")
 		container.Name = "StaffWatchContainer"
-		container.Position = UDim2.new(0.5, -200, 0, 40)
-		container.Size = UDim2.new(0, 400, 0, 0)
+		container.Position = UDim2.new(0.5, 0, 0, 40)
+		container.AnchorPoint = Vector2.new(0.5, 0)
+		container.Size = UDim2.new(0, 0, 0, 75)
 		container.BackgroundTransparency = 1
 		container.BorderSizePixel = 0
-		container.AutomaticSize = Enum.AutomaticSize.Y
+		container.AutomaticSize = Enum.AutomaticSize.X
 		
 		local layout = Instance.new("UIListLayout")
 		layout.Parent = container
+		layout.FillDirection = Enum.FillDirection.Horizontal
+		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		layout.VerticalAlignment = Enum.VerticalAlignment.Center
 		layout.SortOrder = Enum.SortOrder.LayoutOrder
-		layout.Padding = UDim.new(0, 8)
+		layout.Padding = UDim.new(0, 10)
 		
 		container.Parent = PARENT
 	end
 	
 	local card = Instance.new("Frame")
 	card.Name = playerName
-	card.Size = UDim2.new(1, 0, 0, 75)
+	card.Size = UDim2.new(0, 240, 0, 75)
 	card.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 	card.BackgroundTransparency = 0.15
 	card.BorderSizePixel = 0
@@ -12434,25 +12676,26 @@ local function createStaffWatchNotification(player, roleName)
 	avatar.Parent = card
 	
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -115, 0, 25)
-	title.Position = UDim2.new(0, 75, 0, 8)
+	title.Size = UDim2.new(1, -110, 0, 25)
+	title.Position = UDim2.new(0, 72, 0, 8)
 	title.BackgroundTransparency = 1
 	title.Text = "⚠️ STAFF DETECTED"
 	title.TextColor3 = Color3.fromRGB(255, 75, 75)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Font = Enum.Font.GothamBold
-	title.TextSize = 14
+	title.TextSize = 13
 	title.Parent = card
 	
 	local info = Instance.new("TextLabel")
-	info.Size = UDim2.new(1, -115, 0, 35)
-	info.Position = UDim2.new(0, 75, 0, 30)
+	info.Size = UDim2.new(1, -110, 0, 35)
+	info.Position = UDim2.new(0, 72, 0, 30)
 	info.BackgroundTransparency = 1
-	info.Text = "User: " .. playerName .. " | Role: " .. roleName
+	info.RichText = true
+	info.Text = "User: <b><font size=\"13\">" .. playerName .. "</font></b>\nRole: <b>" .. roleName .. "</b>"
 	info.TextColor3 = Color3.fromRGB(220, 220, 220)
 	info.TextXAlignment = Enum.TextXAlignment.Left
 	info.Font = Enum.Font.Gotham
-	info.TextSize = 12
+	info.TextSize = 11
 	info.TextWrapped = true
 	info.Parent = card
 	
@@ -12500,6 +12743,8 @@ StaffRolewatchConnection = Players.PlayerAdded:Connect(function(player)
 				Players.LocalPlayer:Kick("\n\nStaff Watch\nPlayer \"" .. tostring(player.Name) .. "\" has joined with the Role \"" .. playerRole .. "\"\n")
 			else
 				createStaffWatchNotification(player, playerRole)
+				task.spawn(updateStaffListUI)
+				task.spawn(function() TESP(player) end)
 			end
 		end
 	end
@@ -12525,11 +12770,13 @@ addcmd("tmp", {}, function(args, speaker)
 			else
 				notify("Staff Watch", "Enabled (Watching Group 17180419)")
 			end
+			task.spawn(updateStaffListUI)
 		end
 	end
 	
 	if total <= 0 then
 		notify("Staff Watch", "Enabled (Watching Group 17180419)")
+		task.spawn(updateStaffListUI)
 		return
 	end
 
@@ -12545,6 +12792,7 @@ addcmd("tmp", {}, function(args, speaker)
 						else
 							createStaffWatchNotification(player, playerRole)
 							table.insert(found, tostring(player.Name) .. " (" .. playerRole .. ")")
+							task.spawn(function() TESP(player) end)
 						end
 					end
 				end
@@ -12560,6 +12808,14 @@ addcmd("untmp", {}, function(args, speaker)
 	local container = PARENT:FindFirstChild("StaffWatchContainer")
 	if container then
 		container:Destroy()
+	end
+	task.spawn(updateStaffListUI)
+	if not TESPenabled then
+		for i,c in pairs(COREGUI:GetChildren()) do
+			if string.sub(c.Name, -5) == '_TESP' then
+				c:Destroy()
+			end
+		end
 	end
 end)
 
@@ -13336,6 +13592,10 @@ Players.PlayerAdded:Connect(function(plr)
 		repeat wait(1) until plr.Character and getRoot(plr.Character)
 		CHMS(plr)
 	end
+	if TESPenabled then
+		repeat wait(1) until plr.Character and getRoot(plr.Character)
+		TESP(plr)
+	end
 end)
 
 if not isLegacyChat then
@@ -13770,7 +14030,7 @@ local function createAdminPortal()
 				end
 			end
 			if parts > 0 and transparentParts == parts then
-				table.insert(badges, "[INVIS]")
+				table.insert(badges, "<b><font color=\"rgb(0, 191, 255)\">[INVIS]</font></b>")
 			end
 			
 			if #badges > 0 then
@@ -13779,6 +14039,7 @@ local function createAdminPortal()
 				pBtn.Text = text
 			end
 			
+			pBtn.RichText = true
 			pBtn.TextColor3 = Color3.fromRGB(220, 220, 230)
 			pBtn.Font = Enum.Font.Gotham
 			pBtn.TextSize = 12
@@ -13797,11 +14058,32 @@ local function createAdminPortal()
 			
 			-- Asynchronous Group Watch Badge Check (so yielding doesn't freeze listing/UI creation)
 			task.spawn(function()
-				local success, inGroup = pcall(function()
-					return p:IsInGroup(17180419) or (game.CreatorType == Enum.CreatorType.Group and p:IsInGroup(game.CreatorId)) or p:IsInGroup(1200769)
-				end)
-				if success and inGroup then
-					table.insert(badges, 1, "[STAFF]")
+				local isStaff = false
+				local success, inGroup17 = pcall(function() return p:IsInGroup(17180419) end)
+				if success and inGroup17 then
+					local successRole, role = pcall(function() return p:GetRoleInGroup(17180419) end)
+					if successRole and role and StaffRolewatchData.Roles[role] then
+						isStaff = true
+					end
+				else
+					local successOwner, inOwnerGroup = pcall(function()
+						return game.CreatorType == Enum.CreatorType.Group and p:IsInGroup(game.CreatorId)
+					end)
+					if successOwner and inOwnerGroup then
+						local successRole, roleInfo = pcall(getStaffRole, p)
+						if successRole and roleInfo.Staff then
+							isStaff = true
+						end
+					else
+						local successRoblox, inRoblox = pcall(function() return p:IsInGroup(1200769) end)
+						if successRoblox and inRoblox then
+							isStaff = true
+						end
+					end
+				end
+				
+				if isStaff then
+					table.insert(badges, 1, "<b><font color=\"rgb(255, 200, 0)\">[STAFF]</font></b>")
 					pBtn.Text = table.concat(badges, " ") .. " " .. text
 				end
 			end)
