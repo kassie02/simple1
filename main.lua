@@ -12618,30 +12618,60 @@ local function updateStaffListUI()
 	end
 end
 
+ActiveStaffCards = ActiveStaffCards or {}
+
+local function layoutActiveStaffCards()
+	local cardWidth = 240
+	local spacing = 10
+	local nonDragged = {}
+	for _, c in ipairs(ActiveStaffCards) do
+		if c.Parent and not c:GetAttribute("Dragged") then
+			table.insert(nonDragged, c)
+		end
+	end
+	
+	local count = #nonDragged
+	if count > 0 then
+		local totalWidth = count * cardWidth + (count - 1) * spacing
+		local startX = -totalWidth / 2
+		for i, c in ipairs(nonDragged) do
+			c.Position = UDim2.new(0.5, startX + (i - 1) * (cardWidth + spacing), 0, 40)
+		end
+	end
+end
+
+local function getRoleColor(role)
+	local r = role:lower()
+	if string.find(r, "founder") or string.find(r, "ceo") then
+		return "rgb(255, 215, 0)" -- Gold
+	elseif string.find(r, "operations") or string.find(r, "manager") then
+		return "rgb(255, 127, 80)" -- Coral
+	elseif string.find(r, "developer") or string.find(r, "dev") then
+		return "rgb(30, 144, 255)" -- Dodger Blue
+	elseif string.find(r, "staff lead") or string.find(r, "deputy") then
+		return "rgb(220, 20, 60)" -- Crimson
+	elseif string.find(r, "head admin") or string.find(r, "admin") then
+		return "rgb(186, 85, 211)" -- Purple
+	elseif string.find(r, "moderator") or string.find(r, "mod") then
+		return "rgb(0, 206, 209)" -- Teal
+	elseif string.find(r, "collaborator") then
+		return "rgb(144, 238, 144)" -- Light Green
+	else
+		return "rgb(0, 206, 209)" -- Default Teal
+	end
+end
+
 local function createStaffWatchNotification(player, roleName)
 	local playerName = typeof(player) == "Instance" and player.Name or tostring(player)
 	local userId = typeof(player) == "Instance" and player.UserId or 0
 	
-	local container = PARENT:FindFirstChild("StaffWatchContainer")
-	if not container then
-		container = Instance.new("Frame")
-		container.Name = "StaffWatchContainer"
-		container.Position = UDim2.new(0.5, 0, 0, 40)
-		container.AnchorPoint = Vector2.new(0.5, 0)
-		container.Size = UDim2.new(0, 0, 0, 75)
-		container.BackgroundTransparency = 1
-		container.BorderSizePixel = 0
-		container.AutomaticSize = Enum.AutomaticSize.X
-		
-		local layout = Instance.new("UIListLayout")
-		layout.Parent = container
-		layout.FillDirection = Enum.FillDirection.Horizontal
-		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-		layout.VerticalAlignment = Enum.VerticalAlignment.Center
-		layout.SortOrder = Enum.SortOrder.LayoutOrder
-		layout.Padding = UDim.new(0, 10)
-		
-		container.Parent = PARENT
+	-- Clean out old card for this user if it exists
+	for i, c in ipairs(ActiveStaffCards) do
+		if c.Name == playerName then
+			c:Destroy()
+			table.remove(ActiveStaffCards, i)
+			break
+		end
 	end
 	
 	local card = Instance.new("Frame")
@@ -12691,7 +12721,10 @@ local function createStaffWatchNotification(player, roleName)
 	info.Position = UDim2.new(0, 72, 0, 30)
 	info.BackgroundTransparency = 1
 	info.RichText = true
-	info.Text = "User: <b><font size=\"13\">" .. playerName .. "</font></b>\nRole: <b>" .. roleName .. "</b>"
+	
+	local rColor = getRoleColor(roleName)
+	info.Text = "User: <b><font size=\"13\" color=\"rgb(255, 255, 255)\">" .. playerName .. "</font></b>\nRole: <b><font color=\"" .. rColor .. "\">" .. roleName .. "</font></b>"
+	
 	info.TextColor3 = Color3.fromRGB(220, 220, 220)
 	info.TextXAlignment = Enum.TextXAlignment.Left
 	info.Font = Enum.Font.Gotham
@@ -12718,13 +12751,26 @@ local function createStaffWatchNotification(player, roleName)
 	
 	closeBtn.MouseButton1Click:Connect(function()
 		card:Destroy()
-		task.wait(0.1)
-		if #container:GetChildren() <= 1 then
-			container:Destroy()
+		for i, c in ipairs(ActiveStaffCards) do
+			if c == card then
+				table.remove(ActiveStaffCards, i)
+				break
+			end
+		end
+		layoutActiveStaffCards()
+	end)
+	
+	card.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			card:SetAttribute("Dragged", true)
+			layoutActiveStaffCards()
 		end
 	end)
 	
-	card.Parent = container
+	dragGUI(card)
+	card.Parent = PARENT
+	table.insert(ActiveStaffCards, card)
+	layoutActiveStaffCards()
 	
 	local s = Instance.new("Sound")
 	s.SoundId = "rbxassetid://18723584764"
@@ -12805,10 +12851,12 @@ end)
 addcmd("untmp", {}, function(args, speaker)
 	StaffRolewatchData.Active = false
 	notify("Staff Watch", "Disabled")
-	local container = PARENT:FindFirstChild("StaffWatchContainer")
-	if container then
-		container:Destroy()
+	for _, card in pairs(ActiveStaffCards) do
+		if card.Parent then
+			card:Destroy()
+		end
 	end
+	ActiveStaffCards = {}
 	task.spawn(updateStaffListUI)
 	if not TESPenabled then
 		for i,c in pairs(COREGUI:GetChildren()) do
