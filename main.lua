@@ -4955,8 +4955,8 @@ CMDs[#CMDs + 1] = {NAME = 'waypoints / poi', DESC = 'Enables 3D billboard waypoi
 CMDs[#CMDs + 1] = {NAME = 'unwaypoints / nopoi', DESC = 'Disables 3D waypoints'}
 CMDs[#CMDs + 1] = {NAME = 'safezone / escape', DESC = 'Teleports you instantly to the secure out-of-bounds safe zone'}
 CMDs[#CMDs + 1] = {NAME = 'setsafezone / setescape', DESC = 'Sets the custom safe-zone location to your current position'}
-CMDs[#CMDs + 1] = {NAME = 'viewfc / vfc [player]', DESC = 'Views a player using client-side Orbit Freecam (bypasses spectate blocks, hold right-click to orbit)'}
-CMDs[#CMDs + 1] = {NAME = 'unviewfc / unvfc', DESC = 'Stops Orbit Freecam viewing'}
+CMDs[#CMDs + 1] = {NAME = 'vfc / viewfc [player]', DESC = 'Views a player using client-side Orbit Freecam (bypasses spectate blocks, hold right-click to orbit)'}
+CMDs[#CMDs + 1] = {NAME = 'uvfc / unviewfc', DESC = 'Stops Orbit Freecam viewing'}
 -- wait()
 
 for i = 1, #CMDs do
@@ -8735,7 +8735,7 @@ local function createViewHUD(targetPlayer)
 	statsLabel.Parent = viewHUD
 	
 	viewHUDConnection = RunService.RenderStepped:Connect(function()
-		if not targetPlayer or not targetPlayer.Parent or viewing ~= targetPlayer then
+		if not targetPlayer or not targetPlayer.Parent or (viewing ~= targetPlayer and ViewFCTarget ~= targetPlayer) then
 			destroyViewHUD()
 			return
 		end
@@ -15901,16 +15901,21 @@ local function autoGrabItems()
 	end)
 end
 
-addcmd("viewfc", {"vfc", "spectatefc"}, function(args, speaker)
+addcmd("vfc", {"viewfc", "spectatefc"}, function(args, speaker)
 	local players = getPlayer(args[1], speaker)
 	if #players > 0 then
-		startViewFC(players[1])
+		local p = Players:FindFirstChild(players[1])
+		if p then
+			startViewFC(p)
+		else
+			notify("View FC", "Player object not found")
+		end
 	else
 		notify("View FC", "Player not found")
 	end
 end)
 
-addcmd("unviewfc", {"unvfc", "unspectatefc"}, function(args, speaker)
+addcmd("uvfc", {"unviewfc", "unvfc", "unspectatefc"}, function(args, speaker)
 	stopViewFC()
 	notify("View FC", "Freecam View disabled")
 end)
