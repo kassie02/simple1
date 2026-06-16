@@ -4067,6 +4067,37 @@ Players.PlayerRemoving:Connect(function(player)
 	if StaffRolewatchData and StaffRolewatchData.Active then
 		task.spawn(updateStaffListUI)
 	end
+	task.spawn(function()
+		local isStaff = false
+		local success, inGroup17 = pcall(function() return player:IsInGroup(17180419) end)
+		if success and inGroup17 then
+			local successRole, role = pcall(function() return player:GetRoleInGroup(17180419) end)
+			if successRole and role and StaffRolewatchData.Roles[role] then
+				isStaff = true
+			end
+		else
+			local successOwner, inOwnerGroup = pcall(function()
+				return game.CreatorType == Enum.CreatorType.Group and player:IsInGroup(game.CreatorId)
+			end)
+			if successOwner and inOwnerGroup then
+				local successRole, roleInfo = pcall(getStaffRole, player)
+				if successRole and roleInfo.Staff then
+					isStaff = true
+				end
+			else
+				local successRoblox, inRoblox = pcall(function() return player:IsInGroup(1200769) end)
+				if successRoblox and inRoblox then
+					isStaff = true
+				end
+			end
+		end
+		
+		if isStaff then
+			if addStaffLog then
+				pcall(function() addStaffLog("⬅️ <b>" .. player.DisplayName .. "</b> (Staff) left the server") end)
+			end
+		end
+	end)
 	eventEditor.FireEvent("OnLeave", player.Name)
 end)
 
@@ -5866,6 +5897,7 @@ function CHMS(plr)
 	end)
 end
 
+TESPmode = 0
 TESPenabled = false
 function TESP(plr)
 	task.spawn(function()
@@ -5944,16 +5976,88 @@ function TESP(plr)
 				createLine(UDim2.new(1, -thickness, 1 - len, 0), UDim2.new(0, thickness, len, 0))
 				
 				-- Text Label
-				local label = Instance.new("TextLabel")
-				label.BackgroundTransparency = 1
-				label.Position = UDim2.new(0.5, -75, 0, -20)
-				label.Size = UDim2.new(0, 150, 0, 15)
-				label.Font = Enum.Font.SourceSansSemibold
-				label.TextSize = 14
-				label.TextColor3 = color
-				label.TextStrokeTransparency = 0
-				label.Text = (isStaff and "[STAFF] " or "") .. plr.Name
-				label.Parent = BillboardGui
+				local showName = (TESPmode >= 1) or isStaff
+				if showName then
+					local label = Instance.new("TextLabel")
+					label.BackgroundTransparency = 1
+					label.Position = UDim2.new(0.5, -75, 0, -20)
+					label.Size = UDim2.new(0, 150, 0, 15)
+					label.Font = Enum.Font.SourceSansSemibold
+					label.TextSize = 14
+					label.TextColor3 = color
+					label.TextStrokeTransparency = 0
+					label.Text = (isStaff and "[STAFF] " or "") .. plr.Name
+					label.Parent = BillboardGui
+				end
+
+				-- Distance Label
+				local distanceLabel
+				if TESPmode >= 2 then
+					distanceLabel = Instance.new("TextLabel")
+					distanceLabel.BackgroundTransparency = 1
+					distanceLabel.Position = UDim2.new(0.5, -75, 1, 5)
+					distanceLabel.Size = UDim2.new(0, 150, 0, 15)
+					distanceLabel.Font = Enum.Font.SourceSansSemibold
+					distanceLabel.TextSize = 13
+					distanceLabel.TextColor3 = color
+					distanceLabel.TextStrokeTransparency = 0
+					distanceLabel.Text = ""
+					distanceLabel.Parent = BillboardGui
+				end
+
+				-- Tracers and RenderStepped connection
+				local tracer
+				if TESPmode >= 3 and Drawing then
+					pcall(function()
+						tracer = Drawing.new("Line")
+						tracer.Thickness = 1
+						tracer.Color = color
+						tracer.Visible = false
+					end)
+				end
+
+				local conn
+				conn = RunService.RenderStepped:Connect(function()
+					if not ESPholder or not ESPholder.Parent then
+						conn:Disconnect()
+						if tracer then
+							pcall(function() tracer:Destroy() end)
+						end
+						return
+					end
+
+					local char = plr.Character
+					local rootPart = char and getRoot(char)
+					local localChar = Players.LocalPlayer.Character
+					local localRoot = localChar and getRoot(localChar)
+
+					if TESPmode >= 2 and distanceLabel and rootPart and localRoot then
+						local dist = math.floor((rootPart.Position - localRoot.Position).Magnitude)
+						distanceLabel.Text = tostring(dist) .. " studs"
+					elseif distanceLabel then
+						distanceLabel.Text = ""
+					end
+
+					if tracer then
+						if rootPart then
+							local camera = workspace.CurrentCamera
+							if camera then
+								local screenPos, onScreen = camera:WorldToViewportPoint(rootPart.Position)
+								if onScreen then
+									tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+									tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+									tracer.Visible = true
+								else
+									tracer.Visible = false
+								end
+							else
+								tracer.Visible = false
+							end
+						else
+							tracer.Visible = false
+						end
+					end
+				end)
 				
 				local addedFunc
 				addedFunc = plr.CharacterAdded:Connect(function()
@@ -8185,6 +8289,7 @@ addcmd('noesp',{'unesp','unespteam'},function(args, speaker)
 end)
 
 addcmd('tesp',{'corneresp'},function(args, speaker)
+	TESPmode = tonumber(args[1]) or 0
 	TESPenabled = true
 	for i,v in pairs(Players:GetPlayers()) do
 		if v.Name ~= speaker.Name then
@@ -8194,10 +8299,45 @@ addcmd('tesp',{'corneresp'},function(args, speaker)
 end)
 
 addcmd('untesp',{'notesp','nocorneresp'},function(args, speaker)
+	TESPmode = 0
 	TESPenabled = false
 	for i,c in pairs(COREGUI:GetChildren()) do
 		if string.sub(c.Name, -5) == '_TESP' then
-			c:Destroy()
+			local pName = string.sub(c.Name, 1, -6)
+			local plr = Players:FindFirstChild(pName)
+			local keep = false
+			if plr and StaffRolewatchData and StaffRolewatchData.Active then
+				local isStaff = false
+				local success, inGroup17 = pcall(function() return plr:IsInGroup(17180419) end)
+				if success and inGroup17 then
+					local successRole, role = pcall(function() return plr:GetRoleInGroup(17180419) end)
+					if successRole and role and StaffRolewatchData.Roles[role] then
+						isStaff = true
+					end
+				else
+					local successOwner, inOwnerGroup = pcall(function()
+						return game.CreatorType == Enum.CreatorType.Group and plr:IsInGroup(game.CreatorId)
+					end)
+					if successOwner and inOwnerGroup then
+						local successRole, roleInfo = pcall(getStaffRole, plr)
+						if successRole and roleInfo.Staff then
+							isStaff = true
+						end
+					else
+						local successRoblox, inRoblox = pcall(function() return plr:IsInGroup(1200769) end)
+						if successRoblox and inRoblox then
+							isStaff = true
+						end
+					end
+				end
+				if isStaff then
+					keep = true
+				end
+			end
+			
+			if not keep then
+				c:Destroy()
+			end
 		end
 	end
 end)
@@ -8327,6 +8467,355 @@ addcmd('nolocate',{'unlocate'},function(args, speaker)
 	end
 end)
 
+StaffLogs = StaffLogs or {}
+logNotifications = true
+StaffServerBlacklist = StaffServerBlacklist or {}
+portalLogsActive = false
+refreshLogsUI = nil
+triggerLogsTab = nil
+
+local RadarFrame = nil
+local RadarConnection = nil
+local radarRange = 250
+
+local function updateRadar()
+	if not RadarFrame or not RadarFrame.Parent then return end
+	local localChar = Players.LocalPlayer.Character
+	local localRoot = localChar and getRoot(localChar)
+	if not localRoot then return end
+	
+	-- Clear old dots and arrows
+	for _, child in pairs(RadarFrame.Content:GetChildren()) do
+		if child.Name == "Dot" or child.Name == "Arrow" then
+			child:Destroy()
+		end
+	end
+	
+	local localPos = localRoot.Position
+	local localLook = localRoot.CFrame.LookVector
+	local localRight = localRoot.CFrame.RightVector
+	
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= Players.LocalPlayer and player.Character and getRoot(player.Character) then
+			local targetRoot = getRoot(player.Character)
+			local targetPos = targetRoot.Position
+			local offset = targetPos - localPos
+			local distance = offset.Magnitude
+			
+			-- Determine if staff
+			local isStaff = false
+			local success, inGroup17 = pcall(function() return player:IsInGroup(17180419) end)
+			if success and inGroup17 then
+				local successRole, role = pcall(function() return player:GetRoleInGroup(17180419) end)
+				if successRole and role and StaffRolewatchData.Roles[role] then
+					isStaff = true
+				end
+			else
+				local successOwner, inOwnerGroup = pcall(function()
+					return game.CreatorType == Enum.CreatorType.Group and player:IsInGroup(game.CreatorId)
+				end)
+				if successOwner and inOwnerGroup then
+					local successRole, roleInfo = pcall(getStaffRole, player)
+					if successRole and roleInfo.Staff then
+						isStaff = true
+					end
+				else
+					local successRoblox, inRoblox = pcall(function() return player:IsInGroup(1200769) end)
+					if successRoblox and inRoblox then
+						isStaff = true
+					end
+				end
+			end
+			
+			local radarRadius = 90
+			local xOffset = offset:Dot(localRight)
+			local zOffset = -offset:Dot(localLook)
+			
+			local xScaled = (xOffset / radarRange) * radarRadius
+			local yScaled = (zOffset / radarRange) * radarRadius
+			local distScaled = math.sqrt(xScaled^2 + yScaled^2)
+			
+			if distScaled <= radarRadius then
+				local dot = Instance.new("Frame")
+				dot.Name = "Dot"
+				dot.Size = UDim2.new(0, 6, 0, 6)
+				dot.Position = UDim2.new(0.5, xScaled - 3, 0.5, yScaled - 3)
+				dot.BackgroundColor3 = isStaff and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 192, 203)
+				dot.BorderSizePixel = 0
+				
+				local dotCorner = Instance.new("UICorner")
+				dotCorner.CornerRadius = UDim.new(0.5, 0)
+				dotCorner.Parent = dot
+				
+				if isStaff then
+					local glow = Instance.new("UIStroke")
+					glow.Color = Color3.fromRGB(255, 255, 255)
+					glow.Thickness = 1
+					glow.Parent = dot
+				end
+				
+				dot.Parent = RadarFrame.Content
+			elseif isStaff then
+				local angle = math.atan2(yScaled, xScaled)
+				local arrowX = math.cos(angle) * radarRadius
+				local arrowY = math.sin(angle) * radarRadius
+				
+				local arrow = Instance.new("ImageLabel")
+				arrow.Name = "Arrow"
+				arrow.Size = UDim2.new(0, 12, 0, 12)
+				arrow.Position = UDim2.new(0.5, arrowX - 6, 0.5, arrowY - 6)
+				arrow.BackgroundTransparency = 1
+				arrow.Image = "rbxassetid://6031094687"
+				arrow.ImageColor3 = Color3.fromRGB(255, 200, 0)
+				arrow.Rotation = math.deg(angle) + 90
+				arrow.Parent = RadarFrame.Content
+			end
+		end
+	end
+end
+
+local function addStaffLog(text)
+	table.insert(StaffLogs, 1, {Time = os.date("%H:%M:%S"), Text = text})
+	if #StaffLogs > 100 then
+		table.remove(StaffLogs, 101)
+	end
+	if refreshLogsUI and portalLogsActive then
+		pcall(refreshLogsUI)
+	end
+end
+
+local function checkStaffMessage(player, text)
+	task.spawn(function()
+		local isStaff = false
+		local success, inGroup17 = pcall(function() return player:IsInGroup(17180419) end)
+		if success and inGroup17 then
+			local successRole, role = pcall(function() return player:GetRoleInGroup(17180419) end)
+			if successRole and role and StaffRolewatchData.Roles[role] then
+				isStaff = true
+			end
+		else
+			local successOwner, inOwnerGroup = pcall(function()
+				return game.CreatorType == Enum.CreatorType.Group and player:IsInGroup(game.CreatorId)
+			end)
+			if successOwner and inOwnerGroup then
+				local successRole, roleInfo = pcall(getStaffRole, player)
+				if successRole and roleInfo.Staff then
+					isStaff = true
+				end
+			else
+				local successRoblox, inRoblox = pcall(function() return player:IsInGroup(1200769) end)
+				if successRoblox and inRoblox then
+					isStaff = true
+				end
+			end
+		end
+		
+		if isStaff then
+			addStaffLog("💬 <b>" .. player.DisplayName .. "</b>: " .. text)
+			if logNotifications then
+				notify("Staff Chat", player.DisplayName .. ": " .. text, 5)
+				local sound = Instance.new("Sound")
+				sound.SoundId = "rbxassetid://18723584764"
+				sound.Volume = 1
+				sound.Parent = game:GetService("SoundService")
+				sound:Play()
+				task.spawn(function()
+					task.wait(2)
+					sound:Destroy()
+				end)
+			end
+		end
+	end)
+end
+
+local function monitorStaffChar(player, char)
+	task.spawn(function()
+		local isStaff = false
+		local success, inGroup17 = pcall(function() return player:IsInGroup(17180419) end)
+		if success and inGroup17 then
+			local successRole, role = pcall(function() return player:GetRoleInGroup(17180419) end)
+			if successRole and role and StaffRolewatchData.Roles[role] then
+				isStaff = true
+			end
+		else
+			local successOwner, inOwnerGroup = pcall(function()
+				return game.CreatorType == Enum.CreatorType.Group and player:IsInGroup(game.CreatorId)
+			end)
+			if successOwner and inOwnerGroup then
+				local successRole, roleInfo = pcall(getStaffRole, player)
+				if successRole and roleInfo.Staff then
+					isStaff = true
+				end
+			else
+				local successRoblox, inRoblox = pcall(function() return player:IsInGroup(1200769) end)
+				if successRoblox and inRoblox then
+					isStaff = true
+				end
+			end
+		end
+		
+		if isStaff then
+			char.ChildAdded:Connect(function(child)
+				if child:IsA("Tool") then
+					addStaffLog("⚔️ <b>" .. player.DisplayName .. "</b> equipped tool: " .. child.Name)
+				end
+			end)
+		end
+	end)
+end
+
+local ShieldEnabled = false
+local ShieldConnection = nil
+
+local function toggleShield(enable)
+	ShieldEnabled = enable
+	if ShieldConnection then ShieldConnection:Disconnect() ShieldConnection = nil end
+	
+	if enable then
+		ShieldConnection = RunService.Stepped:Connect(function()
+			local localChar = Players.LocalPlayer.Character
+			if not localChar then return end
+			
+			local localRoot = getRoot(localChar)
+			if not localRoot then return end
+			
+			for _, player in pairs(Players:GetPlayers()) do
+				if player ~= Players.LocalPlayer and player.Character then
+					local targetRoot = getRoot(player.Character)
+					if targetRoot then
+						local dist = (targetRoot.Position - localRoot.Position).Magnitude
+						if dist < 30 then
+							local vel = targetRoot.AssemblyLinearVelocity.Magnitude
+							local angVel = targetRoot.AssemblyAngularVelocity.Magnitude
+							
+							if vel > 80 or angVel > 50 then
+								for _, ourPart in pairs(localChar:GetDescendants()) do
+									if ourPart:IsA("BasePart") then
+										ourPart.CanCollide = false
+									end
+								end
+								for _, targetPart in pairs(player.Character:GetDescendants()) do
+									if targetPart:IsA("BasePart") then
+										targetPart.CanCollide = false
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end)
+		notify("Shield", "Collision Shield & Anti-Fling Enabled")
+	else
+		notify("Shield", "Collision Shield Disabled")
+	end
+end
+
+local function serverHop()
+	local HttpService = game:GetService("HttpService")
+	local TeleportService = game:GetService("TeleportService")
+	local placeId = game.PlaceId
+	local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
+	
+	local success, result = pcall(function()
+		local req = (syn and syn.request) or (http and http.request) or http_request or (Fluxus and Fluxus.request) or request
+		if req then
+			local res = req({Url = url, Method = "GET"})
+			if res and res.StatusCode == 200 then
+				local body = HttpService:JSONDecode(res.Body)
+				if body and body.data then
+					for _, server in ipairs(body.data) do
+						if server.id ~= game.JobId and server.playing < server.maxPlayers and not StaffServerBlacklist[server.id] then
+							TeleportService:TeleportToPlaceInstance(placeId, server.id, Players.LocalPlayer)
+							return true
+						end
+					end
+				end
+			end
+		end
+		TeleportService:Teleport(placeId, Players.LocalPlayer)
+	end)
+	
+	if not success then
+		notify("Server Hop", "Failed to hop: " .. tostring(result))
+	end
+end
+
+local viewHUD = nil
+local viewHUDConnection = nil
+
+local function destroyViewHUD()
+	if viewHUD then viewHUD:Destroy() viewHUD = nil end
+	if viewHUDConnection then viewHUDConnection:Disconnect() viewHUDConnection = nil end
+end
+
+local function createViewHUD(targetPlayer)
+	destroyViewHUD()
+	
+	viewHUD = Instance.new("Frame")
+	viewHUD.Name = "ViewHUD"
+	viewHUD.Size = UDim2.new(0, 300, 0, 75)
+	viewHUD.Position = UDim2.new(0.5, -150, 0, 20)
+	viewHUD.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+	viewHUD.BackgroundTransparency = 0.2
+	viewHUD.BorderSizePixel = 0
+	viewHUD.Parent = PARENT
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = viewHUD
+	
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(120, 80, 255)
+	stroke.Thickness = 1.5
+	stroke.Parent = viewHUD
+	
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, -20, 0, 22)
+	nameLabel.Position = UDim2.new(0, 10, 0, 8)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = "Spectating: " .. targetPlayer.DisplayName
+	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.TextSize = 13
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	nameLabel.Parent = viewHUD
+	
+	local statsLabel = Instance.new("TextLabel")
+	statsLabel.Size = UDim2.new(1, -20, 0, 35)
+	statsLabel.Position = UDim2.new(0, 10, 0, 30)
+	statsLabel.BackgroundTransparency = 1
+	statsLabel.Text = "HP: -- | Speed: -- | Tool: --\nAge: --"
+	statsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+	statsLabel.Font = Enum.Font.Gotham
+	statsLabel.TextSize = 11
+	statsLabel.TextWrapped = true
+	statsLabel.TextXAlignment = Enum.TextXAlignment.Left
+	statsLabel.Parent = viewHUD
+	
+	viewHUDConnection = RunService.RenderStepped:Connect(function()
+		if not targetPlayer or not targetPlayer.Parent or viewing ~= targetPlayer then
+			destroyViewHUD()
+			return
+		end
+		
+		local char = targetPlayer.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		local speed = hum and math.floor(hum.WalkSpeed) or 0
+		local hp = hum and math.floor(hum.Health) or 0
+		local maxHp = hum and math.floor(hum.MaxHealth) or 0
+		local tool = "None"
+		if char then
+			local activeTool = char:FindFirstChildOfClass("Tool")
+			if activeTool then
+				tool = activeTool.Name
+			end
+		end
+		
+		statsLabel.Text = "HP: " .. hp .. "/" .. maxHp .. " | Speed: " .. speed .. " | Tool: " .. tool .. "\nAge: " .. (targetPlayer.AccountAge or 0) .. " days"
+	end)
+end
+
 viewing = nil
 addcmd('view',{'spectate'},function(args, speaker)
 	StopFreecam()
@@ -8337,6 +8826,7 @@ addcmd('view',{'spectate'},function(args, speaker)
 			viewChanged:Disconnect()
 		end
 		viewing = Players[v]
+		createViewHUD(viewing)
 		local character = viewing.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
@@ -8380,6 +8870,7 @@ addcmd('unview',{'unspectate'},function(args, speaker)
 	StopFreecam()
 	if viewing ~= nil then
 		viewing = nil
+		destroyViewHUD()
 		notify('Spectate','View turned off')
 	end
 	if viewDied then
@@ -12527,7 +13018,7 @@ local function updateStaffListUI()
 	if not frame then
 		frame = Instance.new("Frame")
 		frame.Name = "StaffListFrame"
-		frame.Position = UDim2.new(0, 10, 0, 80)
+		frame.Position = UDim2.new(1, -230, 0, 80)
 		frame.Size = UDim2.new(0, 220, 0, 0)
 		frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 		frame.BackgroundTransparency = 0.2
@@ -12566,6 +13057,7 @@ local function updateStaffListUI()
 		header.Parent = frame
 		
 		frame.Parent = PARENT
+		dragGUI(frame)
 	end
 	
 	for _, child in pairs(frame:GetChildren()) do
@@ -12639,6 +13131,21 @@ local function layoutActiveStaffCards()
 		end
 	end
 end
+
+Players.PlayerRemoving:Connect(function(player)
+	local removedAny = false
+	for i = #ActiveStaffCards, 1, -1 do
+		local c = ActiveStaffCards[i]
+		if c.Name == player.Name then
+			pcall(function() c:Destroy() end)
+			table.remove(ActiveStaffCards, i)
+			removedAny = true
+		end
+	end
+	if removedAny then
+		layoutActiveStaffCards()
+	end
+end)
 
 local function getRoleColor(role)
 	local r = role:lower()
@@ -13628,8 +14135,49 @@ end
 
 Players.PlayerAdded:Connect(function(plr)
 	eventEditor.FireEvent("OnJoin",plr.Name)
-	if isLegacyChat then plr.Chatted:Connect(function(msg) eventEditor.FireEvent("OnChatted",tostring(plr),msg) end) end
-	plr.CharacterAdded:Connect(function() eventEditor.FireEvent("OnSpawn",tostring(plr)) hookCharEvents(plr) end)
+	if isLegacyChat then 
+		plr.Chatted:Connect(function(msg) 
+			eventEditor.FireEvent("OnChatted",tostring(plr),msg) 
+			pcall(function() checkStaffMessage(plr, msg) end)
+		end) 
+	end
+	plr.CharacterAdded:Connect(function(char) 
+		eventEditor.FireEvent("OnSpawn",tostring(plr)) 
+		hookCharEvents(plr) 
+		pcall(function() monitorStaffChar(plr, char) end)
+	end)
+	
+	task.spawn(function()
+		local isStaff = false
+		local success, inGroup17 = pcall(function() return plr:IsInGroup(17180419) end)
+		if success and inGroup17 then
+			local successRole, role = pcall(function() return plr:GetRoleInGroup(17180419) end)
+			if successRole and role and StaffRolewatchData.Roles[role] then
+				isStaff = true
+			end
+		else
+			local successOwner, inOwnerGroup = pcall(function()
+				return game.CreatorType == Enum.CreatorType.Group and plr:IsInGroup(game.CreatorId)
+			end)
+			if successOwner and inOwnerGroup then
+				local successRole, roleInfo = pcall(getStaffRole, plr)
+				if successRole and roleInfo.Staff then
+					isStaff = true
+				end
+			else
+				local successRoblox, inRoblox = pcall(function() return plr:IsInGroup(1200769) end)
+				if successRoblox and inRoblox then
+					isStaff = true
+				end
+			end
+		end
+		
+		if isStaff then
+			addStaffLog("➡️ <b>" .. plr.DisplayName .. "</b> (Staff) joined the server")
+			StaffServerBlacklist[game.JobId] = true
+		end
+	end)
+	
 	JoinLog(plr)
 	if isLegacyChat then ChatLog(plr) end
 	if ESPenabled then
@@ -13660,6 +14208,7 @@ if not isLegacyChat then
 			end
 			eventEditor.FireEvent("OnChatted", player.Name, message.Text)
 			sendChatWebhook(player, message.Text)
+			pcall(function() checkStaffMessage(player, message.Text) end)
 		end
 	end)
 end
@@ -13834,6 +14383,10 @@ local function createAdminPortal()
 	stroke.Thickness = 1.5
 	stroke.Parent = main
 	
+	local filterText = ""
+	local filterStaffOnly = false
+	local filterInvisOnly = false
+
 	-- Header
 	local header = Instance.new("Frame")
 	header.Name = "Header"
@@ -13842,7 +14395,7 @@ local function createAdminPortal()
 	header.Parent = main
 	
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -50, 1, 0)
+	title.Size = UDim2.new(1, -300, 1, 0)
 	title.Position = UDim2.new(0, 15, 0, 0)
 	title.BackgroundTransparency = 1
 	title.Text = "ADMIN CONTROL PORTAL"
@@ -13851,6 +14404,36 @@ local function createAdminPortal()
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 16
 	title.Parent = header
+	
+	local playersTabBtn = Instance.new("TextButton")
+	playersTabBtn.Name = "PlayersTabBtn"
+	playersTabBtn.Size = UDim2.new(0, 90, 0, 25)
+	playersTabBtn.Position = UDim2.new(1, -240, 0, 8)
+	playersTabBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
+	playersTabBtn.Text = "👥 Players"
+	playersTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	playersTabBtn.Font = Enum.Font.GothamBold
+	playersTabBtn.TextSize = 11
+	playersTabBtn.BorderSizePixel = 0
+	local ptCorner = Instance.new("UICorner")
+	ptCorner.CornerRadius = UDim.new(0, 5)
+	ptCorner.Parent = playersTabBtn
+	playersTabBtn.Parent = header
+	
+	local logsTabBtn = Instance.new("TextButton")
+	logsTabBtn.Name = "LogsTabBtn"
+	logsTabBtn.Size = UDim2.new(0, 80, 0, 25)
+	logsTabBtn.Position = UDim2.new(1, -145, 0, 8)
+	logsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	logsTabBtn.Text = "📜 Logs"
+	logsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+	logsTabBtn.Font = Enum.Font.GothamBold
+	logsTabBtn.TextSize = 11
+	logsTabBtn.BorderSizePixel = 0
+	local ltCorner = Instance.new("UICorner")
+	ltCorner.CornerRadius = UDim.new(0, 5)
+	ltCorner.Parent = logsTabBtn
+	logsTabBtn.Parent = header
 	
 	local close = Instance.new("TextButton")
 	close.Size = UDim2.new(0, 30, 0, 30)
@@ -13863,7 +14446,7 @@ local function createAdminPortal()
 	close.Parent = header
 	
 	close.MouseEnter:Connect(function() close.TextColor3 = Color3.fromRGB(255, 75, 75) end)
-	close.MouseLeave:Connect(function() close.TextColor3 = Color3.fromRGB(150, 150, 150) end)
+	close.MouseLeave:Connect(function() close.TextColor3 = Color3.fromRGB(150, 150, 160) end)
 	close.MouseButton1Click:Connect(function() main.Visible = false end)
 	
 	-- Divider
@@ -13874,11 +14457,73 @@ local function createAdminPortal()
 	div.BorderSizePixel = 0
 	div.Parent = main
 	
+	-- Search Bar
+	local searchFrame = Instance.new("Frame")
+	searchFrame.Name = "SearchFrame"
+	searchFrame.Size = UDim2.new(0, 240, 0, 30)
+	searchFrame.Position = UDim2.new(0, 10, 0, 50)
+	searchFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	searchFrame.BorderSizePixel = 0
+	searchFrame.Parent = main
+	
+	local searchCorner = Instance.new("UICorner")
+	searchCorner.CornerRadius = UDim.new(0, 6)
+	searchCorner.Parent = searchFrame
+	
+	local searchBox = Instance.new("TextBox")
+	searchBox.Name = "SearchBox"
+	searchBox.Size = UDim2.new(1, -10, 1, 0)
+	searchBox.Position = UDim2.new(0, 5, 0, 0)
+	searchBox.BackgroundTransparency = 1
+	searchBox.Text = ""
+	searchBox.PlaceholderText = "🔍 Search players..."
+	searchBox.TextColor3 = Color3.fromRGB(220, 220, 230)
+	searchBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 130)
+	searchBox.Font = Enum.Font.Gotham
+	searchBox.TextSize = 11
+	searchBox.TextXAlignment = Enum.TextXAlignment.Left
+	searchBox.Parent = searchFrame
+	
+	-- Filter Toggles
+	local filterFrame = Instance.new("Frame")
+	filterFrame.Name = "FilterFrame"
+	filterFrame.Size = UDim2.new(0, 240, 0, 25)
+	filterFrame.Position = UDim2.new(0, 10, 0, 85)
+	filterFrame.BackgroundTransparency = 1
+	filterFrame.Parent = main
+	
+	local function createFilterButton(text, xPos, width, onClick)
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(0, width, 1, 0)
+		btn.Position = UDim2.new(0, xPos, 0, 0)
+		btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+		btn.Text = text
+		btn.TextColor3 = Color3.fromRGB(150, 150, 160)
+		btn.Font = Enum.Font.GothamMedium
+		btn.TextSize = 10
+		btn.BorderSizePixel = 0
+		
+		local btnCorner = Instance.new("UICorner")
+		btnCorner.CornerRadius = UDim.new(0, 4)
+		btnCorner.Parent = btn
+		
+		local active = false
+		btn.MouseButton1Click:Connect(function()
+			active = not active
+			btn.BackgroundColor3 = active and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
+			btn.TextColor3 = active and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
+			onClick(active)
+		end)
+		
+		btn.Parent = filterFrame
+		return btn
+	end
+	
 	-- Player List (Left Column)
 	local listFrame = Instance.new("ScrollingFrame")
 	listFrame.Name = "PlayerList"
-	listFrame.Size = UDim2.new(0, 240, 1, -60)
-	listFrame.Position = UDim2.new(0, 10, 0, 50)
+	listFrame.Size = UDim2.new(0, 240, 1, -125)
+	listFrame.Position = UDim2.new(0, 10, 0, 115)
 	listFrame.BackgroundTransparency = 1
 	listFrame.BorderSizePixel = 0
 	listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -13887,7 +14532,7 @@ local function createAdminPortal()
 	
 	local layout = Instance.new("UIListLayout")
 	layout.Padding = UDim.new(0, 5)
-	layout.SortOrder = Enum.SortOrder.Name
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = listFrame
 	
 	-- Details Panel (Right Column)
@@ -14042,20 +14687,98 @@ local function createAdminPortal()
 		end)
 	end
 	
+	local function filterPlayers()
+		for _, child in pairs(listFrame:GetChildren()) do
+			if child:IsA("TextButton") then
+				local pName = child.Name
+				local p = Players:FindFirstChild(pName)
+				local visible = true
+				
+				if p then
+					if filterText ~= "" then
+						local disp = (p.DisplayName or ""):lower()
+						local usr = p.Name:lower()
+						if not string.find(disp, filterText:lower()) and not string.find(usr, filterText:lower()) then
+							visible = false
+						end
+					end
+					
+					if visible and filterStaffOnly then
+						local isStaff = false
+						local success, inGroup17 = pcall(function() return p:IsInGroup(17180419) end)
+						if success and inGroup17 then
+							local successRole, role = pcall(function() return p:GetRoleInGroup(17180419) end)
+							if successRole and role and StaffRolewatchData.Roles[role] then
+								isStaff = true
+							end
+						else
+							local successOwner, inOwnerGroup = pcall(function()
+								return game.CreatorType == Enum.CreatorType.Group and p:IsInGroup(game.CreatorId)
+							end)
+							if successOwner and inOwnerGroup then
+								local successRole, roleInfo = pcall(getStaffRole, p)
+								if successRole and roleInfo.Staff then
+									isStaff = true
+								end
+							else
+								local successRoblox, inRoblox = pcall(function() return p:IsInGroup(1200769) end)
+								if successRoblox and inRoblox then
+									isStaff = true
+								end
+							end
+						end
+						if not isStaff then
+							visible = false
+						end
+					end
+					
+					if visible and filterInvisOnly then
+						local invis = false
+						local parts = 0
+						local transparentParts = 0
+						if p.Character then
+							for _, g in pairs(p.Character:GetDescendants()) do
+								if g:IsA("BasePart") and g.Name ~= "HumanoidRootPart" then
+									parts = parts + 1
+									if g.Transparency >= 0.9 then
+										transparentParts = transparentParts + 1
+									end
+								end
+							end
+						end
+						if parts > 0 and transparentParts == parts then
+							invis = true
+						end
+						if not invis then
+							visible = false
+						end
+					end
+				else
+					visible = false
+				end
+				child.Visible = visible
+			end
+		end
+	end
+
 	local function updateList()
 		for _, child in pairs(listFrame:GetChildren()) do
 			if child:IsA("TextButton") then child:Destroy() end
 		end
 		
 		local players = Players:GetPlayers()
+		table.sort(players, function(a, b)
+			return (a.DisplayName or a.Name):lower() < (b.DisplayName or b.Name):lower()
+		end)
 		listFrame.CanvasSize = UDim2.new(0, 0, 0, #players * 40)
 		
-		for _, p in pairs(players) do
+		for index, p in ipairs(players) do
 			local pBtn = Instance.new("TextButton")
 			pBtn.Name = p.Name
 			pBtn.Size = UDim2.new(1, -10, 0, 35)
 			pBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 			pBtn.BorderSizePixel = 0
+			pBtn.LayoutOrder = index
 			
 			local btnCorner = Instance.new("UICorner")
 			btnCorner.CornerRadius = UDim.new(0, 6)
@@ -14131,12 +14854,160 @@ local function createAdminPortal()
 				end
 				
 				if isStaff then
+					pBtn.LayoutOrder = -100 + index
 					table.insert(badges, 1, "<b><font color=\"rgb(255, 200, 0)\">[STAFF]</font></b>")
 					pBtn.Text = table.concat(badges, " ") .. " " .. text
 				end
 			end)
 		end
+		filterPlayers()
 	end
+	
+	-- Filter Hook
+	searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+		filterText = searchBox.Text
+		filterPlayers()
+	end)
+	
+	-- Logs Tab Elements
+	local logsViewFrame = Instance.new("Frame")
+	logsViewFrame.Name = "LogsViewFrame"
+	logsViewFrame.Size = UDim2.new(1, -20, 1, -60)
+	logsViewFrame.Position = UDim2.new(0, 10, 0, 50)
+	logsViewFrame.BackgroundTransparency = 1
+	logsViewFrame.Visible = false
+	logsViewFrame.Parent = main
+	
+	local logsScroll = Instance.new("ScrollingFrame")
+	logsScroll.Name = "LogsScroll"
+	logsScroll.Size = UDim2.new(0, 380, 1, 0)
+	logsScroll.BackgroundTransparency = 1
+	logsScroll.BorderSizePixel = 0
+	logsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	logsScroll.ScrollBarThickness = 4
+	logsScroll.Parent = logsViewFrame
+	
+	local logsLayout = Instance.new("UIListLayout")
+	logsLayout.Padding = UDim.new(0, 4)
+	logsLayout.Parent = logsScroll
+	
+	local logsConfig = Instance.new("Frame")
+	logsConfig.Name = "Config"
+	logsConfig.Size = UDim2.new(1, -400, 1, 0)
+	logsConfig.Position = UDim2.new(0, 400, 0, 0)
+	logsConfig.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+	logsConfig.BackgroundTransparency = 0.3
+	logsConfig.BorderSizePixel = 0
+	
+	local configCorner = Instance.new("UICorner")
+	configCorner.CornerRadius = UDim.new(0, 8)
+	configCorner.Parent = logsConfig
+	logsConfig.Parent = logsViewFrame
+	
+	local configTitle = Instance.new("TextLabel")
+	configTitle.Size = UDim2.new(1, 0, 0, 30)
+	configTitle.BackgroundTransparency = 1
+	configTitle.Text = "LOG CONFIGURATION"
+	configTitle.TextColor3 = Color3.fromRGB(160, 130, 255)
+	configTitle.Font = Enum.Font.GothamBold
+	configTitle.TextSize = 11
+	configTitle.Parent = logsConfig
+	
+	local soundToggle = Instance.new("TextButton")
+	soundToggle.Size = UDim2.new(1, -20, 0, 35)
+	soundToggle.Position = UDim2.new(0, 10, 0, 40)
+	soundToggle.BackgroundColor3 = logNotifications and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(35, 30, 50)
+	soundToggle.Text = logNotifications and "🔊 Chat Sound: ON" or "🔇 Chat Sound: OFF"
+	soundToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+	soundToggle.Font = Enum.Font.GothamMedium
+	soundToggle.TextSize = 11
+	soundToggle.BorderSizePixel = 0
+	local stCorner = Instance.new("UICorner")
+	stCorner.CornerRadius = UDim.new(0, 6)
+	stCorner.Parent = soundToggle
+	soundToggle.Parent = logsConfig
+	
+	soundToggle.MouseButton1Click:Connect(function()
+		logNotifications = not logNotifications
+		soundToggle.BackgroundColor3 = logNotifications and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(35, 30, 50)
+		soundToggle.Text = logNotifications and "🔊 Chat Sound: ON" or "🔇 Chat Sound: OFF"
+	end)
+	
+	local clearBtn = Instance.new("TextButton")
+	clearBtn.Size = UDim2.new(1, -20, 0, 35)
+	clearBtn.Position = UDim2.new(0, 10, 0, 85)
+	clearBtn.BackgroundColor3 = Color3.fromRGB(75, 35, 35)
+	clearBtn.Text = "🗑️ Clear History"
+	clearBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
+	clearBtn.Font = Enum.Font.GothamMedium
+	clearBtn.TextSize = 11
+	clearBtn.BorderSizePixel = 0
+	local clCorner = Instance.new("UICorner")
+	clCorner.CornerRadius = UDim.new(0, 6)
+	clCorner.Parent = clearBtn
+	clearBtn.Parent = logsConfig
+	
+	clearBtn.MouseButton1Click:Connect(function()
+		StaffLogs = {}
+		updateLogsUI()
+	end)
+	
+	local function updateLogsUI()
+		for _, child in pairs(logsScroll:GetChildren()) do
+			if child:IsA("TextLabel") then child:Destroy() end
+		end
+		
+		logsScroll.CanvasSize = UDim2.new(0, 0, 0, #StaffLogs * 25)
+		
+		for _, log in ipairs(StaffLogs) do
+			local label = Instance.new("TextLabel")
+			label.Size = UDim2.new(1, -10, 0, 22)
+			label.BackgroundTransparency = 1
+			label.RichText = true
+			label.Text = "<font color=\"rgb(150, 150, 160)\">[" .. log.Time .. "]</font> " .. log.Text
+			label.TextColor3 = Color3.fromRGB(220, 220, 230)
+			label.Font = Enum.Font.Gotham
+			label.TextSize = 11
+			label.TextXAlignment = Enum.TextXAlignment.Left
+			label.TextWrapped = true
+			label.Parent = logsScroll
+		end
+	end
+	
+	refreshLogsUI = updateLogsUI
+	
+	local function setTab(tabName)
+		portalLogsActive = (tabName == "Logs")
+		if tabName == "Players" then
+			playersTabBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
+			playersTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			logsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+			logsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+			
+			listFrame.Visible = true
+			searchFrame.Visible = true
+			filterFrame.Visible = true
+			detailFrame.Visible = true
+			logsViewFrame.Visible = false
+		else
+			logsTabBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
+			logsTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			playersTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+			playersTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+			
+			listFrame.Visible = false
+			searchFrame.Visible = false
+			filterFrame.Visible = false
+			detailFrame.Visible = false
+			logsViewFrame.Visible = true
+			updateLogsUI()
+		end
+	end
+	
+	playersTabBtn.MouseButton1Click:Connect(function() setTab("Players") end)
+	logsTabBtn.MouseButton1Click:Connect(function() setTab("Logs") end)
+	
+	triggerLogsTab = function() setTab("Logs") end
 	
 	Players.PlayerAdded:Connect(updateList)
 	Players.PlayerRemoving:Connect(updateList)
@@ -14170,6 +15041,120 @@ addcmd("unportal", {"unpanel"}, function(args, speaker)
 	end
 	notify("Admin Portal", "Admin Control Portal closed")
 end)
+
+addcmd("radar", {}, function(args, speaker)
+	if RadarConnection then RadarConnection:Disconnect() RadarConnection = nil end
+	if RadarFrame then RadarFrame:Destroy() RadarFrame = nil end
+	
+	RadarFrame = Instance.new("Frame")
+	RadarFrame.Name = "RadarFrame"
+	RadarFrame.Size = UDim2.new(0, 200, 0, 200)
+	RadarFrame.Position = UDim2.new(0.5, -350, 0.5, -100)
+	RadarFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+	RadarFrame.BackgroundTransparency = 0.4
+	RadarFrame.BorderSizePixel = 0
+	RadarFrame.Parent = PARENT
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = RadarFrame
+	
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(120, 80, 255)
+	stroke.Thickness = 1.5
+	stroke.Parent = RadarFrame
+	
+	local crossX = Instance.new("Frame")
+	crossX.Size = UDim2.new(1, 0, 0, 1)
+	crossX.Position = UDim2.new(0, 0, 0.5, 0)
+	crossX.BackgroundColor3 = Color3.fromRGB(100, 100, 120)
+	crossX.BackgroundTransparency = 0.6
+	crossX.BorderSizePixel = 0
+	crossX.Parent = RadarFrame
+	
+	local crossY = Instance.new("Frame")
+	crossY.Size = UDim2.new(0, 1, 1, 0)
+	crossY.Position = UDim2.new(0.5, 0, 0, 0)
+	crossY.BackgroundColor3 = Color3.fromRGB(100, 100, 120)
+	crossY.BackgroundTransparency = 0.6
+	crossY.BorderSizePixel = 0
+	crossY.Parent = RadarFrame
+	
+	local content = Instance.new("Frame")
+	content.Name = "Content"
+	content.Size = UDim2.new(1, 0, 1, 0)
+	content.BackgroundTransparency = 1
+	content.Parent = RadarFrame
+	
+	dragGUI(RadarFrame)
+	
+	RadarConnection = RunService.RenderStepped:Connect(updateRadar)
+	notify("Radar", "Radar Enabled (Draggable Circle)")
+end)
+
+addcmd("unradar", {}, function(args, speaker)
+	if RadarConnection then RadarConnection:Disconnect() RadarConnection = nil end
+	if RadarFrame then RadarFrame:Destroy() RadarFrame = nil end
+	notify("Radar", "Radar Disabled")
+end)
+
+addcmd("stafflog", {"stafflogs"}, function(args, speaker)
+	execCmd("portal")
+	task.spawn(function()
+		repeat task.wait() until ScaledHolder:FindFirstChild("AdminPortal")
+		if triggerLogsTab then
+			pcall(triggerLogsTab)
+		end
+	end)
+end)
+
+addcmd("viewhud", {}, function(args, speaker)
+	if viewing then
+		createViewHUD(viewing)
+		notify("Spectate HUD", "Spectate HUD Enabled for " .. viewing.DisplayName)
+	else
+		notify("Spectate HUD", "No player is currently being spectated.")
+	end
+end)
+
+addcmd("unviewhud", {}, function(args, speaker)
+	destroyViewHUD()
+	notify("Spectate HUD", "Spectate HUD Disabled")
+end)
+
+addcmd("hop", {"serverhop"}, function(args, speaker)
+	notify("Server Hop", "Finding lowest ping/clean server to hop...")
+	serverHop()
+end)
+
+addcmd("blacklist", {"serverblacklist"}, function(args, speaker)
+	local targetJob = args[1] or game.JobId
+	StaffServerBlacklist[targetJob] = true
+	notify("Server Blacklist", "Blacklisted Server JobID: " .. tostring(targetJob))
+end)
+
+addcmd("shield", {"antifling"}, function(args, speaker)
+	toggleShield(true)
+end)
+
+addcmd("unshield", {"noantifling"}, function(args, speaker)
+	toggleShield(false)
+end)
+
+-- Hook up existing players chatted and tool equip events on startup
+for _, p in pairs(Players:GetPlayers()) do
+	if isLegacyChat then
+		p.Chatted:Connect(function(msg)
+			pcall(function() checkStaffMessage(p, msg) end)
+		end)
+	end
+	if p.Character then
+		pcall(function() monitorStaffChar(p, p.Character) end)
+	end
+	p.CharacterAdded:Connect(function(char)
+		pcall(function() monitorStaffChar(p, char) end)
+	end)
+end
 
 task.spawn(function()
     task.wait()
