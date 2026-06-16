@@ -15731,9 +15731,14 @@ local function createAdminPortal()
 		local count = 0
 		local names = {}
 		for _, p in pairs(selectedBatchPlayers) do
-			count = count + 1
-			table.insert(names, p.DisplayName or p.Name)
+			if p and p.Parent == Players then
+				count = count + 1
+				table.insert(names, p.DisplayName or p.Name)
+			else
+				selectedBatchPlayers[p.UserId] = nil
+			end
 		end
+
 		
 		if count > 0 then
 			profileImage.Visible = false
@@ -15832,9 +15837,10 @@ local function createAdminPortal()
 				staffRoleText = "<b><font color=\"" .. rColor .. "\">" .. role .. "</font></b>"
 			end
 			
-			while selectedPlayer == p do
+			while selectedPlayer == p and p.Parent == Players do
 				local success, hasParent = pcall(function() return main and main.Parent end)
 				if not success or not hasParent then break end
+
 
 				local distText = "<b>Unknown</b>"
 				local localChar = Players.LocalPlayer.Character
