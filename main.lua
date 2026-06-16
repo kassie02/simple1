@@ -54,6 +54,17 @@ local startViewFC
 StaffChatSounds = true
 StaffChatNotifications = true
 
+local chatSpyActive = false
+local chatSpyConnection = nil
+local pflyActive = false
+local pflyConn = nil
+local pflyKeysConn1 = nil
+local pflyKeysConn2 = nil
+local selectedBatchPlayers = {}
+local showMapNames = false
+local selectedMapPlayer = nil
+local mapRange = 500
+
 Services = setmetatable({}, {
 	__index = function(self, name)
 		local success, cache = pcall(function()
@@ -6097,13 +6108,16 @@ function TESP(plr)
 			local showName = (TESPmode >= 1) or isStaff
 			if showName then
 				local label = Instance.new("TextLabel")
+				label.Name = "NameTag"
 				label.BackgroundTransparency = 1
-				label.Position = UDim2.new(0.5, -75, 0, -20)
-				label.Size = UDim2.new(0, 150, 0, 15)
+				label.Position = UDim2.new(0.5, -100, 0, -22)
+				label.Size = UDim2.new(0, 200, 0, 18)
 				label.Font = Enum.Font.SourceSansSemibold
 				label.TextSize = 14
 				label.TextColor3 = color
+				label.TextStrokeColor3 = Color3.new(0, 0, 0)
 				label.TextStrokeTransparency = 0
+				label.TextXAlignment = Enum.TextXAlignment.Center
 				local role = nil
 				if isStaff and getCachedStaffRole then
 					local _, r = getCachedStaffRole(plr)
@@ -6117,13 +6131,16 @@ function TESP(plr)
 			local distanceLabel
 			if TESPmode >= 2 then
 				distanceLabel = Instance.new("TextLabel")
+				distanceLabel.Name = "DistanceTag"
 				distanceLabel.BackgroundTransparency = 1
-				distanceLabel.Position = UDim2.new(0.5, -75, 1, 5)
-				distanceLabel.Size = UDim2.new(0, 150, 0, 15)
+				distanceLabel.Position = UDim2.new(0.5, -100, 1, 5)
+				distanceLabel.Size = UDim2.new(0, 200, 0, 18)
 				distanceLabel.Font = Enum.Font.SourceSansSemibold
 				distanceLabel.TextSize = 13
 				distanceLabel.TextColor3 = color
+				distanceLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 				distanceLabel.TextStrokeTransparency = 0
+				distanceLabel.TextXAlignment = Enum.TextXAlignment.Center
 				distanceLabel.Text = ""
 				distanceLabel.Parent = BillboardGui
 			end
@@ -8756,6 +8773,12 @@ local function createHelpRequestNotification(player)
 	local playerName = player.Name
 	local userId = player.UserId
 	
+	local tracking = false
+	local tracer = nil
+	local trackConn = nil
+	local charAddedConn = nil
+	local stopTracking
+	
 	if not PARENT or not PARENT.Parent then
 		repeat task.wait(0.1) until PARENT and PARENT.Parent
 	end
@@ -8823,7 +8846,7 @@ local function createHelpRequestNotification(player)
 	info.Parent = card
 	
 	local viewBtn = Instance.new("TextButton")
-	viewBtn.Size = UDim2.new(0, 80, 0, 22)
+	viewBtn.Size = UDim2.new(0, 75, 0, 22)
 	viewBtn.Position = UDim2.new(0, 72, 0, 44)
 	viewBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
 	viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
@@ -8854,11 +8877,126 @@ local function createHelpRequestNotification(player)
 	
 	local viewConn
 	viewConn = RunService.Heartbeat:Connect(function()
-		if not card.Parent then
+		if not card.Parent or not player.Parent then
+			if card.Parent then
+				pcall(function() stopTracking() end)
+				pcall(function() card:Destroy() end)
+				for i, c in ipairs(ActiveHelpCards) do
+					if c == card then
+						table.remove(ActiveHelpCards, i)
+						break
+					end
+				end
+				layoutActiveHelpCards()
+			end
 			viewConn:Disconnect()
 			return
 		end
 		updateBtnText()
+	end)
+
+	local trackBtn = Instance.new("TextButton")
+	trackBtn.Size = UDim2.new(0, 75, 0, 22)
+	trackBtn.Position = UDim2.new(0, 152, 0, 44)
+	trackBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+	trackBtn.Text = "TRACK"
+	trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+	trackBtn.Font = Enum.Font.GothamBold
+	trackBtn.TextSize = 10
+	trackBtn.BorderSizePixel = 0
+
+	local trackBtnCorner = Instance.new("UICorner")
+	trackBtnCorner.CornerRadius = UDim.new(0, 4)
+	trackBtnCorner.Parent = trackBtn
+	trackBtn.Parent = card
+
+	stopTracking = function()
+		if not tracking then return end
+		tracking = false
+		trackBtn.Text = "TRACK"
+		trackBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+		trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+
+		if trackConn then
+			trackConn:Disconnect()
+			trackConn = nil
+		end
+		if charAddedConn then
+			charAddedConn:Disconnect()
+			charAddedConn = nil
+		end
+		if tracer then
+			pcall(function() tracer:Destroy() end)
+			tracer = nil
+		end
+
+		local folder = COREGUI:FindFirstChild(player.Name..'_TESP')
+		if folder then
+			pcall(function() folder:Destroy() end)
+		end
+		if TESPConnections[player.UserId] then
+			pcall(function() TESPConnections[player.UserId]:Disconnect() end)
+			TESPConnections[player.UserId] = nil
+		end
+	end
+
+	local function startTracking()
+		tracking = true
+		trackBtn.Text = "UNTRACK"
+		trackBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+		trackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+		TESP(player)
+		charAddedConn = player.CharacterAdded:Connect(function()
+			task.wait(0.5)
+			if tracking then
+				TESP(player)
+			end
+		end)
+
+		if Drawing then
+			pcall(function()
+				tracer = Drawing.new("Line")
+				tracer.Thickness = 1.5
+				tracer.Color = Color3.fromRGB(100, 200, 255)
+				tracer.Visible = false
+			end)
+		end
+
+		trackConn = RunService.RenderStepped:Connect(function()
+			if not tracking or not card.Parent or not player.Parent then
+				stopTracking()
+				return
+			end
+
+			local char = player.Character
+			local root = char and getRoot(char)
+			if tracer and root then
+				local camera = workspace.CurrentCamera
+				if camera then
+					local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
+					if onScreen then
+						tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+						tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+						tracer.Visible = true
+					else
+						tracer.Visible = false
+					end
+				else
+					tracer.Visible = false
+				end
+			elseif tracer then
+				tracer.Visible = false
+			end
+		end)
+	end
+
+	trackBtn.MouseButton1Click:Connect(function()
+		if tracking then
+			stopTracking()
+		else
+			startTracking()
+		end
 	end)
 	
 	local closeBtn = Instance.new("TextButton")
@@ -8879,6 +9017,7 @@ local function createHelpRequestNotification(player)
 	end)
 	
 	closeBtn.MouseButton1Click:Connect(function()
+		pcall(stopTracking)
 		card:Destroy()
 		for i, c in ipairs(ActiveHelpCards) do
 			if c == card then
@@ -13768,38 +13907,7 @@ end
 StaffRolewatchConnection = Players.PlayerAdded:Connect(function(player)
 	if not StaffRolewatchData.Active then return end
 	task.spawn(function()
-		local success, inGroup
-		local retries = 0
-		repeat
-			success, inGroup = pcall(function() return player:IsInGroup(StaffRolewatchData.Group) end)
-			if not success then
-				task.wait(1)
-				retries = retries + 1
-			end
-		until success or retries >= 5
-
-		if success and inGroup then
-			local successRole, playerRole
-			local retriesRole = 0
-			repeat
-				successRole, playerRole = pcall(function() return player:GetRoleInGroup(StaffRolewatchData.Group) end)
-				if not successRole then
-					task.wait(1)
-					retriesRole = retriesRole + 1
-				end
-			until successRole or retriesRole >= 5
-
-			if successRole and playerRole and StaffRolewatchData.Roles[playerRole] then
-				if StaffRolewatchData.Leave == true then
-					Players.LocalPlayer:Kick("\n\nStaff Watch\nPlayer \"" .. tostring(player.Name) .. "\" has joined with the Role \"" .. playerRole .. "\"\n")
-				else
-					playerStaffRolesCache[player.UserId] = {isStaff = true, role = playerRole}
-					createStaffWatchNotification(player, playerRole)
-					task.spawn(updateStaffListUI)
-					task.spawn(function() TESP(player) end)
-				end
-			end
-		end
+		getCachedStaffRole(player)
 	end)
 end)
 
@@ -13815,71 +13923,41 @@ addcmd("tmp", {}, function(args, speaker)
 	
 	local found = {}
 	local players = Players:GetPlayers()
-	local total = 0
+	local checking = {}
 	for _, player in pairs(players) do
 		if player ~= Players.LocalPlayer then
-			total = total + 1
+			table.insert(checking, player)
 		end
 	end
 	
-	local checked = 0
-	local function checkDone()
-		checked = checked + 1
-		if checked >= total then
-			if #found > 0 then
-				notify("Staff Watch", "Active & Found: " .. table.concat(found, ", "))
-			else
-				notify("Staff Watch", "Enabled (Watching Group 17180419)")
-			end
-			task.spawn(updateStaffListUI)
-		end
-	end
-	
-	if total <= 0 then
+	if #checking <= 0 then
 		notify("Staff Watch", "Enabled (Watching Group 17180419)")
 		task.spawn(updateStaffListUI)
 		return
 	end
 
-	for _, player in pairs(players) do
-		if player ~= Players.LocalPlayer then
-			task.spawn(function()
-				local success, inGroup
-				local retries = 0
-				repeat
-					success, inGroup = pcall(function() return player:IsInGroup(StaffRolewatchData.Group) end)
-					if not success then
-						task.wait(1)
-						retries = retries + 1
-					end
-				until success or retries >= 5
-
-				if success and inGroup then
-					local successRole, playerRole
-					local retriesRole = 0
-					repeat
-						successRole, playerRole = pcall(function() return player:GetRoleInGroup(StaffRolewatchData.Group) end)
-						if not successRole then
-							task.wait(1)
-							retriesRole = retriesRole + 1
-						end
-					until successRole or retriesRole >= 5
-
-					if successRole and playerRole and StaffRolewatchData.Roles[playerRole] then
-						if StaffRolewatchData.Leave == true then
-							Players.LocalPlayer:Kick("\n\nStaff Watch\nPlayer \"" .. tostring(player.Name) .. "\" is in server with the Role \"" .. playerRole .. "\"\n")
-						else
-							playerStaffRolesCache[player.UserId] = {isStaff = true, role = playerRole}
-							createStaffWatchNotification(player, playerRole)
-							table.insert(found, tostring(player.Name) .. " (" .. playerRole .. ")")
-							task.spawn(function() TESP(player) end)
-						end
-					end
-				end
-				checkDone()
-			end)
+	task.spawn(function()
+		for _, player in ipairs(checking) do
+			getCachedStaffRole(player)
+			task.wait(0.2) -- Space out requests to avoid rate limits
 		end
-	end
+		
+		task.wait(2) -- Wait for pending checks to finish
+		
+		for _, player in ipairs(checking) do
+			local isStaff, role = getCachedStaffRole(player)
+			if isStaff and role then
+				table.insert(found, tostring(player.Name) .. " (" .. role .. ")")
+			end
+		end
+		
+		if #found > 0 then
+			notify("Staff Watch", "Active & Found: " .. table.concat(found, ", "))
+		else
+			notify("Staff Watch", "Enabled (Watching Group 17180419)")
+		end
+		task.spawn(updateStaffListUI)
+	end)
 end)
 
 addcmd("untmp", {}, function(args, speaker)
@@ -13907,6 +13985,178 @@ end)
 addcmd("tmpleave", {}, function(args, speaker)
 	StaffRolewatchData.Leave = not StaffRolewatchData.Leave
 	notify("Staff Watch", StaffRolewatchData.Leave and "Leave has been Enabled" or "Leave has been Disabled")
+end)
+
+local function toggleChatSpy(state)
+	chatSpyActive = state
+	if not state then
+		if chatSpyConnection then
+			pcall(function() chatSpyConnection:Disconnect() end)
+			chatSpyConnection = nil
+		end
+		return
+	end
+	
+	if chatSpyConnection then
+		pcall(function() chatSpyConnection:Disconnect() end)
+		chatSpyConnection = nil
+	end
+	
+	local function handleMessage(senderName, msg, channelName)
+		if not chatSpyActive then return end
+		if senderName == Players.LocalPlayer.Name then return end
+		
+		local isWhisper = string.find(channelName:lower(), "whisper") or string.sub(channelName, 1, 3) == "To " or string.sub(channelName, 1, 5) == "From "
+		local isTeam = string.find(channelName:lower(), "team")
+		
+		if isWhisper or isTeam then
+			local chType = isWhisper and "WHISPER" or "TEAM"
+			local displayText = "<b><font color=\"rgb(255, 100, 100)\">[" .. chType .. "]</font> @" .. senderName .. ":</b> " .. msg
+			addStaffLog(displayText)
+		end
+	end
+	
+	local chatEvents = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+	if chatEvents then
+		local onMsg = chatEvents:FindFirstChild("OnMessageDoneFiltering")
+		if onMsg and onMsg:IsA("RemoteEvent") then
+			chatSpyConnection = onMsg.OnClientEvent:Connect(function(messageData)
+				if messageData and messageData.FromSpeaker and messageData.Message then
+					handleMessage(messageData.FromSpeaker, messageData.Message, messageData.OriginalChannel or "All")
+				end
+			end)
+		end
+	end
+	
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		chatSpyConnection = TextChatService.MessageReceived:Connect(function(textChatMessage)
+			local sender = textChatMessage.TextSource
+			local channel = textChatMessage.TextChannel
+			if sender and channel then
+				handleMessage(sender.Name, textChatMessage.Text, channel.Name)
+			end
+		end)
+	end
+end
+
+local function stopPFly()
+	pflyActive = false
+	if pflyConn then
+		pflyConn:Disconnect()
+		pflyConn = nil
+	end
+	if pflyKeysConn1 then
+		pflyKeysConn1:Disconnect()
+		pflyKeysConn1 = nil
+	end
+	if pflyKeysConn2 then
+		pflyKeysConn2:Disconnect()
+		pflyKeysConn2 = nil
+	end
+	
+	local char = Players.LocalPlayer.Character
+	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.PlatformStand = false
+	end
+end
+
+local function startPFly()
+	stopPFly()
+	
+	local char = Players.LocalPlayer.Character
+	if not char then return end
+	local root = getRoot(char)
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if not root or not humanoid then return end
+	
+	pflyActive = true
+	humanoid.PlatformStand = true
+	
+	local camera = workspace.CurrentCamera
+	local CONTROL = {F = 0, B = 0, L = 0, R = 0, Q = 0, E = 0}
+	
+	pflyKeysConn1 = UserInputService.InputBegan:Connect(function(input, processed)
+		if processed then return end
+		local speed = iyflyspeed or 1
+		if input.KeyCode == Enum.KeyCode.W then
+			CONTROL.F = speed
+		elseif input.KeyCode == Enum.KeyCode.S then
+			CONTROL.B = -speed
+		elseif input.KeyCode == Enum.KeyCode.A then
+			CONTROL.L = -speed
+		elseif input.KeyCode == Enum.KeyCode.D then
+			CONTROL.R = speed
+		elseif input.KeyCode == Enum.KeyCode.Space then
+			CONTROL.Q = speed
+		elseif input.KeyCode == Enum.KeyCode.LeftShift then
+			CONTROL.E = -speed
+		end
+	end)
+	
+	pflyKeysConn2 = UserInputService.InputEnded:Connect(function(input, processed)
+		if input.KeyCode == Enum.KeyCode.W then
+			CONTROL.F = 0
+		elseif input.KeyCode == Enum.KeyCode.S then
+			CONTROL.B = 0
+		elseif input.KeyCode == Enum.KeyCode.A then
+			CONTROL.L = 0
+		elseif input.KeyCode == Enum.KeyCode.D then
+			CONTROL.R = 0
+		elseif input.KeyCode == Enum.KeyCode.Space then
+			CONTROL.Q = 0
+		elseif input.KeyCode == Enum.KeyCode.LeftShift then
+			CONTROL.E = 0
+		end
+	end)
+	
+	pflyConn = RunService.Heartbeat:Connect(function()
+		if not pflyActive or not root or not root.Parent or not humanoid or not humanoid.Parent then
+			stopPFly()
+			return
+		end
+		
+		local look = camera.CFrame.LookVector
+		local right = camera.CFrame.RightVector
+		
+		local moveVel = Vector3.new(0, 0, 0)
+		if CONTROL.F ~= 0 then moveVel = moveVel + look * CONTROL.F end
+		if CONTROL.B ~= 0 then moveVel = moveVel + look * CONTROL.B end
+		if CONTROL.L ~= 0 then moveVel = moveVel + right * CONTROL.L end
+		if CONTROL.R ~= 0 then moveVel = moveVel + right * CONTROL.R end
+		
+		local upSpeed = CONTROL.Q + CONTROL.E
+		local targetVel = moveVel * 50 + Vector3.new(0, upSpeed * 50, 0)
+		
+		root.AssemblyLinearVelocity = targetVel
+		root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		
+		local _, yaw, _ = camera.CFrame:ToEulerAnglesYXZ()
+		root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, yaw, 0)
+	end)
+end
+
+addcmd("chatspy", {"spy"}, function(args, speaker)
+	toggleChatSpy(true)
+	notify("Chat Spy", "Chat Spy has been Enabled (logging to ACP Logs)")
+end)
+
+addcmd("unchatspy", {"unspy"}, function(args, speaker)
+	toggleChatSpy(false)
+	notify("Chat Spy", "Chat Spy has been Disabled")
+end)
+
+addcmd("pfly", {"physicsfly"}, function(args, speaker)
+	startPFly()
+	notify("Physics Flight", "Physics Flight has been Enabled")
+	if args[1] and isNumber(args[1]) then
+		iyflyspeed = tonumber(args[1])
+	end
+end)
+
+addcmd("unpfly", {"nopfly", "unphysicsfly"}, function(args, speaker)
+	stopPFly()
+	notify("Physics Flight", "Physics Flight has been Disabled")
 end)
 
 staffRoles = {"mod", "admin", "staff", "dev", "founder", "owner", "supervis", "manager", "management", "executive", "president", "chairman", "chairwoman", "chairperson", "director"}
@@ -15040,8 +15290,8 @@ local function createAdminPortal()
 	
 	local playersTabBtn = Instance.new("TextButton")
 	playersTabBtn.Name = "PlayersTabBtn"
-	playersTabBtn.Size = UDim2.new(0, 90, 0, 25)
-	playersTabBtn.Position = UDim2.new(1, -415, 0, 8)
+	playersTabBtn.Size = UDim2.new(0, 80, 0, 25)
+	playersTabBtn.Position = UDim2.new(1, -495, 0, 8)
 	playersTabBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
 	playersTabBtn.Text = "👥 Players"
 	playersTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -15053,10 +15303,25 @@ local function createAdminPortal()
 	ptCorner.Parent = playersTabBtn
 	playersTabBtn.Parent = header
 	
+	local mapTabBtn = Instance.new("TextButton")
+	mapTabBtn.Name = "MapTabBtn"
+	mapTabBtn.Size = UDim2.new(0, 75, 0, 25)
+	mapTabBtn.Position = UDim2.new(1, -410, 0, 8)
+	mapTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	mapTabBtn.Text = "🗺️ Map"
+	mapTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+	mapTabBtn.Font = Enum.Font.GothamBold
+	mapTabBtn.TextSize = 11
+	mapTabBtn.BorderSizePixel = 0
+	local mtCorner = Instance.new("UICorner")
+	mtCorner.CornerRadius = UDim.new(0, 5)
+	mtCorner.Parent = mapTabBtn
+	mapTabBtn.Parent = header
+	
 	local logsTabBtn = Instance.new("TextButton")
 	logsTabBtn.Name = "LogsTabBtn"
 	logsTabBtn.Size = UDim2.new(0, 80, 0, 25)
-	logsTabBtn.Position = UDim2.new(1, -320, 0, 8)
+	logsTabBtn.Position = UDim2.new(1, -330, 0, 8)
 	logsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	logsTabBtn.Text = "📜 Logs"
 	logsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -15068,9 +15333,24 @@ local function createAdminPortal()
 	ltCorner.Parent = logsTabBtn
 	logsTabBtn.Parent = header
 
+	local serversTabBtn = Instance.new("TextButton")
+	serversTabBtn.Name = "ServersTabBtn"
+	serversTabBtn.Size = UDim2.new(0, 85, 0, 25)
+	serversTabBtn.Position = UDim2.new(1, -245, 0, 8)
+	serversTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	serversTabBtn.Text = "🌐 Servers"
+	serversTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+	serversTabBtn.Font = Enum.Font.GothamBold
+	serversTabBtn.TextSize = 11
+	serversTabBtn.BorderSizePixel = 0
+	local srvtCorner = Instance.new("UICorner")
+	srvtCorner.CornerRadius = UDim.new(0, 5)
+	srvtCorner.Parent = serversTabBtn
+	serversTabBtn.Parent = header
+
 	local settingsTabBtn = Instance.new("TextButton")
 	settingsTabBtn.Name = "SettingsTabBtn"
-	settingsTabBtn.Size = UDim2.new(0, 80, 0, 25)
+	settingsTabBtn.Size = UDim2.new(0, 90, 0, 25)
 	settingsTabBtn.Position = UDim2.new(1, -150, 0, 8)
 	settingsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	settingsTabBtn.Text = "⚙️ Settings"
@@ -15082,21 +15362,6 @@ local function createAdminPortal()
 	stCorner2.CornerRadius = UDim.new(0, 5)
 	stCorner2.Parent = settingsTabBtn
 	settingsTabBtn.Parent = header
-	
-	local serversTabBtn = Instance.new("TextButton")
-	serversTabBtn.Name = "ServersTabBtn"
-	serversTabBtn.Size = UDim2.new(0, 80, 0, 25)
-	serversTabBtn.Position = UDim2.new(1, -235, 0, 8)
-	serversTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-	serversTabBtn.Text = "🌐 Servers"
-	serversTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
-	serversTabBtn.Font = Enum.Font.GothamBold
-	serversTabBtn.TextSize = 11
-	serversTabBtn.BorderSizePixel = 0
-	local srvtCorner = Instance.new("UICorner")
-	srvtCorner.CornerRadius = UDim.new(0, 5)
-	srvtCorner.Parent = serversTabBtn
-	serversTabBtn.Parent = header
 	
 	local close = Instance.new("TextButton")
 	close.Size = UDim2.new(0, 30, 0, 30)
@@ -15219,7 +15484,7 @@ local function createAdminPortal()
 	
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "DisplayName"
-	nameLabel.Size = UDim2.new(1, -110, 0, 25)
+	nameLabel.Size = UDim2.new(1, -150, 0, 25)
 	nameLabel.Position = UDim2.new(0, 100, 0, 15)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = "Select a player"
@@ -15231,7 +15496,7 @@ local function createAdminPortal()
 	
 	local userLabel = Instance.new("TextLabel")
 	userLabel.Name = "Username"
-	userLabel.Size = UDim2.new(1, -110, 0, 20)
+	userLabel.Size = UDim2.new(1, -150, 0, 20)
 	userLabel.Position = UDim2.new(0, 100, 0, 40)
 	userLabel.BackgroundTransparency = 1
 	userLabel.Text = ""
@@ -15255,6 +15520,45 @@ local function createAdminPortal()
 	infoLabel.TextWrapped = true
 	infoLabel.RichText = true
 	infoLabel.Parent = detailFrame
+
+	local alertBellBtn = Instance.new("TextButton")
+	alertBellBtn.Name = "AlertBell"
+	alertBellBtn.Size = UDim2.new(0, 30, 0, 30)
+	alertBellBtn.Position = UDim2.new(1, -40, 0, 15)
+	alertBellBtn.BackgroundColor3 = Color3.fromRGB(45, 20, 25)
+	alertBellBtn.Text = "⚠️"
+	alertBellBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
+	alertBellBtn.Font = Enum.Font.GothamBold
+	alertBellBtn.TextSize = 14
+	alertBellBtn.BorderSizePixel = 0
+	alertBellBtn.Visible = false
+	
+	local bellCorner = Instance.new("UICorner")
+	bellCorner.CornerRadius = UDim.new(0, 6)
+	bellCorner.Parent = alertBellBtn
+	
+	local bellStroke = Instance.new("UIStroke")
+	bellStroke.Color = Color3.fromRGB(255, 75, 75)
+	bellStroke.Thickness = 1.2
+	bellStroke.Parent = alertBellBtn
+	
+	alertBellBtn.MouseEnter:Connect(function()
+		alertBellBtn.BackgroundColor3 = Color3.fromRGB(65, 30, 35)
+	end)
+	alertBellBtn.MouseLeave:Connect(function()
+		alertBellBtn.BackgroundColor3 = Color3.fromRGB(45, 20, 25)
+	end)
+	
+	alertBellBtn.MouseButton1Click:Connect(function()
+		if selectedPlayer then
+			local isStaff, role = getCachedStaffRole(selectedPlayer)
+			if isStaff and role then
+				createStaffWatchNotification(selectedPlayer, role)
+			end
+		end
+	end)
+	
+	alertBellBtn.Parent = detailFrame
 	
 	-- Action buttons container
 	local btnGrid = Instance.new("Frame")
@@ -15270,6 +15574,184 @@ local function createAdminPortal()
 	gridLayout.Parent = btnGrid
 	
 	local selectedPlayer = nil
+	local updateDetailFrameForBatch
+	
+	local batchPanel = Instance.new("Frame")
+	batchPanel.Name = "BatchPanel"
+	batchPanel.Size = UDim2.new(1, 0, 1, 0)
+	batchPanel.BackgroundTransparency = 1
+	batchPanel.Visible = false
+	batchPanel.Parent = detailFrame
+	
+	local batchTitle = Instance.new("TextLabel")
+	batchTitle.Name = "Title"
+	batchTitle.Size = UDim2.new(1, -20, 0, 30)
+	batchTitle.Position = UDim2.new(0, 10, 0, 10)
+	batchTitle.BackgroundTransparency = 1
+	batchTitle.Text = "BATCH ACTIONS"
+	batchTitle.TextColor3 = Color3.fromRGB(255, 200, 0)
+	batchTitle.TextXAlignment = Enum.TextXAlignment.Left
+	batchTitle.Font = Enum.Font.GothamBold
+	batchTitle.TextSize = 16
+	batchTitle.Parent = batchPanel
+	
+	local batchInfo = Instance.new("TextLabel")
+	batchInfo.Name = "Info"
+	batchInfo.Size = UDim2.new(1, -20, 0, 60)
+	batchInfo.Position = UDim2.new(0, 10, 0, 45)
+	batchInfo.BackgroundTransparency = 1
+	batchInfo.Text = "0 players selected"
+	batchInfo.TextColor3 = Color3.fromRGB(200, 200, 210)
+	batchInfo.TextXAlignment = Enum.TextXAlignment.Left
+	batchInfo.Font = Enum.Font.Gotham
+	batchInfo.TextSize = 14
+	batchInfo.TextWrapped = true
+	batchInfo.RichText = true
+	batchInfo.Parent = batchPanel
+	
+	local batchBtnGrid = Instance.new("Frame")
+	batchBtnGrid.Name = "Buttons"
+	batchBtnGrid.Size = UDim2.new(1, -20, 0, 150)
+	batchBtnGrid.Position = UDim2.new(0, 10, 0, 120)
+	batchBtnGrid.BackgroundTransparency = 1
+	batchBtnGrid.Parent = batchPanel
+	
+	local batchGridLayout = Instance.new("UIGridLayout")
+	batchGridLayout.CellSize = UDim2.new(0, 145, 0, 30)
+	batchGridLayout.CellPadding = UDim2.new(0, 10, 0, 8)
+	batchGridLayout.Parent = batchBtnGrid
+	
+	local function createBatchButton(text, onClick)
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(0, 145, 0, 30)
+		btn.BackgroundColor3 = Color3.fromRGB(45, 20, 30)
+		btn.Text = text
+		btn.TextColor3 = Color3.fromRGB(255, 150, 150)
+		btn.Font = Enum.Font.GothamMedium
+		btn.TextSize = 12
+		btn.BorderSizePixel = 0
+		
+		local btnCorner = Instance.new("UICorner")
+		btnCorner.CornerRadius = UDim.new(0, 6)
+		btnCorner.Parent = btn
+		
+		btn.MouseEnter:Connect(function() btn.BackgroundColor3 = Color3.fromRGB(65, 30, 45) end)
+		btn.MouseLeave:Connect(function() btn.BackgroundColor3 = Color3.fromRGB(45, 20, 30) end)
+		btn.MouseButton1Click:Connect(onClick)
+		
+		btn.Parent = batchBtnGrid
+		return btn
+	end
+	
+	createBatchButton("Freeze Selected", function()
+		for _, p in pairs(selectedBatchPlayers) do
+			execCmd("freeze " .. p.Name)
+		end
+	end)
+	
+	createBatchButton("Unfreeze Selected", function()
+		for _, p in pairs(selectedBatchPlayers) do
+			execCmd("unfreeze " .. p.Name)
+		end
+	end)
+	
+	createBatchButton("Fling Selected", function()
+		for _, p in pairs(selectedBatchPlayers) do
+			execCmd("fling " .. p.Name)
+		end
+	end)
+	
+	createBatchButton("Bring Selected", function()
+		for _, p in pairs(selectedBatchPlayers) do
+			execCmd("cbring " .. p.Name)
+		end
+	end)
+	
+	local carouselActive = false
+	local carouselThread = nil
+	local carouselBtn
+	carouselBtn = createBatchButton("View Carousel", function()
+		if carouselActive then
+			carouselActive = false
+			if carouselThread then
+				pcall(function() task.cancel(carouselThread) end)
+				carouselThread = nil
+			end
+			execCmd("unview")
+			carouselBtn.Text = "View Carousel"
+			carouselBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
+			carouselBtn.BackgroundColor3 = Color3.fromRGB(45, 20, 30)
+		else
+			local pList = {}
+			for _, p in pairs(selectedBatchPlayers) do
+				table.insert(pList, p)
+			end
+			if #pList == 0 then return end
+			
+			carouselActive = true
+			carouselBtn.Text = "Stop Carousel"
+			carouselBtn.TextColor3 = Color3.fromRGB(150, 255, 150)
+			carouselBtn.BackgroundColor3 = Color3.fromRGB(20, 45, 30)
+			
+			carouselThread = task.spawn(function()
+				local idx = 1
+				while carouselActive do
+					local target = pList[idx]
+					if target and target.Parent == Players then
+						execCmd("view " .. target.Name)
+					end
+					task.wait(5)
+					idx = idx + 1
+					if idx > #pList then idx = 1 end
+				end
+			end)
+		end
+	end)
+	
+	createBatchButton("Clear Selection", function()
+		if carouselActive then
+			carouselActive = false
+			if carouselThread then
+				pcall(function() task.cancel(carouselThread) end)
+				carouselThread = nil
+			end
+			execCmd("unview")
+			carouselBtn.Text = "View Carousel"
+			carouselBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
+			carouselBtn.BackgroundColor3 = Color3.fromRGB(45, 20, 30)
+		end
+		selectedBatchPlayers = {}
+		updateList()
+		updateDetailFrameForBatch()
+	end)
+	
+	updateDetailFrameForBatch = function()
+		local count = 0
+		local names = {}
+		for _, p in pairs(selectedBatchPlayers) do
+			count = count + 1
+			table.insert(names, p.DisplayName or p.Name)
+		end
+		
+		if count > 0 then
+			profileImage.Visible = false
+			nameLabel.Visible = false
+			userLabel.Visible = false
+			infoLabel.Visible = false
+			btnGrid.Visible = false
+			
+			batchInfo.Text = "<b>" .. count .. " players selected:</b>\n" .. table.concat(names, ", ")
+			batchPanel.Visible = true
+		else
+			profileImage.Visible = true
+			nameLabel.Visible = true
+			userLabel.Visible = true
+			infoLabel.Visible = true
+			btnGrid.Visible = true
+			
+			batchPanel.Visible = false
+		end
+	end
 	
 	local function createButton(text, onClick)
 		local btn = Instance.new("TextButton")
@@ -15306,6 +15788,7 @@ local function createAdminPortal()
 	
 	local function selectPlayer(p)
 		selectedPlayer = p
+		alertBellBtn.Visible = false
 		nameLabel.Text = p.DisplayName or p.Name
 		userLabel.Text = "<b>@" .. p.Name .. "</b>"
 		profileImage.Image = "rbxthumb://type=AvatarHeadShot&id=" .. p.UserId .. "&w=150&h=150"
@@ -15337,7 +15820,7 @@ local function createAdminPortal()
 			invisStatusText = "<b><font color=\"rgb(0, 191, 255)\">Yes</font></b>"
 		end
 		
-		infoLabel.Text = "Account Age:  " .. ageText .. "\n\nStaff Member:  <b>Fetching...</b>\n\nInvisible:  " .. invisStatusText
+		infoLabel.Text = "Account Age:  " .. ageText .. "\n\nStaff Member:  <b>Fetching...</b>\n\nInvisible:  " .. invisStatusText .. "\n\nDistance:  <b>Calculating...</b>"
 		
 		task.spawn(function()
 			local staffRoleText = "<b>No</b>"
@@ -15346,8 +15829,25 @@ local function createAdminPortal()
 				local rColor = getRoleColor(role)
 				staffRoleText = "<b><font color=\"" .. rColor .. "\">" .. role .. "</font></b>"
 			end
-			if selectedPlayer == p then
-				infoLabel.Text = "Account Age:  " .. ageText .. "\n\nStaff Member:  " .. staffRoleText .. "\n\nInvisible:  " .. invisStatusText
+			
+			while selectedPlayer == p and main.Parent do
+				local distText = "<b>Unknown</b>"
+				local localChar = Players.LocalPlayer.Character
+				local localRoot = localChar and getRoot(localChar)
+				local targetChar = p.Character
+				local targetRoot = targetChar and getRoot(targetChar)
+				
+				if localRoot and targetRoot then
+					local dist = math.floor((targetRoot.Position - localRoot.Position).Magnitude)
+					distText = "<b>" .. dist .. " studs</b>"
+				end
+				
+				if selectedPlayer == p then
+					infoLabel.Text = "Account Age:  " .. ageText .. "\n\nStaff Member:  " .. staffRoleText .. "\n\nInvisible:  " .. invisStatusText .. "\n\nDistance:  " .. distText
+					alertBellBtn.Visible = isStaff
+				end
+				
+				task.wait(0.2)
 			end
 		end)
 	end
@@ -15443,11 +15943,11 @@ local function createAdminPortal()
 			pBtn.Size = UDim2.new(1, -10, 0, 35)
 			pBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 			pBtn.BorderSizePixel = 0
-			pBtn.LayoutOrder = index
 			
-			local btnCorner = Instance.new("UICorner")
-			btnCorner.CornerRadius = UDim.new(0, 6)
-			btnCorner.Parent = pBtn
+			local isStaff, role = false, nil
+			if getCachedStaffRole then
+				isStaff, role = getCachedStaffRole(p)
+			end
 			
 			local displayName = p.DisplayName or p.Name
 			local text = displayName .. " (<b>@" .. p.Name .. "</b>)"
@@ -15469,6 +15969,30 @@ local function createAdminPortal()
 				table.insert(badges, "<b><font color=\"rgb(0, 191, 255)\">[INVIS]</font></b>")
 			end
 			
+			local layoutOrder = index
+			local textColor = Color3.fromRGB(220, 220, 230)
+			
+			if isStaff then
+				layoutOrder = -1000 + index
+				textColor = Color3.fromRGB(255, 200, 0) -- Gold for Staff
+				table.insert(badges, 1, "<b><font color=\"rgb(255, 200, 0)\">[STAFF]</font></b>")
+			elseif p.Team and Players.LocalPlayer.Team then
+				if p.Team == Players.LocalPlayer.Team then
+					layoutOrder = 2000 + index -- Blue team (Teammates)
+					textColor = Color3.fromRGB(100, 200, 255) -- Light Blue
+				else
+					layoutOrder = 1000 + index -- Red team (Opponents/Civilians)
+					textColor = Color3.fromRGB(255, 100, 100) -- Light Red
+				end
+			elseif p.Team then
+				layoutOrder = 2500 + index -- Other teams
+				textColor = p.TeamColor.Color
+			else
+				layoutOrder = 3000 + index -- Teamless
+			end
+			
+			pBtn.LayoutOrder = layoutOrder
+			
 			if #badges > 0 then
 				pBtn.Text = table.concat(badges, " ") .. " " .. text
 			else
@@ -15476,15 +16000,69 @@ local function createAdminPortal()
 			end
 			
 			pBtn.RichText = true
-			pBtn.TextColor3 = Color3.fromRGB(220, 220, 230)
+			pBtn.TextColor3 = textColor
 			pBtn.Font = Enum.Font.Gotham
 			pBtn.TextSize = 12
 			pBtn.TextXAlignment = Enum.TextXAlignment.Left
 			pBtn.Position = UDim2.new(0, 5, 0, 0)
 			
+			local btnCorner = Instance.new("UICorner")
+			btnCorner.CornerRadius = UDim.new(0, 6)
+			btnCorner.Parent = pBtn
+			
 			local pad = Instance.new("UIPadding")
-			pad.PaddingLeft = UDim.new(0, 10)
+			pad.PaddingLeft = UDim.new(0, 40)
+			pad.PaddingRight = UDim.new(0, 30)
 			pad.Parent = pBtn
+			
+			local avatar = Instance.new("ImageLabel")
+			avatar.Name = "Avatar"
+			avatar.Size = UDim2.new(0, 26, 0, 26)
+			avatar.Position = UDim2.new(0, -35, 0.5, -13)
+			avatar.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+			avatar.BorderSizePixel = 0
+			avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. p.UserId .. "&w=150&h=150"
+			avatar.Parent = pBtn
+			
+			local avatarCorner = Instance.new("UICorner")
+			avatarCorner.CornerRadius = UDim.new(0, 4)
+			avatarCorner.Parent = avatar
+			
+			local chk = Instance.new("TextButton")
+			chk.Name = "Checkbox"
+			chk.Size = UDim2.new(0, 18, 0, 18)
+			chk.Position = UDim2.new(1, 0, 0.5, -9)
+			chk.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+			chk.BorderSizePixel = 0
+			chk.Text = selectedBatchPlayers[p.UserId] and "✓" or ""
+			chk.TextColor3 = Color3.fromRGB(255, 200, 0)
+			chk.Font = Enum.Font.GothamBold
+			chk.TextSize = 12
+			chk.Parent = pBtn
+			
+			local chkCorner = Instance.new("UICorner")
+			chkCorner.CornerRadius = UDim.new(0, 4)
+			chkCorner.Parent = chk
+			
+			local chkStroke = Instance.new("UIStroke")
+			chkStroke.Color = selectedBatchPlayers[p.UserId] and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(60, 60, 75)
+			chkStroke.Thickness = 1
+			chkStroke.Parent = chk
+			
+			chk.MouseButton1Click:Connect(function()
+				if selectedBatchPlayers[p.UserId] then
+					selectedBatchPlayers[p.UserId] = nil
+					chk.Text = ""
+					chkStroke.Color = Color3.fromRGB(60, 60, 75)
+				else
+					selectedBatchPlayers[p.UserId] = p
+					chk.Text = "✓"
+					chkStroke.Color = Color3.fromRGB(255, 200, 0)
+				end
+				if updateDetailFrameForBatch then
+					updateDetailFrameForBatch()
+				end
+			end)
 			
 			pBtn.MouseButton1Click:Connect(function()
 				selectPlayer(p)
@@ -15496,9 +16074,19 @@ local function createAdminPortal()
 			task.spawn(function()
 				local isStaff, role = getCachedStaffRole(p)
 				if isStaff then
-					pBtn.LayoutOrder = -100 + index
-					table.insert(badges, 1, "<b><font color=\"rgb(255, 200, 0)\">[STAFF]</font></b>")
-					pBtn.Text = table.concat(badges, " ") .. " " .. text
+					pBtn.LayoutOrder = -1000 + index
+					pBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
+					local hasStaffBadge = false
+					for _, b in ipairs(badges) do
+						if string.find(b, "%[STAFF%]") then
+							hasStaffBadge = true
+							break
+						end
+					end
+					if not hasStaffBadge then
+						table.insert(badges, 1, "<b><font color=\"rgb(255, 200, 0)\">[STAFF]</font></b>")
+						pBtn.Text = table.concat(badges, " ") .. " " .. text
+					end
 				end
 			end)
 		end
@@ -15538,7 +16126,359 @@ local function createAdminPortal()
 	serversViewFrame.Visible = false
 	serversViewFrame.Parent = main
 	
-	local serversScroll = Instance.new("ScrollingFrame")
+	serversScroll.Parent = serversViewFrame
+	
+	-- Map Tab Elements
+	local mapViewFrame = Instance.new("Frame")
+	mapViewFrame.Name = "MapViewFrame"
+	mapViewFrame.Size = UDim2.new(1, -20, 1, -60)
+	mapViewFrame.Position = UDim2.new(0, 10, 0, 50)
+	mapViewFrame.BackgroundTransparency = 1
+	mapViewFrame.Visible = false
+	mapViewFrame.Parent = main
+	
+	local mapContainer = Instance.new("Frame")
+	mapContainer.Name = "MapContainer"
+	mapContainer.Size = UDim2.new(0, 320, 0, 320)
+	mapContainer.Position = UDim2.new(0, 10, 0.5, -160)
+	mapContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+	mapContainer.BorderSizePixel = 0
+	mapContainer.Parent = mapViewFrame
+	
+	local mapCorner = Instance.new("UICorner")
+	mapCorner.CornerRadius = UDim.new(0, 8)
+	mapCorner.Parent = mapContainer
+	
+	local mapStroke = Instance.new("UIStroke")
+	mapStroke.Color = Color3.fromRGB(45, 45, 55)
+	mapStroke.Thickness = 1
+	mapStroke.Parent = mapContainer
+	
+	-- Center Dot representing Local Player
+	local centerDot = Instance.new("Frame")
+	centerDot.Name = "LocalDot"
+	centerDot.Size = UDim2.new(0, 10, 0, 10)
+	centerDot.Position = UDim2.new(0.5, -5, 0.5, -5)
+	centerDot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	centerDot.BorderSizePixel = 0
+	centerDot.ZIndex = 5
+	centerDot.Parent = mapContainer
+	
+	local centerCorner = Instance.new("UICorner")
+	centerCorner.CornerRadius = UDim.new(1, 0)
+	centerCorner.Parent = centerDot
+	
+	local centerStroke = Instance.new("UIStroke")
+	centerStroke.Color = Color3.fromRGB(120, 80, 255)
+	centerStroke.Thickness = 1.5
+	centerStroke.Parent = centerDot
+	
+	-- Right side controls container
+	local mapControls = Instance.new("Frame")
+	mapControls.Name = "Controls"
+	mapControls.Size = UDim2.new(1, -350, 1, -20)
+	mapControls.Position = UDim2.new(0, 345, 0, 10)
+	mapControls.BackgroundTransparency = 1
+	mapControls.Parent = mapViewFrame
+	
+	local mapTitle = Instance.new("TextLabel")
+	mapTitle.Name = "Title"
+	mapTitle.Size = UDim2.new(1, 0, 0, 30)
+	mapTitle.BackgroundTransparency = 1
+	mapTitle.Text = "🗺️ TACTICAL SATELLITE MAP"
+	mapTitle.TextColor3 = Color3.fromRGB(160, 130, 255)
+	mapTitle.TextXAlignment = Enum.TextXAlignment.Left
+	mapTitle.Font = Enum.Font.GothamBold
+	mapTitle.TextSize = 16
+	mapTitle.Parent = mapControls
+	
+	local mapRangeLabel = Instance.new("TextLabel")
+	mapRangeLabel.Name = "RangeLabel"
+	mapRangeLabel.Size = UDim2.new(1, 0, 0, 25)
+	mapRangeLabel.Position = UDim2.new(0, 0, 0, 35)
+	mapRangeLabel.BackgroundTransparency = 1
+	mapRangeLabel.Text = "Zoom Range: 500 studs"
+	mapRangeLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
+	mapRangeLabel.TextXAlignment = Enum.TextXAlignment.Left
+	mapRangeLabel.Font = Enum.Font.GothamMedium
+	mapRangeLabel.TextSize = 13
+	mapRangeLabel.Parent = mapControls
+	
+	local btnZoomIn = Instance.new("TextButton")
+	btnZoomIn.Size = UDim2.new(0, 100, 0, 30)
+	btnZoomIn.Position = UDim2.new(0, 0, 0, 70)
+	btnZoomIn.BackgroundColor3 = Color3.fromRGB(35, 30, 50)
+	btnZoomIn.Text = "Zoom In (+)"
+	btnZoomIn.TextColor3 = Color3.fromRGB(200, 180, 255)
+	btnZoomIn.Font = Enum.Font.GothamMedium
+	btnZoomIn.TextSize = 12
+	btnZoomIn.BorderSizePixel = 0
+	local ziCorner = Instance.new("UICorner")
+	ziCorner.CornerRadius = UDim.new(0, 6)
+	ziCorner.Parent = btnZoomIn
+	btnZoomIn.Parent = mapControls
+	
+	local btnZoomOut = Instance.new("TextButton")
+	btnZoomOut.Size = UDim2.new(0, 100, 0, 30)
+	btnZoomOut.Position = UDim2.new(0, 110, 0, 70)
+	btnZoomOut.BackgroundColor3 = Color3.fromRGB(35, 30, 50)
+	btnZoomOut.Text = "Zoom Out (-)"
+	btnZoomOut.TextColor3 = Color3.fromRGB(200, 180, 255)
+	btnZoomOut.Font = Enum.Font.GothamMedium
+	btnZoomOut.TextSize = 12
+	btnZoomOut.BorderSizePixel = 0
+	local zoCorner = Instance.new("UICorner")
+	zoCorner.CornerRadius = UDim.new(0, 6)
+	zoCorner.Parent = btnZoomOut
+	btnZoomOut.Parent = mapControls
+	
+	local nameToggleBtn = Instance.new("TextButton")
+	nameToggleBtn.Size = UDim2.new(0, 210, 0, 30)
+	nameToggleBtn.Position = UDim2.new(0, 0, 0, 110)
+	nameToggleBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	nameToggleBtn.Text = "Show Player Names: OFF"
+	nameToggleBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+	nameToggleBtn.Font = Enum.Font.GothamMedium
+	nameToggleBtn.TextSize = 12
+	nameToggleBtn.BorderSizePixel = 0
+	local ntCorner = Instance.new("UICorner")
+	ntCorner.CornerRadius = UDim.new(0, 6)
+	ntCorner.Parent = nameToggleBtn
+	nameToggleBtn.Parent = mapControls
+	
+	local selectionLabel = Instance.new("TextLabel")
+	selectionLabel.Name = "SelectionLabel"
+	selectionLabel.Size = UDim2.new(1, 0, 0, 30)
+	selectionLabel.Position = UDim2.new(0, 0, 0, 155)
+	selectionLabel.BackgroundTransparency = 1
+	selectionLabel.Text = "Selected Player: None"
+	selectionLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+	selectionLabel.TextXAlignment = Enum.TextXAlignment.Left
+	selectionLabel.Font = Enum.Font.GothamBold
+	selectionLabel.TextSize = 13
+	selectionLabel.RichText = true
+	selectionLabel.Parent = mapControls
+	
+	local btnTeleport = Instance.new("TextButton")
+	btnTeleport.Size = UDim2.new(0, 210, 0, 35)
+	btnTeleport.Position = UDim2.new(0, 0, 0, 195)
+	btnTeleport.BackgroundColor3 = Color3.fromRGB(35, 30, 50)
+	btnTeleport.Text = "Teleport to Player"
+	btnTeleport.TextColor3 = Color3.fromRGB(200, 180, 255)
+	btnTeleport.Font = Enum.Font.GothamBold
+	btnTeleport.TextSize = 13
+	btnTeleport.BorderSizePixel = 0
+	local tpCorner = Instance.new("UICorner")
+	tpCorner.CornerRadius = UDim.new(0, 6)
+	tpCorner.Parent = btnTeleport
+	btnTeleport.Parent = mapControls
+	
+	-- Map Legend
+	local mapLegend = Instance.new("TextLabel")
+	mapLegend.Name = "Legend"
+	mapLegend.Size = UDim2.new(1, 0, 0, 80)
+	mapLegend.Position = UDim2.new(0, 0, 0, 240)
+	mapLegend.BackgroundTransparency = 1
+	mapLegend.Text = "<b>LEGEND:</b>\n" ..
+		"<font color=\"rgb(255, 200, 0)\">● Staff Member</font>  " ..
+		"<font color=\"rgb(100, 200, 255)\">● Teammate</font>\n" ..
+		"<font color=\"rgb(255, 100, 100)\">● Opponent</font>  " ..
+		"<font color=\"rgb(220, 220, 220)\">● Neutral/Teamless</font>"
+	mapLegend.TextColor3 = Color3.fromRGB(160, 160, 170)
+	mapLegend.TextXAlignment = Enum.TextXAlignment.Left
+	mapLegend.Font = Enum.Font.Gotham
+	mapLegend.TextSize = 12
+	mapLegend.TextWrapped = true
+	mapLegend.RichText = true
+	mapLegend.Parent = mapControls
+
+	btnZoomIn.MouseButton1Click:Connect(function()
+		mapRange = math.max(100, math.floor(mapRange * 0.75))
+		mapRangeLabel.Text = "Zoom Range: " .. mapRange .. " studs"
+	end)
+	
+	btnZoomOut.MouseButton1Click:Connect(function()
+		mapRange = math.min(3000, math.floor(mapRange * 1.25))
+		mapRangeLabel.Text = "Zoom Range: " .. mapRange .. " studs"
+	end)
+	
+	nameToggleBtn.MouseButton1Click:Connect(function()
+		showMapNames = not showMapNames
+		nameToggleBtn.Text = "Show Player Names: " .. (showMapNames and "ON" or "OFF")
+		nameToggleBtn.TextColor3 = showMapNames and Color3.fromRGB(200, 180, 255) or Color3.fromRGB(150, 150, 160)
+		nameToggleBtn.BackgroundColor3 = showMapNames and Color3.fromRGB(35, 30, 50) or Color3.fromRGB(25, 25, 35)
+	end)
+	
+	local function updateMapSelectionUI()
+		if selectedMapPlayer and selectedMapPlayer.Parent == Players then
+			selectionLabel.Text = "Selected Player: <b>@" .. selectedMapPlayer.Name .. "</b>"
+		else
+			selectedMapPlayer = nil
+			selectionLabel.Text = "Selected Player: None"
+		end
+	end
+	
+	btnTeleport.MouseButton1Click:Connect(function()
+		if selectedMapPlayer and selectedMapPlayer.Parent == Players then
+			execCmd("goto " .. selectedMapPlayer.Name)
+		end
+	end)
+
+	local MapDots = {}
+	local MapLabels = {}
+	
+	RunService.Heartbeat:Connect(function()
+		if not mapViewFrame.Visible or not main.Visible then
+			for _, dot in pairs(MapDots) do dot.Visible = false end
+			for _, label in pairs(MapLabels) do label.Visible = false end
+			return
+		end
+		
+		local localChar = Players.LocalPlayer.Character
+		local localRoot = localChar and getRoot(localChar)
+		if not localRoot then
+			centerDot.Visible = false
+			return
+		end
+		
+		centerDot.Visible = true
+		
+		local camera = workspace.CurrentCamera
+		if camera then
+			local _, yaw, _ = camera.CFrame:ToEulerAnglesYXZ()
+			centerDot.Rotation = -math.deg(yaw)
+		end
+		
+		local pos = localRoot.Position
+		local localLook = localRoot.CFrame.LookVector
+		local localRight = localRoot.CFrame.RightVector
+		
+		local activePlayers = {}
+		for _, player in pairs(Players:GetPlayers()) do
+			if player ~= Players.LocalPlayer and player.Character then
+				local root = getRoot(player.Character)
+				if root then
+					activePlayers[player] = true
+					
+					local offset = root.Position - pos
+					local xOffset = offset:Dot(localRight)
+					local zOffset = -offset:Dot(localLook)
+					
+					local mapRadius = 150
+					local xScaled = (xOffset / mapRange) * mapRadius
+					local yScaled = (zOffset / mapRange) * mapRadius
+					
+					local distScaled = math.sqrt(xScaled^2 + yScaled^2)
+					local visible = distScaled <= mapRadius
+					
+					local dot = MapDots[player]
+					local label = MapLabels[player]
+					
+					if visible then
+						if not dot then
+							dot = Instance.new("TextButton")
+							dot.Name = player.Name .. "_MapDot"
+							dot.Size = UDim2.new(0, 8, 0, 8)
+							dot.Text = ""
+							dot.BorderSizePixel = 0
+							
+							local dotCorner = Instance.new("UICorner")
+							dotCorner.CornerRadius = UDim.new(0.5, 0)
+							dotCorner.Parent = dot
+							
+							dot.Parent = mapContainer
+							MapDots[player] = dot
+							
+							dot.MouseButton1Click:Connect(function()
+								selectedMapPlayer = player
+								updateMapSelectionUI()
+							end)
+						end
+						
+						local isStaff = false
+						if getCachedStaffRole then
+							isStaff, _ = getCachedStaffRole(player)
+						end
+						
+						local color = Color3.fromRGB(220, 220, 220)
+						if isStaff then
+							color = Color3.fromRGB(255, 200, 0)
+						elseif player.Team and Players.LocalPlayer.Team then
+							if player.Team == Players.LocalPlayer.Team then
+								color = Color3.fromRGB(100, 200, 255)
+							else
+								color = Color3.fromRGB(255, 100, 100)
+							end
+						elseif player.Team then
+							color = player.TeamColor.Color
+						end
+						
+						dot.BackgroundColor3 = color
+						dot.Visible = true
+						
+						local stroke = dot:FindFirstChild("SelectionStroke")
+						if selectedMapPlayer == player then
+							dot.Size = UDim2.new(0, 12, 0, 12)
+							dot.Position = UDim2.new(0.5, xScaled - 6, 0.5, yScaled - 6)
+							dot.ZIndex = 4
+							if not stroke then
+								stroke = Instance.new("UIStroke")
+								stroke.Name = "SelectionStroke"
+								stroke.Color = Color3.fromRGB(255, 255, 255)
+								stroke.Thickness = 1.5
+								stroke.Parent = dot
+							end
+						else
+							dot.Size = UDim2.new(0, 8, 0, 8)
+							dot.Position = UDim2.new(0.5, xScaled - 4, 0.5, yScaled - 4)
+							dot.ZIndex = 3
+							if stroke then stroke:Destroy() end
+						end
+						
+						if showMapNames then
+							if not label then
+								label = Instance.new("TextLabel")
+								label.Name = "NameLabel"
+								label.Size = UDim2.new(0, 100, 0, 12)
+								label.BackgroundTransparency = 1
+								label.TextColor3 = color
+								label.TextStrokeTransparency = 0.5
+								label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+								label.Font = Enum.Font.Gotham
+								label.TextSize = 8
+								label.TextXAlignment = Enum.TextXAlignment.Center
+								label.Parent = mapContainer
+								MapLabels[player] = label
+							end
+							label.Text = player.DisplayName or player.Name
+							label.Position = UDim2.new(0.5, xScaled - 50, 0.5, yScaled - 16)
+							label.Visible = true
+						else
+							if label then label.Visible = false end
+						end
+					else
+						if dot then dot.Visible = false end
+						if label then label.Visible = false end
+					end
+				end
+			end
+		end
+		
+		for player, dot in pairs(MapDots) do
+			if not activePlayers[player] then
+				pcall(function() dot:Destroy() end)
+				MapDots[player] = nil
+				if MapLabels[player] then
+					pcall(function() MapLabels[player]:Destroy() end)
+					MapLabels[player] = nil
+				end
+				if selectedMapPlayer == player then
+					selectedMapPlayer = nil
+					updateMapSelectionUI()
+				end
+			end
+		end
+	end)
 	serversScroll.Name = "ServersScroll"
 	serversScroll.Size = UDim2.new(1, 0, 1, 0)
 	serversScroll.BackgroundTransparency = 1
@@ -15717,7 +16657,7 @@ local function createAdminPortal()
 	settingsScroll.Size = UDim2.new(1, 0, 1, 0)
 	settingsScroll.BackgroundTransparency = 1
 	settingsScroll.BorderSizePixel = 0
-	settingsScroll.CanvasSize = UDim2.new(0, 0, 0, 320)
+	settingsScroll.CanvasSize = UDim2.new(0, 0, 0, 360)
 	settingsScroll.ScrollBarThickness = 4
 	settingsScroll.Parent = settingsViewFrame
 	
@@ -15780,6 +16720,7 @@ local function createAdminPortal()
 	createSettingToggle("🔊 Staff Chat Notification Sounds", function() return StaffChatSounds end, function(v) StaffChatSounds = v end)
 	createSettingToggle("🏃 Staff Watch Auto-Leave (On Join)", function() return StaffRolewatchData.Leave end, function(v) StaffRolewatchData.Leave = v end)
 	createSettingToggle("🛡️ Anti-Fling Collision Shield", function() return ShieldEnabled end, toggleShield)
+	createSettingToggle("💬 Server Chat Spy (Whispers/Teams)", function() return chatSpyActive end, toggleChatSpy)
 
 	-- Hitbox Expander Size Row
 	local hitboxRow = Instance.new("Frame")
@@ -15937,6 +16878,9 @@ local function createAdminPortal()
 		playersTabBtn.BackgroundColor3 = (tabName == "Players") and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
 		playersTabBtn.TextColor3 = (tabName == "Players") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
 		
+		mapTabBtn.BackgroundColor3 = (tabName == "Map") and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
+		mapTabBtn.TextColor3 = (tabName == "Map") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
+		
 		logsTabBtn.BackgroundColor3 = (tabName == "Logs") and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
 		logsTabBtn.TextColor3 = (tabName == "Logs") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
 		
@@ -15951,6 +16895,7 @@ local function createAdminPortal()
 		filterFrame.Visible = (tabName == "Players")
 		detailFrame.Visible = (tabName == "Players")
 		
+		mapViewFrame.Visible = (tabName == "Map")
 		logsViewFrame.Visible = (tabName == "Logs")
 		settingsViewFrame.Visible = (tabName == "Settings")
 		serversViewFrame.Visible = (tabName == "Servers")
@@ -15963,6 +16908,7 @@ local function createAdminPortal()
 	end
 	
 	playersTabBtn.MouseButton1Click:Connect(function() setTab("Players") end)
+	mapTabBtn.MouseButton1Click:Connect(function() setTab("Map") end)
 	logsTabBtn.MouseButton1Click:Connect(function() setTab("Logs") end)
 	settingsTabBtn.MouseButton1Click:Connect(function() setTab("Settings") end)
 	serversTabBtn.MouseButton1Click:Connect(function() setTab("Servers") end)
