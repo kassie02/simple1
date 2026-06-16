@@ -13519,7 +13519,6 @@ local function createAdminPortal()
 	listFrame.BackgroundTransparency = 1
 	listFrame.BorderSizePixel = 0
 	listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-	listFrame.AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y
 	listFrame.ScrollBarThickness = 4
 	listFrame.Parent = main
 	
@@ -13685,7 +13684,10 @@ local function createAdminPortal()
 			if child:IsA("TextButton") then child:Destroy() end
 		end
 		
-		for _, p in pairs(Players:GetPlayers()) do
+		local players = Players:GetPlayers()
+		listFrame.CanvasSize = UDim2.new(0, 0, 0, #players * 40)
+		
+		for _, p in pairs(players) do
 			local pBtn = Instance.new("TextButton")
 			pBtn.Name = p.Name
 			pBtn.Size = UDim2.new(1, -10, 0, 35)
