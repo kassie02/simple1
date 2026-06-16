@@ -10286,9 +10286,9 @@ addcmd('speed',{'ws','walkspeed'},function(args, speaker)
 	if speaker.Character and speaker.Character:FindFirstChildOfClass('Humanoid') then
 		speaker.Character:FindFirstChildOfClass('Humanoid').WalkSpeed = speed
 		if speed == 16 then
-			notify('Speed', 'Speed Disabled')
+			notify('Speed', 'Speed Disabled', 1)
 		else
-			notify('Speed', 'Speed Enabled: ' .. speed)
+			notify('Speed', 'Speed Enabled: ' .. speed, 1)
 		end
 	end
 end)
@@ -13767,8 +13767,13 @@ end
 
 addcmd("portal", {"panel"}, function(args, speaker)
 	notify("Admin Portal", "Opening Admin Control Portal...")
-	createAdminPortal()
-	notify("Admin Portal", "Admin Control Portal opened")
+	local success, err = pcall(createAdminPortal)
+	if success then
+		notify("Admin Portal", "Admin Control Portal opened")
+	else
+		notify("Portal Error", tostring(err), 15)
+		warn("Portal Error: " .. tostring(err))
+	end
 end)
 
 addcmd("unportal", {"unpanel"}, function(args, speaker)
