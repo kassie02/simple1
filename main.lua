@@ -4955,8 +4955,8 @@ CMDs[#CMDs + 1] = {NAME = 'waypoints / poi', DESC = 'Enables 3D billboard waypoi
 CMDs[#CMDs + 1] = {NAME = 'unwaypoints / nopoi', DESC = 'Disables 3D waypoints'}
 CMDs[#CMDs + 1] = {NAME = 'safezone / escape', DESC = 'Teleports you instantly to the secure out-of-bounds safe zone'}
 CMDs[#CMDs + 1] = {NAME = 'setsafezone / setescape', DESC = 'Sets the custom safe-zone location to your current position'}
-CMDs[#CMDs + 1] = {NAME = 'vfc / viewfc [player]', DESC = 'Views a player using client-side Orbit Freecam (bypasses spectate blocks, hold right-click to orbit)'}
-CMDs[#CMDs + 1] = {NAME = 'uvfc / unviewfc', DESC = 'Stops Orbit Freecam viewing'}
+CMDs[#CMDs + 1] = {NAME = 'vfc [player]', DESC = 'Views a player using client-side Orbit Freecam (bypasses spectate blocks, hold right-click to orbit)'}
+CMDs[#CMDs + 1] = {NAME = 'unvfc / uvfc', DESC = 'Stops Orbit Freecam viewing'}
 -- wait()
 
 for i = 1, #CMDs do
@@ -8733,6 +8733,23 @@ local function createViewHUD(targetPlayer)
 	statsLabel.TextWrapped = true
 	statsLabel.TextXAlignment = Enum.TextXAlignment.Left
 	statsLabel.Parent = viewHUD
+	
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Name = "CloseButton"
+	closeBtn.Size = UDim2.new(0, 25, 0, 25)
+	closeBtn.Position = UDim2.new(1, -30, 0, 5)
+	closeBtn.BackgroundTransparency = 1
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 14
+	closeBtn.Parent = viewHUD
+	
+	closeBtn.MouseEnter:Connect(function() closeBtn.TextColor3 = Color3.fromRGB(255, 75, 75) end)
+	closeBtn.MouseLeave:Connect(function() closeBtn.TextColor3 = Color3.fromRGB(150, 150, 150) end)
+	closeBtn.MouseButton1Click:Connect(function()
+		execCmd("unview")
+	end)
 	
 	viewHUDConnection = RunService.RenderStepped:Connect(function()
 		if not targetPlayer or not targetPlayer.Parent or (viewing ~= targetPlayer and ViewFCTarget ~= targetPlayer) then
@@ -12990,7 +13007,7 @@ local function updateStaffListUI(excludingPlayer)
 		
 		local header = Instance.new("TextLabel")
 		header.Name = "Header"
-		header.Size = UDim2.new(1, 0, 0, 18)
+		header.Size = UDim2.new(1, -20, 0, 18)
 		header.BackgroundTransparency = 1
 		header.Text = "🚨 ACTIVE STAFF (0)"
 		header.TextColor3 = Color3.fromRGB(255, 75, 75)
@@ -12998,6 +13015,23 @@ local function updateStaffListUI(excludingPlayer)
 		header.TextSize = 12
 		header.TextXAlignment = Enum.TextXAlignment.Left
 		header.Parent = frame
+		
+		local closeBtn = Instance.new("TextButton")
+		closeBtn.Name = "CloseButton"
+		closeBtn.Size = UDim2.new(0, 18, 0, 18)
+		closeBtn.Position = UDim2.new(1, -18, 0, 0)
+		closeBtn.BackgroundTransparency = 1
+		closeBtn.Text = "✕"
+		closeBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+		closeBtn.Font = Enum.Font.GothamBold
+		closeBtn.TextSize = 12
+		closeBtn.Parent = frame
+		
+		closeBtn.MouseEnter:Connect(function() closeBtn.TextColor3 = Color3.fromRGB(255, 75, 75) end)
+		closeBtn.MouseLeave:Connect(function() closeBtn.TextColor3 = Color3.fromRGB(150, 150, 150) end)
+		closeBtn.MouseButton1Click:Connect(function()
+			execCmd("untmp")
+		end)
 		
 		frame.Parent = PARENT
 		dragGUI(frame)
@@ -13011,7 +13045,7 @@ local function updateStaffListUI(excludingPlayer)
 	
 	local staffMembers = {}
 	for _, player in pairs(Players:GetPlayers()) do
-		if player ~= excludingPlayer and player.Parent == Players then
+		if player ~= excludingPlayer then
 			local isStaff, role = getCachedStaffRole(player)
 			if isStaff and role then
 				table.insert(staffMembers, {Player = player, Role = role})
@@ -15901,7 +15935,7 @@ local function autoGrabItems()
 	end)
 end
 
-addcmd("vfc", {"viewfc", "spectatefc"}, function(args, speaker)
+addcmd("vfc", {}, function(args, speaker)
 	local players = getPlayer(args[1], speaker)
 	if #players > 0 then
 		local p = Players:FindFirstChild(players[1])
@@ -15915,7 +15949,7 @@ addcmd("vfc", {"viewfc", "spectatefc"}, function(args, speaker)
 	end
 end)
 
-addcmd("uvfc", {"unviewfc", "unvfc", "unspectatefc"}, function(args, speaker)
+addcmd("unvfc", {"uvfc"}, function(args, speaker)
 	stopViewFC()
 	notify("View FC", "Freecam View disabled")
 end)
