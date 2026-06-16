@@ -13634,19 +13634,12 @@ local function createAdminPortal()
 	
 	local function selectPlayer(p)
 		selectedPlayer = p
-		nameLabel.Text = p.DisplayName
+		nameLabel.Text = p.DisplayName or p.Name
 		userLabel.Text = "@" .. p.Name
 		profileImage.Image = "rbxthumb://type=AvatarHeadShot&id=" .. p.UserId .. "&w=150&h=150"
 		
-		local isStaff = p:IsInGroup(17180419) or (game.CreatorType == Enum.CreatorType.Group and p:IsInGroup(game.CreatorId)) or p:IsInGroup(1200769)
-		local staffRole = "No"
-		if p:IsInGroup(17180419) then
-			staffRole = p:GetRoleInGroup(17180419) .. " (Staff Group)"
-		elseif game.CreatorType == Enum.CreatorType.Group and p:IsInGroup(game.CreatorId) then
-			staffRole = p:GetRoleInGroup(game.CreatorId) .. " (Game Owner)"
-		elseif p:IsInGroup(1200769) then
-			staffRole = "Roblox Employee"
-		end
+		local age = "Unknown"
+		pcall(function() age = tostring(p.AccountAge) end)
 		
 		local invisStatus = "No"
 		local parts = 0
@@ -13665,7 +13658,26 @@ local function createAdminPortal()
 			invisStatus = "Yes"
 		end
 		
-		infoLabel.Text = "Account Age: " .. p.AccountAge .. " days\nStaff Member: " .. staffRole .. "\nInvisible: " .. invisStatus
+		infoLabel.Text = "Account Age: " .. age .. " days\nStaff Member: Fetching...\nInvisible: " .. invisStatus
+		
+		task.spawn(function()
+			local staffRole = "No"
+			local success, role = pcall(function()
+				if p:IsInGroup(17180419) then
+					return p:GetRoleInGroup(17180419) .. " (Staff Group)"
+				elseif game.CreatorType == Enum.CreatorType.Group and p:IsInGroup(game.CreatorId) then
+					return p:GetRoleInGroup(game.CreatorId) .. " (Game Owner)"
+				elseif p:IsInGroup(1200769) then
+					return "Roblox Employee"
+				end
+			end)
+			if success and role then
+				staffRole = role
+			end
+			if selectedPlayer == p then
+				infoLabel.Text = "Account Age: " .. age .. " days\nStaff Member: " .. staffRole .. "\nInvisible: " .. invisStatus
+			end
+		end)
 	end
 	
 	local function updateList()
@@ -13684,14 +13696,10 @@ local function createAdminPortal()
 			btnCorner.CornerRadius = UDim.new(0, 6)
 			btnCorner.Parent = pBtn
 			
-			local text = p.DisplayName .. " (@" .. p.Name .. ")"
+			local displayName = p.DisplayName or p.Name
+			local text = displayName .. " (@" .. p.Name .. ")"
 			
-			-- Badges
 			local badges = {}
-			if p:IsInGroup(17180419) or (game.CreatorType == Enum.CreatorType.Group and p:IsInGroup(game.CreatorId)) or p:IsInGroup(1200769) then
-				table.insert(badges, "[STAFF]")
-			end
-			
 			local parts = 0
 			local transparentParts = 0
 			if p.Character then
@@ -13709,10 +13717,11 @@ local function createAdminPortal()
 			end
 			
 			if #badges > 0 then
-				text = table.concat(badges, " ") .. " " .. text
+				pBtn.Text = table.concat(badges, " ") .. " " .. text
+			else
+				pBtn.Text = text
 			end
 			
-			pBtn.Text = text
 			pBtn.TextColor3 = Color3.fromRGB(220, 220, 230)
 			pBtn.Font = Enum.Font.Gotham
 			pBtn.TextSize = 12
@@ -13728,6 +13737,17 @@ local function createAdminPortal()
 			end)
 			
 			pBtn.Parent = listFrame
+			
+			-- Asynchronous Group Watch Badge Check (so yielding doesn't freeze listing/UI creation)
+			task.spawn(function()
+				local success, inGroup = pcall(function()
+					return p:IsInGroup(17180419) or (game.CreatorType == Enum.CreatorType.Group and p:IsInGroup(game.CreatorId)) or p:IsInGroup(1200769)
+				end)
+				if success and inGroup then
+					table.insert(badges, 1, "[STAFF]")
+					pBtn.Text = table.concat(badges, " ") .. " " .. text
+				end
+			end)
 		end
 	end
 	
