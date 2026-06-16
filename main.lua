@@ -8734,11 +8734,18 @@ local function layoutActiveHelpCards()
 	end
 	ActiveHelpCards = valid
 	
-	local count = #ActiveHelpCards
+	local nonDragged = {}
+	for _, c in ipairs(ActiveHelpCards) do
+		if not c:GetAttribute("Dragged") then
+			table.insert(nonDragged, c)
+		end
+	end
+	
+	local count = #nonDragged
 	if count > 0 then
 		local totalWidth = count * cardWidth + (count - 1) * spacing
 		local startX = -totalWidth / 2
-		for i, c in ipairs(ActiveHelpCards) do
+		for i, c in ipairs(nonDragged) do
 			c:TweenPosition(UDim2.new(0.5, startX + (i - 1) * (cardWidth + spacing), 0, startY), "Out", "Quart", 0.3, true)
 		end
 	end
@@ -8748,6 +8755,10 @@ local function createHelpRequestNotification(player)
 	if typeof(player) ~= "Instance" or not player:IsA("Player") then return end
 	local playerName = player.Name
 	local userId = player.UserId
+	
+	if not PARENT or not PARENT.Parent then
+		repeat task.wait(0.1) until PARENT and PARENT.Parent
+	end
 	
 	for i, c in ipairs(ActiveHelpCards) do
 		if c.Name == playerName then
@@ -8764,7 +8775,6 @@ local function createHelpRequestNotification(player)
 	card.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
 	card.BackgroundTransparency = 0.15
 	card.BorderSizePixel = 0
-	card.Parent = PARENT
 	
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 8)
@@ -8870,8 +8880,24 @@ local function createHelpRequestNotification(player)
 	
 	closeBtn.MouseButton1Click:Connect(function()
 		card:Destroy()
+		for i, c in ipairs(ActiveHelpCards) do
+			if c == card then
+				table.remove(ActiveHelpCards, i)
+				break
+			end
+		end
 		layoutActiveHelpCards()
 	end)
+	
+	card.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			card:SetAttribute("Dragged", true)
+			layoutActiveHelpCards()
+		end
+	end)
+	
+	dragGUI(card)
+	card.Parent = PARENT
 	
 	local s = Instance.new("Sound")
 	s.SoundId = "rbxassetid://9114223293"
@@ -8882,14 +8908,6 @@ local function createHelpRequestNotification(player)
 	
 	table.insert(ActiveHelpCards, card)
 	layoutActiveHelpCards()
-	
-	task.delay(20, function()
-		if card.Parent then
-			card:Destroy()
-			layoutActiveHelpCards()
-		end
-	end)
-end
 
 local function checkHelpMessage(player, text)
 	if player == Players.LocalPlayer then return end
@@ -9077,7 +9095,15 @@ local function createViewHUD(targetPlayer)
 			end
 		end
 		
-		statsLabel.Text = "HP: " .. hp .. "/" .. maxHp .. " | Speed: " .. speed .. " | Tool: " .. tool .. "\nAge: " .. (targetPlayer.AccountAge or 0) .. " days"
+		local dist = "--"
+		local localChar = Players.LocalPlayer.Character
+		local localRoot = localChar and getRoot(localChar)
+		local targetRoot = char and getRoot(char)
+		if localRoot and targetRoot then
+			dist = math.floor((localRoot.Position - targetRoot.Position).Magnitude) .. " studs"
+		end
+		
+		statsLabel.Text = "HP: " .. hp .. "/" .. maxHp .. " | Speed: " .. speed .. " | Tool: " .. tool .. "\nAge: " .. (targetPlayer.AccountAge or 0) .. " days | Dist: " .. dist
 	end)
 end
 
@@ -13489,39 +13515,110 @@ getCachedStaffRole = function(player)
 		return playerStaffRolesCache[userId].isStaff, playerStaffRolesCache[userId].role
 	end
 
-	local isStaff, role = false, nil
-	local success, inGroup17 = pcall(function() return player:IsInGroup(17180419) end)
-	if success then
-		if inGroup17 then
-			local successRole, r = pcall(function() return player:GetRoleInGroup(17180419) end)
-			if successRole and r and StaffRolewatchData.Roles[r] then
-				isStaff = true
-				role = r
+	-- Initialize placeholder in cache to prevent duplicate fetching threads
+	playerStaffRolesCache[userId] = {isStaff = false, role = nil}
+
+	task.spawn(function()
+		local isStaff, role = false, nil
+		local success, inGroup17
+		local retries = 0
+		repeat
+			success, inGroup17 = pcall(function() return player:IsInGroup(17180419) end)
+			if not success then
+				task.wait(1)
+				retries = retries + 1
 			end
-		end
-		if not isStaff then
-			local successOwner, inOwnerGroup = pcall(function()
-				return game.CreatorType == Enum.CreatorType.Group and player:IsInGroup(game.CreatorId)
-			end)
-			if successOwner then
-				if inOwnerGroup then
-					local successRole, roleInfo = pcall(getStaffRole, player)
-					if successRole and roleInfo.Staff then
-						isStaff = true
-						role = roleInfo.Role
+		until success or retries >= 5
+
+		if success then
+			if inGroup17 then
+				local successRole, r
+				local retriesRole = 0
+				repeat
+					successRole, r = pcall(function() return player:GetRoleInGroup(17180419) end)
+					if not successRole then
+						task.wait(1)
+						retriesRole = retriesRole + 1
 					end
-				else
-					local successRoblox, inRoblox = pcall(function() return player:IsInGroup(1200769) end)
-					if successRoblox and inRoblox then
-						isStaff = true
-						role = "Roblox Employee"
+				until successRole or retriesRole >= 5
+
+				if successRole and r and StaffRolewatchData.Roles[r] then
+					isStaff = true
+					role = r
+				end
+			end
+			if not isStaff then
+				local successOwner, inOwnerGroup
+				local retriesOwner = 0
+				repeat
+					successOwner, inOwnerGroup = pcall(function()
+						return game.CreatorType == Enum.CreatorType.Group and player:IsInGroup(game.CreatorId)
+					end)
+					if not successOwner then
+						task.wait(1)
+						retriesOwner = retriesOwner + 1
+					end
+				until successOwner or retriesOwner >= 5
+
+				if successOwner then
+					if inOwnerGroup then
+						local successRole, roleInfo
+						local retriesStaff = 0
+						repeat
+							successRole, roleInfo = pcall(getStaffRole, player)
+							if not successRole then
+								task.wait(1)
+								retriesStaff = retriesStaff + 1
+							end
+						until successRole or retriesStaff >= 5
+
+						if successRole and roleInfo.Staff then
+							isStaff = true
+							role = roleInfo.Role
+						end
+					else
+						local successRoblox, inRoblox
+						local retriesRoblox = 0
+						repeat
+							successRoblox, inRoblox = pcall(function() return player:IsInGroup(1200769) end)
+							if not successRoblox then
+								task.wait(1)
+								retriesRoblox = retriesRoblox + 1
+							end
+						until successRoblox or retriesRoblox >= 5
+
+						if successRoblox and inRoblox then
+							isStaff = true
+							role = "Roblox Employee"
+						end
 					end
 				end
 			end
+			playerStaffRolesCache[userId] = {isStaff = isStaff, role = role}
+
+			-- If they are staff and staff watch is enabled, trigger alerts and ESP
+			if isStaff then
+				task.spawn(function()
+					if StaffRolewatchData and StaffRolewatchData.Active then
+						if StaffRolewatchData.Leave == true then
+							pcall(function()
+								Players.LocalPlayer:Kick("\n\nStaff Watch\nPlayer \"" .. tostring(player.Name) .. "\" is in server with the Role \"" .. role .. "\"\n")
+							end)
+						else
+							createStaffWatchNotification(player, role)
+							updateStaffListUI()
+							TESP(player)
+						end
+					end
+				end)
+			end
+		else
+			-- Clear placeholder on network failure so it can be retried later
+			playerStaffRolesCache[userId] = nil
 		end
-		playerStaffRolesCache[userId] = {isStaff = isStaff, role = role}
-	end
-	return isStaff, role
+	end)
+
+	return false, nil
 end
 
 getRoleColor = function(role)
@@ -13546,6 +13643,9 @@ getRoleColor = function(role)
 end
 
 local function createStaffWatchNotification(player, roleName)
+	if not PARENT or not PARENT.Parent then
+		repeat task.wait(0.1) until PARENT and PARENT.Parent
+	end
 	local playerName = typeof(player) == "Instance" and player.Name or tostring(player)
 	local userId = typeof(player) == "Instance" and player.UserId or 0
 	
@@ -13667,9 +13767,27 @@ end
 StaffRolewatchConnection = Players.PlayerAdded:Connect(function(player)
 	if not StaffRolewatchData.Active then return end
 	task.spawn(function()
-		local success, inGroup = pcall(function() return player:IsInGroup(StaffRolewatchData.Group) end)
+		local success, inGroup
+		local retries = 0
+		repeat
+			success, inGroup = pcall(function() return player:IsInGroup(StaffRolewatchData.Group) end)
+			if not success then
+				task.wait(1)
+				retries = retries + 1
+			end
+		until success or retries >= 5
+
 		if success and inGroup then
-			local successRole, playerRole = pcall(function() return player:GetRoleInGroup(StaffRolewatchData.Group) end)
+			local successRole, playerRole
+			local retriesRole = 0
+			repeat
+				successRole, playerRole = pcall(function() return player:GetRoleInGroup(StaffRolewatchData.Group) end)
+				if not successRole then
+					task.wait(1)
+					retriesRole = retriesRole + 1
+				end
+			until successRole or retriesRole >= 5
+
 			if successRole and playerRole and StaffRolewatchData.Roles[playerRole] then
 				if StaffRolewatchData.Leave == true then
 					Players.LocalPlayer:Kick("\n\nStaff Watch\nPlayer \"" .. tostring(player.Name) .. "\" has joined with the Role \"" .. playerRole .. "\"\n")
@@ -13691,7 +13809,7 @@ addcmd("tmp", {}, function(args, speaker)
 	execCmd("staffalarm")
 	task.spawn(function()
 		repeat task.wait() until RadarFrame
-		RadarFrame.Position = UDim2.new(0, 10, 0, 80)
+		RadarFrame.Position = UDim2.new(1, -210, 0, 110)
 	end)
 	
 	local found = {}
@@ -13725,9 +13843,27 @@ addcmd("tmp", {}, function(args, speaker)
 	for _, player in pairs(players) do
 		if player ~= Players.LocalPlayer then
 			task.spawn(function()
-				local success, inGroup = pcall(function() return player:IsInGroup(StaffRolewatchData.Group) end)
+				local success, inGroup
+				local retries = 0
+				repeat
+					success, inGroup = pcall(function() return player:IsInGroup(StaffRolewatchData.Group) end)
+					if not success then
+						task.wait(1)
+						retries = retries + 1
+					end
+				until success or retries >= 5
+
 				if success and inGroup then
-					local successRole, playerRole = pcall(function() return player:GetRoleInGroup(StaffRolewatchData.Group) end)
+					local successRole, playerRole
+					local retriesRole = 0
+					repeat
+						successRole, playerRole = pcall(function() return player:GetRoleInGroup(StaffRolewatchData.Group) end)
+						if not successRole then
+							task.wait(1)
+							retriesRole = retriesRole + 1
+						end
+					until successRole or retriesRole >= 5
+
 					if successRole and playerRole and StaffRolewatchData.Roles[playerRole] then
 						if StaffRolewatchData.Leave == true then
 							Players.LocalPlayer:Kick("\n\nStaff Watch\nPlayer \"" .. tostring(player.Name) .. "\" is in server with the Role \"" .. playerRole .. "\"\n")
@@ -14593,9 +14729,11 @@ if not isLegacyChat then
 				if player then
 					local isStaff, role = getCachedStaffRole(player)
 					if isStaff and role then
-						properties.PrefixText = "<font color=\"rgb(255, 50, 50)\"><b>[" .. role .. "]</b></font> " .. message.PrefixText
+						local prefix = (properties.PrefixText and properties.PrefixText ~= "") and properties.PrefixText or (message.PrefixText or "")
+						properties.PrefixText = "<font color=\"rgb(255, 50, 50)\"><b>[" .. role .. "]</b></font> " .. prefix
 					elseif isNearStaff and isNearStaff(player) then
-						properties.PrefixText = "<font color=\"rgb(255, 100, 100)\"><b>[NEAR MOD]</b></font> " .. message.PrefixText
+						local prefix = (properties.PrefixText and properties.PrefixText ~= "") and properties.PrefixText or (message.PrefixText or "")
+						properties.PrefixText = "<font color=\"rgb(255, 100, 100)\"><b>[NEAR MOD]</b></font> " .. prefix
 					end
 				end
 			end
@@ -14703,6 +14841,16 @@ for _,plr in pairs(Players:GetPlayers()) do
 		hookCharEvents(plr)
 	end)
 end
+
+task.spawn(function()
+	for _, p in pairs(Players:GetPlayers()) do
+		task.spawn(function() getCachedStaffRole(p) end)
+	end
+end)
+
+Players.PlayerAdded:Connect(function(p)
+	task.spawn(function() getCachedStaffRole(p) end)
+end)
 
 if spawnCmds and #spawnCmds > 0 then
 	for i,v in pairs(spawnCmds) do
@@ -14922,7 +15070,7 @@ local function createAdminPortal()
 	local settingsTabBtn = Instance.new("TextButton")
 	settingsTabBtn.Name = "SettingsTabBtn"
 	settingsTabBtn.Size = UDim2.new(0, 80, 0, 25)
-	settingsTabBtn.Position = UDim2.new(1, -235, 0, 8)
+	settingsTabBtn.Position = UDim2.new(1, -150, 0, 8)
 	settingsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	settingsTabBtn.Text = "⚙️ Settings"
 	settingsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -14937,7 +15085,7 @@ local function createAdminPortal()
 	local serversTabBtn = Instance.new("TextButton")
 	serversTabBtn.Name = "ServersTabBtn"
 	serversTabBtn.Size = UDim2.new(0, 80, 0, 25)
-	serversTabBtn.Position = UDim2.new(1, -150, 0, 8)
+	serversTabBtn.Position = UDim2.new(1, -235, 0, 8)
 	serversTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	serversTabBtn.Text = "🌐 Servers"
 	serversTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -15861,7 +16009,7 @@ addcmd("radar", {}, function(args, speaker)
 	RadarFrame = Instance.new("Frame")
 	RadarFrame.Name = "RadarFrame"
 	RadarFrame.Size = UDim2.new(0, 200, 0, 200)
-	RadarFrame.Position = UDim2.new(0.5, -350, 0.5, -100)
+	RadarFrame.Position = UDim2.new(1, -210, 0, 110)
 	RadarFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 	RadarFrame.BackgroundTransparency = 0.4
 	RadarFrame.BorderSizePixel = 0
