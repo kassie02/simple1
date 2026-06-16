@@ -15830,35 +15830,53 @@ local function createAdminPortal()
 		infoLabel.Text = "Account Age:  " .. ageText .. "\n\nStaff Member:  <b>Fetching...</b>\n\nInvisible:  " .. invisStatusText .. "\n\nDistance:  <b>Calculating...</b>"
 		
 		task.spawn(function()
-			local staffRoleText = "<b>No</b>"
-			local isStaff, role = getCachedStaffRole(p)
-			if isStaff and role then
-				local rColor = getRoleColor(role)
-				staffRoleText = "<b><font color=\"" .. rColor .. "\">" .. role .. "</font></b>"
-			end
-			
-			while selectedPlayer == p and p.Parent == Players do
-				local success, hasParent = pcall(function() return main and main.Parent end)
-				if not success or not hasParent then break end
-
-
-				local distText = "<b>Unknown</b>"
-				local localChar = Players.LocalPlayer.Character
-				local localRoot = localChar and getRoot(localChar)
-				local targetChar = p.Character
-				local targetRoot = targetChar and getRoot(targetChar)
-				
-				if localRoot and targetRoot then
-					local dist = math.floor((targetRoot.Position - localRoot.Position).Magnitude)
-					distText = "<b>" .. dist .. " studs</b>"
+			local successRun, errRun = pcall(function()
+				local staffRoleText = "<b>No</b>"
+				local isStaff, role = false, nil
+				local successRole, errRole = pcall(function()
+					if getCachedStaffRole then
+						isStaff, role = getCachedStaffRole(p)
+					end
+				end)
+				if not successRole then
+					warn("Failed to check staff role: " .. tostring(errRole))
+				end
+				if isStaff and role then
+					local successColor, rColor = pcall(getRoleColor, role)
+					if successColor and rColor then
+						staffRoleText = "<b><font color=\"" .. rColor .. "\">" .. role .. "</font></b>"
+					else
+						staffRoleText = "<b>" .. tostring(role) .. "</b>"
+					end
 				end
 				
-				if selectedPlayer == p then
-					infoLabel.Text = "Account Age:  " .. ageText .. "\n\nStaff Member:  " .. staffRoleText .. "\n\nInvisible:  " .. invisStatusText .. "\n\nDistance:  " .. distText
-					alertBellBtn.Visible = isStaff
+				while selectedPlayer == p and p and p.Parent == Players do
+					local successParent, hasParent = pcall(function() return main and main.Parent end)
+					if not successParent or not hasParent then break end
+					
+					local distText = "<b>Unknown</b>"
+					local localChar = Players.LocalPlayer.Character
+					local localRoot = localChar and getRoot(localChar)
+					local targetChar = p.Character
+					local targetRoot = targetChar and getRoot(targetChar)
+					
+					if localRoot and localRoot.Parent and targetRoot and targetRoot.Parent then
+						local dist = math.floor((targetRoot.Position - localRoot.Position).Magnitude)
+						distText = "<b>" .. dist .. " studs</b>"
+					end
+					
+					if selectedPlayer == p then
+						infoLabel.Text = "Account Age:  " .. ageText .. "\n\nStaff Member:  " .. staffRoleText .. "\n\nInvisible:  " .. invisStatusText .. "\n\nDistance:  " .. distText
+						alertBellBtn.Visible = not not isStaff
+					end
+					
+					task.wait(0.2)
 				end
-				
-				task.wait(0.2)
+			end)
+			if not successRun then
+				warn("Error in selectPlayer updater: " .. tostring(errRun))
+				local cleanErr = tostring(errRun):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")
+				infoLabel.Text = "Account Age:  " .. ageText .. "\n\nStaff Member:  <b>ERROR</b>\n\nInvisible:  " .. invisStatusText .. "\n\nDistance:  <font color=\"rgb(255, 100, 100)\">" .. cleanErr .. "</font>"
 			end
 		end)
 	end
@@ -16137,7 +16155,9 @@ local function createAdminPortal()
 	serversViewFrame.Visible = false
 	serversViewFrame.Parent = main
 	
+	local serversScroll = Instance.new("ScrollingFrame")
 	serversScroll.Parent = serversViewFrame
+
 	
 	-- Map Tab Elements
 	local mapViewFrame = Instance.new("Frame")
