@@ -13337,6 +13337,7 @@ end)
 
 addcmd("tmp", {}, function(args, speaker)
 	StaffRolewatchData.Active = true
+	createPingUI()
 	execCmd("radar")
 	task.spawn(function()
 		repeat task.wait() until RadarFrame
@@ -13396,6 +13397,7 @@ end)
 
 addcmd("untmp", {}, function(args, speaker)
 	StaffRolewatchData.Active = false
+	destroyPingUI()
 	execCmd("unradar")
 	notify("Staff Watch", "Disabled")
 	for _, card in pairs(ActiveStaffCards) do
@@ -14509,7 +14511,7 @@ local function createAdminPortal()
 	local playersTabBtn = Instance.new("TextButton")
 	playersTabBtn.Name = "PlayersTabBtn"
 	playersTabBtn.Size = UDim2.new(0, 90, 0, 25)
-	playersTabBtn.Position = UDim2.new(1, -330, 0, 8)
+	playersTabBtn.Position = UDim2.new(1, -415, 0, 8)
 	playersTabBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
 	playersTabBtn.Text = "👥 Players"
 	playersTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -14524,7 +14526,7 @@ local function createAdminPortal()
 	local logsTabBtn = Instance.new("TextButton")
 	logsTabBtn.Name = "LogsTabBtn"
 	logsTabBtn.Size = UDim2.new(0, 80, 0, 25)
-	logsTabBtn.Position = UDim2.new(1, -235, 0, 8)
+	logsTabBtn.Position = UDim2.new(1, -320, 0, 8)
 	logsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	logsTabBtn.Text = "📜 Logs"
 	logsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -14539,7 +14541,7 @@ local function createAdminPortal()
 	local settingsTabBtn = Instance.new("TextButton")
 	settingsTabBtn.Name = "SettingsTabBtn"
 	settingsTabBtn.Size = UDim2.new(0, 80, 0, 25)
-	settingsTabBtn.Position = UDim2.new(1, -150, 0, 8)
+	settingsTabBtn.Position = UDim2.new(1, -235, 0, 8)
 	settingsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	settingsTabBtn.Text = "⚙️ Settings"
 	settingsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -14550,6 +14552,21 @@ local function createAdminPortal()
 	stCorner2.CornerRadius = UDim.new(0, 5)
 	stCorner2.Parent = settingsTabBtn
 	settingsTabBtn.Parent = header
+	
+	local serversTabBtn = Instance.new("TextButton")
+	serversTabBtn.Name = "ServersTabBtn"
+	serversTabBtn.Size = UDim2.new(0, 80, 0, 25)
+	serversTabBtn.Position = UDim2.new(1, -150, 0, 8)
+	serversTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	serversTabBtn.Text = "🌐 Servers"
+	serversTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+	serversTabBtn.Font = Enum.Font.GothamBold
+	serversTabBtn.TextSize = 11
+	serversTabBtn.BorderSizePixel = 0
+	local srvtCorner = Instance.new("UICorner")
+	srvtCorner.CornerRadius = UDim.new(0, 5)
+	srvtCorner.Parent = serversTabBtn
+	serversTabBtn.Parent = header
 	
 	local close = Instance.new("TextButton")
 	close.Size = UDim2.new(0, 30, 0, 30)
@@ -14982,6 +14999,196 @@ local function createAdminPortal()
 	settingsViewFrame.Visible = false
 	settingsViewFrame.Parent = main
 	
+	-- Servers Tab Elements
+	local serversViewFrame = Instance.new("Frame")
+	serversViewFrame.Name = "ServersViewFrame"
+	serversViewFrame.Size = UDim2.new(1, -20, 1, -60)
+	serversViewFrame.Position = UDim2.new(0, 10, 0, 50)
+	serversViewFrame.BackgroundTransparency = 1
+	serversViewFrame.Visible = false
+	serversViewFrame.Parent = main
+	
+	local serversScroll = Instance.new("ScrollingFrame")
+	serversScroll.Name = "ServersScroll"
+	serversScroll.Size = UDim2.new(1, 0, 1, 0)
+	serversScroll.BackgroundTransparency = 1
+	serversScroll.BorderSizePixel = 0
+	serversScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	serversScroll.ScrollBarThickness = 4
+	serversScroll.Parent = serversViewFrame
+	
+	local serversLayout = Instance.new("UIListLayout")
+	serversLayout.Padding = UDim.new(0, 8)
+	serversLayout.Parent = serversScroll
+
+	local function updateServersUI()
+		for _, child in pairs(serversScroll:GetChildren()) do
+			if child:IsA("Frame") or child:IsA("TextLabel") then
+				child:Destroy()
+			end
+		end
+		
+		local loadingLabel = Instance.new("TextLabel")
+		loadingLabel.Size = UDim2.new(1, 0, 0, 30)
+		loadingLabel.BackgroundTransparency = 1
+		loadingLabel.Text = "Fetching active public servers, please wait..."
+		loadingLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
+		loadingLabel.Font = Enum.Font.GothamMedium
+		loadingLabel.TextSize = 13
+		loadingLabel.Parent = serversScroll
+		
+		task.spawn(function()
+			local success, req = pcall(function()
+				return game:HttpGet("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Desc&limit=100")
+			end)
+			
+			loadingLabel:Destroy()
+			
+			if not success or not req then
+				local errLabel = Instance.new("TextLabel")
+				errLabel.Size = UDim2.new(1, 0, 0, 30)
+				errLabel.BackgroundTransparency = 1
+				errLabel.Text = "Failed to fetch servers. Please try again."
+				errLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
+				errLabel.Font = Enum.Font.GothamMedium
+				errLabel.TextSize = 13
+				errLabel.Parent = serversScroll
+				return
+			end
+			
+			local body = HttpService:JSONDecode(req)
+			if not body or not body.data or #body.data == 0 then
+				local emptyLabel = Instance.new("TextLabel")
+				emptyLabel.Size = UDim2.new(1, 0, 0, 30)
+				emptyLabel.BackgroundTransparency = 1
+				emptyLabel.Text = "No other public servers found."
+				emptyLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
+				emptyLabel.Font = Enum.Font.GothamMedium
+				emptyLabel.TextSize = 13
+				emptyLabel.Parent = serversScroll
+				return
+			end
+			
+			-- Add a refresh button card at the top!
+			local refreshCard = Instance.new("Frame")
+			refreshCard.Size = UDim2.new(1, -10, 0, 35)
+			refreshCard.BackgroundColor3 = Color3.fromRGB(25, 20, 35)
+			refreshCard.BorderSizePixel = 0
+			
+			local rcCorner = Instance.new("UICorner")
+			rcCorner.CornerRadius = UDim.new(0, 6)
+			rcCorner.Parent = refreshCard
+			
+			local refBtn = Instance.new("TextButton")
+			refBtn.Size = UDim2.new(1, 0, 1, 0)
+			refBtn.BackgroundTransparency = 1
+			refBtn.Text = "🔄 REFRESH SERVER LIST"
+			refBtn.TextColor3 = Color3.fromRGB(160, 130, 255)
+			refBtn.Font = Enum.Font.GothamBold
+			refBtn.TextSize = 12
+			refBtn.Parent = refreshCard
+			
+			refBtn.MouseButton1Click:Connect(updateServersUI)
+			refreshCard.Parent = serversScroll
+			
+			local srvCount = 0
+			for _, srv in ipairs(body.data) do
+				if type(srv) == "table" and srv.id then
+					srvCount = srvCount + 1
+					local isCurrent = (srv.id == JobId)
+					
+					local card = Instance.new("Frame")
+					card.Size = UDim2.new(1, -10, 0, 50)
+					card.BackgroundColor3 = isCurrent and Color3.fromRGB(30, 25, 45) or Color3.fromRGB(20, 20, 25)
+					card.BorderSizePixel = 0
+					
+					local ccCorner = Instance.new("UICorner")
+					ccCorner.CornerRadius = UDim.new(0, 6)
+					ccCorner.Parent = card
+					
+					local stroke = Instance.new("UIStroke")
+					stroke.Color = isCurrent and Color3.fromRGB(160, 130, 255) or Color3.fromRGB(45, 45, 55)
+					stroke.Thickness = 1
+					stroke.Parent = card
+					
+					local titleLabel = Instance.new("TextLabel")
+					titleLabel.Size = UDim2.new(0.6, 0, 0, 25)
+					titleLabel.Position = UDim2.new(0, 15, 0, 5)
+					titleLabel.BackgroundTransparency = 1
+					titleLabel.RichText = true
+					
+					local playerText = "👥 Players: <b>" .. (srv.playing or 0) .. " / " .. (srv.maxPlayers or 0) .. "</b>"
+					if isCurrent then
+						playerText = playerText .. " <font color=\"rgb(100, 255, 100)\"><b>(CURRENT)</b></font>"
+					end
+					titleLabel.Text = playerText
+					titleLabel.TextColor3 = Color3.fromRGB(220, 220, 230)
+					titleLabel.Font = Enum.Font.GothamMedium
+					titleLabel.TextSize = 13
+					titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+					titleLabel.Parent = card
+					
+					local pingVal = srv.ping and tonumber(srv.ping) or 999
+					local pingText = "📶 Ping: " .. (srv.ping or "N/A") .. " ms | FPS: " .. (srv.fps and math.round(srv.fps) or "N/A")
+					local pingColor = "rgb(150, 150, 150)"
+					if pingVal < 80 then
+						pingColor = "rgb(100, 255, 100)"
+					elseif pingVal < 150 then
+						pingColor = "rgb(255, 200, 50)"
+					else
+						pingColor = "rgb(255, 75, 75)"
+					end
+					
+					local subLabel = Instance.new("TextLabel")
+					subLabel.Size = UDim2.new(0.6, 0, 0, 20)
+					subLabel.Position = UDim2.new(0, 15, 0, 25)
+					subLabel.BackgroundTransparency = 1
+					subLabel.RichText = true
+					subLabel.Text = "<font color=\"" .. pingColor .. "\">" .. pingText .. "</font>"
+					subLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
+					subLabel.Font = Enum.Font.Gotham
+					subLabel.TextSize = 11
+					subLabel.TextXAlignment = Enum.TextXAlignment.Left
+					subLabel.Parent = card
+					
+					if not isCurrent then
+						local joinBtn = Instance.new("TextButton")
+						joinBtn.Size = UDim2.new(0, 80, 0, 28)
+						joinBtn.Position = UDim2.new(1, -95, 0.5, -14)
+						joinBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
+						joinBtn.Text = "JOIN"
+						joinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+						joinBtn.Font = Enum.Font.GothamBold
+						joinBtn.TextSize = 11
+						joinBtn.BorderSizePixel = 0
+						
+						local jbCorner = Instance.new("UICorner")
+						jbCorner.CornerRadius = UDim.new(0, 5)
+						jbCorner.Parent = joinBtn
+						joinBtn.Parent = card
+						
+						joinBtn.MouseEnter:Connect(function()
+							joinBtn.BackgroundColor3 = Color3.fromRGB(140, 100, 255)
+						end)
+						joinBtn.MouseLeave:Connect(function()
+							joinBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
+						end)
+						
+						joinBtn.MouseButton1Click:Connect(function()
+							notify("Server Teleport", "Teleporting to server, please wait...")
+							task.spawn(function()
+								TeleportService:TeleportToPlaceInstance(PlaceId, srv.id, Players.LocalPlayer)
+							end)
+						end)
+					end
+					
+					card.Parent = serversScroll
+				end
+			end
+			serversScroll.CanvasSize = UDim2.new(0, 0, 0, (srvCount + 1) * 58)
+		end)
+	end
+	
 	local settingsScroll = Instance.new("ScrollingFrame")
 	settingsScroll.Name = "SettingsScroll"
 	settingsScroll.Size = UDim2.new(1, 0, 1, 0)
@@ -15213,6 +15420,9 @@ local function createAdminPortal()
 		settingsTabBtn.BackgroundColor3 = (tabName == "Settings") and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
 		settingsTabBtn.TextColor3 = (tabName == "Settings") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
 		
+		serversTabBtn.BackgroundColor3 = (tabName == "Servers") and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
+		serversTabBtn.TextColor3 = (tabName == "Servers") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
+		
 		listFrame.Visible = (tabName == "Players")
 		searchFrame.Visible = (tabName == "Players")
 		filterFrame.Visible = (tabName == "Players")
@@ -15220,15 +15430,19 @@ local function createAdminPortal()
 		
 		logsViewFrame.Visible = (tabName == "Logs")
 		settingsViewFrame.Visible = (tabName == "Settings")
+		serversViewFrame.Visible = (tabName == "Servers")
 		
 		if tabName == "Logs" then
 			updateLogsUI()
+		elseif tabName == "Servers" then
+			updateServersUI()
 		end
 	end
 	
 	playersTabBtn.MouseButton1Click:Connect(function() setTab("Players") end)
 	logsTabBtn.MouseButton1Click:Connect(function() setTab("Logs") end)
 	settingsTabBtn.MouseButton1Click:Connect(function() setTab("Settings") end)
+	serversTabBtn.MouseButton1Click:Connect(function() setTab("Servers") end)
 	
 	triggerLogsTab = function() setTab("Logs") end
 	
@@ -15474,6 +15688,70 @@ startViewFC = function(targetPlayer)
 	end)
 	
 	notify("View FC", "Viewing " .. targetPlayer.DisplayName .. " (@" .. targetPlayer.Name .. ") via Freecam View")
+end
+
+-- Ping UI variables
+local PingFrame = nil
+
+local function createPingUI()
+	if PingFrame then PingFrame:Destroy() end
+	
+	PingFrame = Instance.new("Frame")
+	PingFrame.Name = "TmpPingFrame"
+	PingFrame.Position = UDim2.new(1, -230, 0, 50)
+	PingFrame.Size = UDim2.new(0, 220, 0, 25)
+	PingFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+	PingFrame.BackgroundTransparency = 0.2
+	PingFrame.BorderSizePixel = 0
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = PingFrame
+	
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(120, 80, 255)
+	stroke.Thickness = 1
+	stroke.Parent = PingFrame
+	
+	local label = Instance.new("TextLabel")
+	label.Name = "PingLabel"
+	label.Size = UDim2.new(1, -20, 1, 0)
+	label.Position = UDim2.new(0, 10, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Text = "📶 Ping: -- ms"
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 11
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = PingFrame
+	
+	PingFrame.Parent = PARENT
+	
+	task.spawn(function()
+		while PingFrame and PingFrame.Parent do
+			local success, value = pcall(function()
+				return math.round(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
+			end)
+			if success and value then
+				label.Text = "📶 Ping: " .. value .. " ms"
+				if value < 80 then
+					label.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green
+				elseif value < 150 then
+					label.TextColor3 = Color3.fromRGB(255, 200, 50) -- Orange
+				else
+					label.TextColor3 = Color3.fromRGB(255, 75, 75) -- Red
+				end
+			else
+				label.Text = "📶 Ping: N/A"
+				label.TextColor3 = Color3.fromRGB(150, 150, 150)
+			end
+			task.wait(1.0)
+		end
+	end)
+end
+
+local function destroyPingUI()
+	if PingFrame then PingFrame:Destroy() PingFrame = nil end
 end
 
 -- Hitbox Expander variables
