@@ -16336,10 +16336,13 @@ local function createAdminPortal()
 	mapConnection = RunService.Heartbeat:Connect(function()
 		local success, isVisible = pcall(function() return main and main.Parent and main.Visible and mapViewFrame.Visible end)
 		if not success or not isVisible then
-			if mapConnection and (not main or not main.Parent) then
+			local hasParent = false
+			pcall(function() hasParent = not not (main and main.Parent) end)
+			if mapConnection and not hasParent then
 				mapConnection:Disconnect()
 				mapConnection = nil
 			end
+
 			for _, dot in pairs(MapDots) do dot.Visible = false end
 			for _, label in pairs(MapLabels) do label.Visible = false end
 			return
@@ -16927,6 +16930,8 @@ local function createAdminPortal()
 	
 	triggerLogsTab = function() setTab("Logs") end
 	
+	main.Parent = ScaledHolder
+	
 	local playerAddedConn, playerRemovingConn
 	playerAddedConn = Players.PlayerAdded:Connect(function(plr)
 		local success, hasParent = pcall(function() return main and main.Parent end)
@@ -16958,10 +16963,8 @@ local function createAdminPortal()
 			task.wait(3)
 		end
 	end)
-
-	
-	main.Parent = ScaledHolder
 end
+
 
 addcmd("portal", {"panel"}, function(args, speaker)
 	notify("Admin Portal", "Opening Admin Control Portal...")
