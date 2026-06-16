@@ -15337,6 +15337,9 @@ end)
 local ViewFCConnection = nil
 local ViewFCTarget = nil
 local ViewFCMouseConnection = nil
+local viewFCSavedType = nil
+local viewFCSavedCFrame = nil
+local viewFCSavedFocus = nil
 
 stopViewFC = function()
 	if ViewFCConnection then
@@ -15348,12 +15351,31 @@ stopViewFC = function()
 		ViewFCMouseConnection = nil
 	end
 	ViewFCTarget = nil
-	if cameraType then
-		Camera.CameraType = cameraType
-		cameraType = nil
-		Camera.CameraSubject = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-	else
-		Camera.CameraType = Enum.CameraType.Custom
+	
+	local cam = workspace.CurrentCamera
+	if cam then
+		if viewFCSavedType then
+			pcall(function() cam.CameraType = viewFCSavedType end)
+			viewFCSavedType = nil
+		else
+			pcall(function() cam.CameraType = Enum.CameraType.Custom end)
+		end
+		
+		if viewFCSavedCFrame then
+			pcall(function() cam.CFrame = viewFCSavedCFrame end)
+			viewFCSavedCFrame = nil
+		end
+		
+		if viewFCSavedFocus then
+			pcall(function() cam.Focus = viewFCSavedFocus end)
+			viewFCSavedFocus = nil
+		end
+		
+		local localChar = Players.LocalPlayer.Character
+		local localHum = localChar and localChar:FindFirstChildOfClass("Humanoid")
+		if localHum then
+			pcall(function() cam.CameraSubject = localHum end)
+		end
 	end
 	destroyViewHUD()
 end
@@ -15363,13 +15385,16 @@ startViewFC = function(targetPlayer)
 	if not targetPlayer then return end
 	ViewFCTarget = targetPlayer
 	
-	if not cameraType then
-		cameraType = Camera.CameraType
-		cameraCFrame = Camera.CFrame
-		cameraFocus = Camera.Focus
-	end
+	local cam = workspace.CurrentCamera
+	if not cam then return end
 	
-	Camera.CameraType = Enum.CameraType.Scriptable
+	pcall(function()
+		viewFCSavedType = cam.CameraType
+		viewFCSavedCFrame = cam.CFrame
+		viewFCSavedFocus = cam.Focus
+	end)
+	
+	pcall(function() cam.CameraType = Enum.CameraType.Scriptable end)
 	
 	createViewHUD(targetPlayer)
 	
@@ -15414,8 +15439,13 @@ startViewFC = function(targetPlayer)
 		)
 		
 		local targetCFrame = CFrame.new(targetPos + cameraOffset, targetPos)
-		Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 0.15)
-		Camera.Focus = root.CFrame
+		local currentCam = workspace.CurrentCamera
+		if currentCam then
+			pcall(function()
+				currentCam.CFrame = currentCam.CFrame:Lerp(targetCFrame, 0.15)
+				currentCam.Focus = root.CFrame
+			end)
+		end
 	end)
 	
 	notify("View FC", "Viewing " .. targetPlayer.DisplayName .. " (@" .. targetPlayer.Name .. ") via Freecam View")
