@@ -46,6 +46,10 @@ setthreadidentity = missing("function", setthreadidentity or (syn and syn.set_th
 replicatesignal = missing("function", replicatesignal)
 getconnections = missing("function", getconnections or get_signal_cons)
 
+local playerStaffRolesCache = {}
+local getCachedStaffRole
+local getRoleColor
+
 Services = setmetatable({}, {
 	__index = function(self, name)
 		local success, cache = pcall(function()
@@ -3279,9 +3283,20 @@ local lastMessage = nil
 local lastLabel = nil
 local dupeCount = 1
 function CreateLabel(Name, Text)
+	local prefix = ""
+	if getCachedStaffRole and getRoleColor then
+		local player = Players:FindFirstChild(Name)
+		if player then
+			local isStaff, role = getCachedStaffRole(player)
+			if isStaff and role then
+				prefix = "<font color=\"rgb(255, 50, 50)\"><b>[" .. role .. "]</b></font> "
+			end
+		end
+	end
+
 	if lastMessage == Name..Text then
 		dupeCount = dupeCount+1
-		lastLabel.Text = Time()..' - ['..Name..']: '..Text..' (x'..dupeCount..')'
+		lastLabel.Text = Time()..' - '..prefix..'['..Name..']: '..Text..' (x'..dupeCount..')'
 	else
 		if dupeCount > 1 then dupeCount = 1 end
 		if #scroll_2:GetChildren() >= 2546 then
@@ -3303,8 +3318,7 @@ function CreateLabel(Name, Text)
 		tl.Parent = scroll_2
 		tl.ZIndex = 10
 		tl.RichText = true
-		tl.Text = Time().." - ["..Name.."]: "..Text
-		tl.Text = tl.ContentText
+		tl.Text = Time().." - " .. prefix .. "["..Name.."]: "..Text
 		tl.Size = UDim2.new(0,322,0,84)
 		tl.BackgroundTransparency = 1
 		tl.BorderSizePixel = 0
@@ -4065,37 +4079,18 @@ Players.PlayerRemoving:Connect(function(player)
 		notify('Spectate','View turned off (player left)')
 	end
 	if StaffRolewatchData and StaffRolewatchData.Active then
-		task.spawn(updateStaffListUI)
+		task.spawn(function() updateStaffListUI(player) end)
 	end
 	task.spawn(function()
-		local isStaff = false
-		local success, inGroup17 = pcall(function() return player:IsInGroup(17180419) end)
-		if success and inGroup17 then
-			local successRole, role = pcall(function() return player:GetRoleInGroup(17180419) end)
-			if successRole and role and StaffRolewatchData.Roles[role] then
-				isStaff = true
-			end
-		else
-			local successOwner, inOwnerGroup = pcall(function()
-				return game.CreatorType == Enum.CreatorType.Group and player:IsInGroup(game.CreatorId)
-			end)
-			if successOwner and inOwnerGroup then
-				local successRole, roleInfo = pcall(getStaffRole, player)
-				if successRole and roleInfo.Staff then
-					isStaff = true
-				end
-			else
-				local successRoblox, inRoblox = pcall(function() return player:IsInGroup(1200769) end)
-				if successRoblox and inRoblox then
-					isStaff = true
-				end
+		local isStaff, role = getCachedStaffRole(player)
+		if isStaff then
+			local rColor = getRoleColor(role or "Staff")
+			if addStaffLog then
+				pcall(function() addStaffLog("⬅️ <b><font color=\"" .. rColor .. "\">" .. player.DisplayName .. "</font></b> (Staff) left the server") end)
 			end
 		end
-		
-		if isStaff then
-			if addStaffLog then
-				pcall(function() addStaffLog("⬅️ <b>" .. player.DisplayName .. "</b> (Staff) left the server") end)
-			end
+		if playerStaffRolesCache then
+			playerStaffRolesCache[player.UserId] = nil
 		end
 	end)
 	eventEditor.FireEvent("OnLeave", player.Name)
@@ -8586,32 +8581,10 @@ end
 
 local function checkStaffMessage(player, text)
 	task.spawn(function()
-		local isStaff = false
-		local success, inGroup17 = pcall(function() return player:IsInGroup(17180419) end)
-		if success and inGroup17 then
-			local successRole, role = pcall(function() return player:GetRoleInGroup(17180419) end)
-			if successRole and role and StaffRolewatchData.Roles[role] then
-				isStaff = true
-			end
-		else
-			local successOwner, inOwnerGroup = pcall(function()
-				return game.CreatorType == Enum.CreatorType.Group and player:IsInGroup(game.CreatorId)
-			end)
-			if successOwner and inOwnerGroup then
-				local successRole, roleInfo = pcall(getStaffRole, player)
-				if successRole and roleInfo.Staff then
-					isStaff = true
-				end
-			else
-				local successRoblox, inRoblox = pcall(function() return player:IsInGroup(1200769) end)
-				if successRoblox and inRoblox then
-					isStaff = true
-				end
-			end
-		end
-		
+		local isStaff, role = getCachedStaffRole(player)
 		if isStaff then
-			addStaffLog("💬 <b>" .. player.DisplayName .. "</b>: " .. text)
+			local rColor = getRoleColor(role or "Staff")
+			addStaffLog("💬 <b><font color=\"" .. rColor .. "\">" .. player.DisplayName .. "</font></b>: " .. text)
 			if logNotifications then
 				notify("Staff Chat", player.DisplayName .. ": " .. text, 5)
 				local sound = Instance.new("Sound")
@@ -8630,34 +8603,12 @@ end
 
 local function monitorStaffChar(player, char)
 	task.spawn(function()
-		local isStaff = false
-		local success, inGroup17 = pcall(function() return player:IsInGroup(17180419) end)
-		if success and inGroup17 then
-			local successRole, role = pcall(function() return player:GetRoleInGroup(17180419) end)
-			if successRole and role and StaffRolewatchData.Roles[role] then
-				isStaff = true
-			end
-		else
-			local successOwner, inOwnerGroup = pcall(function()
-				return game.CreatorType == Enum.CreatorType.Group and player:IsInGroup(game.CreatorId)
-			end)
-			if successOwner and inOwnerGroup then
-				local successRole, roleInfo = pcall(getStaffRole, player)
-				if successRole and roleInfo.Staff then
-					isStaff = true
-				end
-			else
-				local successRoblox, inRoblox = pcall(function() return player:IsInGroup(1200769) end)
-				if successRoblox and inRoblox then
-					isStaff = true
-				end
-			end
-		end
-		
+		local isStaff, role = getCachedStaffRole(player)
 		if isStaff then
 			char.ChildAdded:Connect(function(child)
 				if child:IsA("Tool") then
-					addStaffLog("⚔️ <b>" .. player.DisplayName .. "</b> equipped tool: " .. child.Name)
+					local rColor = getRoleColor(role or "Staff")
+					addStaffLog("⚔️ <b><font color=\"" .. rColor .. "\">" .. player.DisplayName .. "</font></b> equipped tool: " .. child.Name)
 				end
 			end)
 		end
@@ -8774,7 +8725,7 @@ local function createViewHUD(targetPlayer)
 	nameLabel.Size = UDim2.new(1, -20, 0, 22)
 	nameLabel.Position = UDim2.new(0, 10, 0, 8)
 	nameLabel.BackgroundTransparency = 1
-	nameLabel.Text = "Spectating: " .. targetPlayer.DisplayName
+	nameLabel.Text = "Viewing: " .. targetPlayer.DisplayName
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	nameLabel.Font = Enum.Font.GothamBold
 	nameLabel.TextSize = 13
@@ -13008,7 +12959,8 @@ StaffRolewatchData = {
 	Leave = false
 }
 
-local function updateStaffListUI()
+local function updateStaffListUI(excludingPlayer)
+	task.wait()
 	local frame = PARENT:FindFirstChild("StaffListFrame")
 	if not StaffRolewatchData.Active then
 		if frame then frame:Destroy() end
@@ -13068,14 +13020,9 @@ local function updateStaffListUI()
 	
 	local staffMembers = {}
 	for _, player in pairs(Players:GetPlayers()) do
-		local success, result = pcall(function()
-			return player:IsInGroup(StaffRolewatchData.Group)
-		end)
-		if success and result then
-			local successRole, role = pcall(function()
-				return player:GetRoleInGroup(StaffRolewatchData.Group)
-			end)
-			if successRole and role and StaffRolewatchData.Roles[role] then
+		if player ~= excludingPlayer and player.Parent == Players then
+			local isStaff, role = getCachedStaffRole(player)
+			if isStaff and role then
 				table.insert(staffMembers, {Player = player, Role = role})
 			end
 		end
@@ -13099,7 +13046,7 @@ local function updateStaffListUI()
 			row.Size = UDim2.new(1, 0, 0, 20)
 			row.BackgroundTransparency = 1
 			row.RichText = true
-			row.Text = "• <b>" .. data.Player.DisplayName .. "</b> (" .. data.Role .. ")"
+			row.Text = "• <b>" .. data.Player.DisplayName .. "</b> (" .. data.Player.Name .. ") (" .. data.Role .. ")"
 			row.TextColor3 = Color3.fromRGB(230, 230, 230)
 			row.Font = Enum.Font.Gotham
 			row.TextSize = 11
@@ -13145,9 +13092,48 @@ Players.PlayerRemoving:Connect(function(player)
 	if removedAny then
 		layoutActiveStaffCards()
 	end
+	task.spawn(function() updateStaffListUI(player) end)
 end)
 
-local function getRoleColor(role)
+getCachedStaffRole = function(player)
+	if not player then return false, nil end
+	local userId = player.UserId
+	if playerStaffRolesCache[userId] ~= nil then
+		return playerStaffRolesCache[userId].isStaff, playerStaffRolesCache[userId].role
+	end
+
+	local isStaff, role = false, nil
+	local success, inGroup17 = pcall(function() return player:IsInGroup(17180419) end)
+	if success and inGroup17 then
+		local successRole, r = pcall(function() return player:GetRoleInGroup(17180419) end)
+		if successRole and r and StaffRolewatchData.Roles[r] then
+			isStaff = true
+			role = r
+		end
+	end
+	if not isStaff then
+		local successOwner, inOwnerGroup = pcall(function()
+			return game.CreatorType == Enum.CreatorType.Group and player:IsInGroup(game.CreatorId)
+		end)
+		if successOwner and inOwnerGroup then
+			local successRole, roleInfo = pcall(getStaffRole, player)
+			if successRole and roleInfo.Staff then
+				isStaff = true
+				role = roleInfo.Role
+			end
+		else
+			local successRoblox, inRoblox = pcall(function() return player:IsInGroup(1200769) end)
+			if successRoblox and inRoblox then
+				isStaff = true
+				role = "Roblox Employee"
+			end
+		end
+	end
+	playerStaffRolesCache[userId] = {isStaff = isStaff, role = role}
+	return isStaff, role
+end
+
+getRoleColor = function(role)
 	local r = role:lower()
 	if string.find(r, "founder") or string.find(r, "ceo") then
 		return "rgb(255, 215, 0)" -- Gold
@@ -14148,32 +14134,10 @@ Players.PlayerAdded:Connect(function(plr)
 	end)
 	
 	task.spawn(function()
-		local isStaff = false
-		local success, inGroup17 = pcall(function() return plr:IsInGroup(17180419) end)
-		if success and inGroup17 then
-			local successRole, role = pcall(function() return plr:GetRoleInGroup(17180419) end)
-			if successRole and role and StaffRolewatchData.Roles[role] then
-				isStaff = true
-			end
-		else
-			local successOwner, inOwnerGroup = pcall(function()
-				return game.CreatorType == Enum.CreatorType.Group and plr:IsInGroup(game.CreatorId)
-			end)
-			if successOwner and inOwnerGroup then
-				local successRole, roleInfo = pcall(getStaffRole, plr)
-				if successRole and roleInfo.Staff then
-					isStaff = true
-				end
-			else
-				local successRoblox, inRoblox = pcall(function() return plr:IsInGroup(1200769) end)
-				if successRoblox and inRoblox then
-					isStaff = true
-				end
-			end
-		end
-		
+		local isStaff, role = getCachedStaffRole(plr)
 		if isStaff then
-			addStaffLog("➡️ <b>" .. plr.DisplayName .. "</b> (Staff) joined the server")
+			local rColor = getRoleColor(role or "Staff")
+			addStaffLog("➡️ <b><font color=\"" .. rColor .. "\">" .. plr.DisplayName .. "</font></b> (Staff) joined the server")
 			StaffServerBlacklist[game.JobId] = true
 		end
 	end)
@@ -14210,6 +14174,89 @@ if not isLegacyChat then
 			sendChatWebhook(player, message.Text)
 			pcall(function() checkStaffMessage(player, message.Text) end)
 		end
+	end)
+
+	pcall(function()
+		local originalOnIncomingMessage = TextChatService.OnIncomingMessage
+		TextChatService.OnIncomingMessage = function(message)
+			local properties = originalOnIncomingMessage and originalOnIncomingMessage(message) or Instance.new("TextChatMessageProperties")
+			if message.TextSource then
+				local player = Players:GetPlayerByUserId(message.TextSource.UserId)
+				if player then
+					local isStaff, role = getCachedStaffRole(player)
+					if isStaff and role then
+						properties.PrefixText = "<font color=\"rgb(255, 50, 50)\"><b>[" .. role .. "]</b></font> " .. message.PrefixText
+					end
+				end
+			end
+			return properties
+		end
+	end)
+else
+	pcall(function()
+		local function hookLegacyChatScroller(scroller)
+			scroller.ChildAdded:Connect(function(child)
+				task.wait()
+				local label = child:FindFirstChildOfClass("TextLabel")
+				if label and label.Text ~= "" then
+					label.RichText = true
+					for _, p in pairs(Players:GetPlayers()) do
+						local isStaff, role = getCachedStaffRole(p)
+						if isStaff and role then
+							local prefix = "<font color=\"rgb(255, 50, 50)\"><b>[" .. role .. "]</b></font> "
+							if not string.find(label.Text, "%[" .. role .. "%]") then
+								local dName = p.DisplayName or p.Name
+								local uName = p.Name
+								local escapedDName = dName:gsub("([^%w])", "%%%1")
+								local escapedUName = uName:gsub("([^%w])", "%%%1")
+								
+								local pattern1 = "^(" .. escapedDName .. ")%s*:"
+								local pattern2 = "^(" .. escapedUName .. ")%s*:"
+								local pattern3 = "^%[(" .. escapedDName .. ")%]%s*:"
+								local pattern4 = "^%[(" .. escapedUName .. ")%]%s*:"
+
+								if label.Text:match(pattern1) then
+									label.Text = label.Text:gsub(pattern1, prefix .. "%1:", 1)
+									break
+								elseif label.Text:match(pattern2) then
+									label.Text = label.Text:gsub(pattern2, prefix .. "%1:", 1)
+									break
+								elseif label.Text:match(pattern3) then
+									label.Text = label.Text:gsub(pattern3, prefix .. "[%1]:", 1)
+									break
+								elseif label.Text:match(pattern4) then
+									label.Text = label.Text:gsub(pattern4, prefix .. "[%1]:", 1)
+									break
+								end
+							end
+						end
+					end
+				end
+			end)
+		end
+
+		local function hookLegacyChat()
+			local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui", 5)
+			if not playerGui then return end
+			
+			local function checkChat(gui)
+				if gui.Name == "Chat" then
+					local scroller = gui:WaitForChild("Frame", 5)
+						and gui.Frame:WaitForChild("ChatChannelParentFrame", 5)
+						and gui.Frame.ChatChannelParentFrame:WaitForChild("Frame_MessageLogDisplay", 5)
+						and gui.Frame.ChatChannelParentFrame.Frame_MessageLogDisplay:WaitForChild("Scroller", 5)
+					if scroller then
+						hookLegacyChatScroller(scroller)
+					end
+				end
+			end
+			
+			for _, gui in pairs(playerGui:GetChildren()) do
+				checkChat(gui)
+			end
+			playerGui.ChildAdded:Connect(checkChat)
+		end
+		task.spawn(hookLegacyChat)
 	end)
 end
 
@@ -14563,7 +14610,7 @@ local function createAdminPortal()
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.TextSize = 14
+	nameLabel.TextSize = 16
 	nameLabel.Parent = detailFrame
 	
 	local userLabel = Instance.new("TextLabel")
@@ -14575,40 +14622,42 @@ local function createAdminPortal()
 	userLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
 	userLabel.TextXAlignment = Enum.TextXAlignment.Left
 	userLabel.Font = Enum.Font.Gotham
-	userLabel.TextSize = 12
+	userLabel.TextSize = 13
+	userLabel.RichText = true
 	userLabel.Parent = detailFrame
 	
 	local infoLabel = Instance.new("TextLabel")
 	infoLabel.Name = "Info"
-	infoLabel.Size = UDim2.new(1, -20, 0, 40)
+	infoLabel.Size = UDim2.new(1, -20, 0, 110)
 	infoLabel.Position = UDim2.new(0, 10, 0, 100)
 	infoLabel.BackgroundTransparency = 1
 	infoLabel.Text = ""
 	infoLabel.TextColor3 = Color3.fromRGB(180, 180, 190)
 	infoLabel.TextXAlignment = Enum.TextXAlignment.Left
 	infoLabel.Font = Enum.Font.Gotham
-	infoLabel.TextSize = 12
+	infoLabel.TextSize = 15
 	infoLabel.TextWrapped = true
+	infoLabel.RichText = true
 	infoLabel.Parent = detailFrame
 	
 	-- Action buttons container
 	local btnGrid = Instance.new("Frame")
 	btnGrid.Name = "Buttons"
-	btnGrid.Size = UDim2.new(1, -20, 0, 180)
-	btnGrid.Position = UDim2.new(0, 10, 0, 150)
+	btnGrid.Size = UDim2.new(1, -20, 0, 110)
+	btnGrid.Position = UDim2.new(0, 10, 0, 220)
 	btnGrid.BackgroundTransparency = 1
 	btnGrid.Parent = detailFrame
 	
 	local gridLayout = Instance.new("UIGridLayout")
-	gridLayout.CellSize = UDim2.new(0, 145, 0, 35)
-	gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+	gridLayout.CellSize = UDim2.new(0, 145, 0, 30)
+	gridLayout.CellPadding = UDim2.new(0, 10, 0, 8)
 	gridLayout.Parent = btnGrid
 	
 	local selectedPlayer = nil
 	
 	local function createButton(text, onClick)
 		local btn = Instance.new("TextButton")
-		btn.Size = UDim2.new(0, 145, 0, 35)
+		btn.Size = UDim2.new(0, 145, 0, 30)
 		btn.BackgroundColor3 = Color3.fromRGB(35, 30, 50)
 		btn.Text = text
 		btn.TextColor3 = Color3.fromRGB(200, 180, 255)
@@ -14632,7 +14681,7 @@ local function createAdminPortal()
 		return btn
 	end
 	
-	createButton("Spectate", function(p) execCmd("view " .. p.Name) end)
+	createButton("View", function(p) execCmd("view " .. p.Name) end)
 	createButton("Unview", function(p) execCmd("unview") end)
 	createButton("Go To", function(p) execCmd("goto " .. p.Name) end)
 	createButton("Bring (Client)", function(p) execCmd("cbring " .. p.Name) end)
@@ -14642,13 +14691,20 @@ local function createAdminPortal()
 	local function selectPlayer(p)
 		selectedPlayer = p
 		nameLabel.Text = p.DisplayName or p.Name
-		userLabel.Text = "@" .. p.Name
+		userLabel.Text = "<b>@" .. p.Name .. "</b>"
 		profileImage.Image = "rbxthumb://type=AvatarHeadShot&id=" .. p.UserId .. "&w=150&h=150"
 		
 		local age = "Unknown"
 		pcall(function() age = tostring(p.AccountAge) end)
 		
-		local invisStatus = "No"
+		local ageText = "<b>Unknown</b>"
+		local ageNum = tonumber(age)
+		if ageNum then
+			local yearsVal = ageNum / 365.25
+			ageText = "<b>" .. ageNum .. " days</b> (<b>" .. string.format("%.1f", yearsVal) .. " years</b>)"
+		end
+		
+		local invisStatusText = "<b>No</b>"
 		local parts = 0
 		local transparentParts = 0
 		if p.Character then
@@ -14662,27 +14718,20 @@ local function createAdminPortal()
 			end
 		end
 		if parts > 0 and transparentParts == parts then
-			invisStatus = "Yes"
+			invisStatusText = "<b><font color=\"rgb(0, 191, 255)\">Yes</font></b>"
 		end
 		
-		infoLabel.Text = "Account Age: " .. age .. " days\nStaff Member: Fetching...\nInvisible: " .. invisStatus
+		infoLabel.Text = "Account Age:  " .. ageText .. "\n\nStaff Member:  <b>Fetching...</b>\n\nInvisible:  " .. invisStatusText
 		
 		task.spawn(function()
-			local staffRole = "No"
-			local success, role = pcall(function()
-				if p:IsInGroup(17180419) then
-					return p:GetRoleInGroup(17180419) .. " (Staff Group)"
-				elseif game.CreatorType == Enum.CreatorType.Group and p:IsInGroup(game.CreatorId) then
-					return p:GetRoleInGroup(game.CreatorId) .. " (Game Owner)"
-				elseif p:IsInGroup(1200769) then
-					return "Roblox Employee"
-				end
-			end)
-			if success and role then
-				staffRole = role
+			local staffRoleText = "<b>No</b>"
+			local isStaff, role = getCachedStaffRole(p)
+			if isStaff and role then
+				local rColor = getRoleColor(role)
+				staffRoleText = "<b><font color=\"" .. rColor .. "\">" .. role .. "</font></b>"
 			end
 			if selectedPlayer == p then
-				infoLabel.Text = "Account Age: " .. age .. " days\nStaff Member: " .. staffRole .. "\nInvisible: " .. invisStatus
+				infoLabel.Text = "Account Age:  " .. ageText .. "\n\nStaff Member:  " .. staffRoleText .. "\n\nInvisible:  " .. invisStatusText
 			end
 		end)
 	end
@@ -14785,7 +14834,7 @@ local function createAdminPortal()
 			btnCorner.Parent = pBtn
 			
 			local displayName = p.DisplayName or p.Name
-			local text = displayName .. " (@" .. p.Name .. ")"
+			local text = displayName .. " (<b>@" .. p.Name .. "</b>)"
 			
 			local badges = {}
 			local parts = 0
@@ -14829,30 +14878,7 @@ local function createAdminPortal()
 			
 			-- Asynchronous Group Watch Badge Check (so yielding doesn't freeze listing/UI creation)
 			task.spawn(function()
-				local isStaff = false
-				local success, inGroup17 = pcall(function() return p:IsInGroup(17180419) end)
-				if success and inGroup17 then
-					local successRole, role = pcall(function() return p:GetRoleInGroup(17180419) end)
-					if successRole and role and StaffRolewatchData.Roles[role] then
-						isStaff = true
-					end
-				else
-					local successOwner, inOwnerGroup = pcall(function()
-						return game.CreatorType == Enum.CreatorType.Group and p:IsInGroup(game.CreatorId)
-					end)
-					if successOwner and inOwnerGroup then
-						local successRole, roleInfo = pcall(getStaffRole, p)
-						if successRole and roleInfo.Staff then
-							isStaff = true
-						end
-					else
-						local successRoblox, inRoblox = pcall(function() return p:IsInGroup(1200769) end)
-						if successRoblox and inRoblox then
-							isStaff = true
-						end
-					end
-				end
-				
+				local isStaff, role = getCachedStaffRole(p)
 				if isStaff then
 					pBtn.LayoutOrder = -100 + index
 					table.insert(badges, 1, "<b><font color=\"rgb(255, 200, 0)\">[STAFF]</font></b>")
@@ -14957,17 +14983,17 @@ local function createAdminPortal()
 			if child:IsA("TextLabel") then child:Destroy() end
 		end
 		
-		logsScroll.CanvasSize = UDim2.new(0, 0, 0, #StaffLogs * 25)
+		logsScroll.CanvasSize = UDim2.new(0, 0, 0, #StaffLogs * 32)
 		
 		for _, log in ipairs(StaffLogs) do
 			local label = Instance.new("TextLabel")
-			label.Size = UDim2.new(1, -10, 0, 22)
+			label.Size = UDim2.new(1, -10, 0, 28)
 			label.BackgroundTransparency = 1
 			label.RichText = true
 			label.Text = "<font color=\"rgb(150, 150, 160)\">[" .. log.Time .. "]</font> " .. log.Text
 			label.TextColor3 = Color3.fromRGB(220, 220, 230)
 			label.Font = Enum.Font.Gotham
-			label.TextSize = 11
+			label.TextSize = 13
 			label.TextXAlignment = Enum.TextXAlignment.Left
 			label.TextWrapped = true
 			label.Parent = logsScroll
@@ -15111,15 +15137,594 @@ end)
 addcmd("viewhud", {}, function(args, speaker)
 	if viewing then
 		createViewHUD(viewing)
-		notify("Spectate HUD", "Spectate HUD Enabled for " .. viewing.DisplayName)
+		notify("View HUD", "View HUD Enabled for " .. viewing.DisplayName)
 	else
-		notify("Spectate HUD", "No player is currently being spectated.")
+		notify("View HUD", "No player is currently being viewed.")
 	end
 end)
 
 addcmd("unviewhud", {}, function(args, speaker)
 	destroyViewHUD()
-	notify("Spectate HUD", "Spectate HUD Disabled")
+	notify("View HUD", "View HUD Disabled")
+end)
+
+-- ==========================================
+-- PREMIUM GAMEPLAY EXTENSIONS HELPERS
+-- ==========================================
+
+-- Hitbox Expander variables
+local HitboxSize = 2
+local HitboxConnection = nil
+local OriginalHitboxes = {}
+
+local function expandHitboxes()
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= Players.LocalPlayer and p.Character then
+			local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				if not OriginalHitboxes[p.UserId] then
+					OriginalHitboxes[p.UserId] = {
+						Size = hrp.Size,
+						Transparency = hrp.Transparency,
+						Material = hrp.Material,
+						Color = hrp.Color,
+						CanCollide = hrp.CanCollide
+					}
+				end
+				hrp.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
+				hrp.Transparency = 0.6
+				hrp.Material = Enum.Material.Neon
+				hrp.Color = Color3.fromRGB(0, 255, 0)
+				hrp.CanCollide = false
+			end
+		end
+	end
+end
+
+local function restoreHitboxes()
+	for userId, data in pairs(OriginalHitboxes) do
+		local p = Players:GetPlayerByUserId(userId)
+		local hrp = p and p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			hrp.Size = data.Size
+			hrp.Transparency = data.Transparency
+			hrp.Material = data.Material
+			hrp.Color = data.Color
+			hrp.CanCollide = data.CanCollide
+		end
+	end
+	OriginalHitboxes = {}
+end
+
+local function startHitboxLoop()
+	if HitboxConnection then HitboxConnection:Disconnect() end
+	HitboxConnection = RunService.Heartbeat:Connect(function()
+		expandHitboxes()
+	end)
+end
+
+local function stopHitboxLoop()
+	if HitboxConnection then
+		HitboxConnection:Disconnect()
+		HitboxConnection = nil
+	end
+	restoreHitboxes()
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	OriginalHitboxes[player.UserId] = nil
+end)
+
+-- Staff Proximity Radar Alarm variables
+local StaffAlarmConnection = nil
+local AlarmFlasher = nil
+
+local function triggerStaffAlarmEffect()
+	if not AlarmFlasher then
+		AlarmFlasher = Instance.new("Frame")
+		AlarmFlasher.Name = "StaffAlarmFlasher"
+		AlarmFlasher.Size = UDim2.new(1, 0, 1, 0)
+		AlarmFlasher.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+		AlarmFlasher.BackgroundTransparency = 1
+		AlarmFlasher.ZIndex = 999999
+		AlarmFlasher.Parent = COREGUI:FindFirstChild("RobloxGui") or COREGUI:FindFirstChildOfClass("ScreenGui") or COREGUI:GetChildren()[1]
+	end
+	
+	task.spawn(function()
+		for i = 1, 3 do
+			TweenService:Create(AlarmFlasher, TweenInfo.new(0.25), {BackgroundTransparency = 0.5}):Play()
+			task.wait(0.25)
+			TweenService:Create(AlarmFlasher, TweenInfo.new(0.25), {BackgroundTransparency = 1}):Play()
+			task.wait(0.25)
+		end
+	end)
+
+	local s = Instance.new("Sound")
+	s.SoundId = "rbxassetid://18723584764"
+	s.Volume = 1
+	s.Parent = game:GetService("SoundService")
+	s:Play()
+	game:GetService("Debris"):AddItem(s, 3)
+end
+
+local function checkStaffProximity()
+	local localChar = Players.LocalPlayer.Character
+	local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
+	if not localRoot then return end
+
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= Players.LocalPlayer and p.Character then
+			local root = p.Character:FindFirstChild("HumanoidRootPart")
+			if root then
+				local isStaff, role = getCachedStaffRole(p)
+				if isStaff then
+					local dist = (localRoot.Position - root.Position).Magnitude
+					if dist <= 150 then
+						triggerStaffAlarmEffect()
+						notify("STAFF ALARM", "Staff member " .. p.DisplayName .. " (" .. role .. ") is near! (" .. math.floor(dist) .. " studs)", 5)
+						break
+					end
+				end
+			end
+		end
+	end
+end
+
+local function toggleStaffAlarm(enable)
+	if StaffAlarmConnection then StaffAlarmConnection:Disconnect() StaffAlarmConnection = nil end
+	if AlarmFlasher then AlarmFlasher:Destroy() AlarmFlasher = nil end
+	if enable then
+		notify("Staff Alarm", "Proximity alarm enabled (watching 150 stud radius)")
+		local lastCheck = tick()
+		StaffAlarmConnection = RunService.Heartbeat:Connect(function()
+			if tick() - lastCheck >= 1.5 then
+				lastCheck = tick()
+				pcall(checkStaffProximity)
+			end
+		end)
+	else
+		notify("Staff Alarm", "Proximity alarm disabled")
+	end
+end
+
+-- Ghost Fling variables
+local GhostFlingEnabled = false
+local GhostFlingLoop = nil
+local GhostOriginalCFrame = nil
+local GhostPlatform = nil
+
+local function toggleGhostFling(enable)
+	local char = Players.LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	
+	if not enable then
+		GhostFlingEnabled = false
+		if GhostFlingLoop then GhostFlingLoop:Disconnect() GhostFlingLoop = nil end
+		
+		if char then
+			for _, part in pairs(char:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.Transparency = part:GetAttribute("OrigTrans") or 0
+					part.CanCollide = part:GetAttribute("OrigCollide") == nil and true or part:GetAttribute("OrigCollide")
+				elseif part:IsA("Decal") then
+					part.Transparency = part:GetAttribute("OrigTrans") or 0
+				end
+			end
+		end
+		
+		if root then
+			root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			if GhostOriginalCFrame then
+				root.CFrame = GhostOriginalCFrame
+			end
+		end
+		
+		if GhostPlatform then GhostPlatform:Destroy() GhostPlatform = nil end
+		notify("Ghost Fling", "Ghost Fling Disabled")
+		return
+	end
+	
+	if not char or not root or not hum then
+		notify("Ghost Fling", "Character not fully loaded.")
+		return
+	end
+	
+	GhostFlingEnabled = true
+	GhostOriginalCFrame = root.CFrame
+	
+	for _, part in pairs(char:GetDescendants()) do
+		if part:IsA("BasePart") then
+			if not part:GetAttribute("OrigTrans") then
+				part:SetAttribute("OrigTrans", part.Transparency)
+			end
+			if not part:GetAttribute("OrigCollide") then
+				part:SetAttribute("OrigCollide", part.CanCollide)
+			end
+			part.Transparency = 1
+			part.CanCollide = false
+		elseif part:IsA("Decal") then
+			if not part:GetAttribute("OrigTrans") then
+				part:SetAttribute("OrigTrans", part.Transparency)
+			end
+			part.Transparency = 1
+		end
+	end
+	
+	GhostPlatform = Instance.new("Part")
+	GhostPlatform.Size = Vector3.new(10, 1, 10)
+	GhostPlatform.CFrame = GhostOriginalCFrame * CFrame.new(0, -3.5, 0)
+	GhostPlatform.Anchored = true
+	GhostPlatform.CanCollide = true
+	GhostPlatform.Transparency = 0.5
+	GhostPlatform.Color = Color3.fromRGB(120, 80, 255)
+	GhostPlatform.Parent = workspace
+	
+	notify("Ghost Fling", "Ghost Fling Enabled (Invis + Spin active). Go near players to fling them!")
+	
+	GhostFlingLoop = RunService.Heartbeat:Connect(function()
+		if not char or not char.Parent or not root then
+			toggleGhostFling(false)
+			return
+		end
+		
+		for _, part in pairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+				part.Transparency = 1
+			elseif part:IsA("Decal") then
+				part.Transparency = 1
+			end
+		end
+		
+		root.AssemblyAngularVelocity = Vector3.new(0, 50000, 0)
+		root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X, 0, root.AssemblyLinearVelocity.Z)
+	end)
+end
+
+-- Waypoints & POI ESP variables
+local POIWaypoints = {}
+local POIActive = false
+
+local function clearWaypoints()
+	for _, wp in pairs(POIWaypoints) do
+		if wp then wp:Destroy() end
+	end
+	POIWaypoints = {}
+	POIActive = false
+end
+
+local function createWaypoints()
+	clearWaypoints()
+	POIActive = true
+	
+	local function checkPOI(obj)
+		if not POIActive then return end
+		local name = obj.Name:lower()
+		local matches = false
+		local displayName = obj.Name
+		
+		if obj:IsA("SpawnLocation") then
+			matches = true
+			displayName = "Spawn"
+		elseif name:find("vault") or name:find("safe") then
+			matches = true
+			displayName = "Vault/Safe"
+		elseif name:find("exit") or name:find("escape") then
+			matches = true
+			displayName = "Exit"
+		elseif name:find("shop") or name:find("store") or name:find("dealer") then
+			matches = true
+			displayName = "Shop"
+		elseif name:find("garage") then
+			matches = true
+			displayName = "Garage"
+		elseif name:find("flag") or name:find("objective") then
+			matches = true
+			displayName = "Objective"
+		end
+		
+		if matches and obj:IsA("BasePart") then
+			local bgui = Instance.new("BillboardGui")
+			bgui.Name = "POI_Waypoint"
+			bgui.Size = UDim2.new(0, 100, 0, 40)
+			bgui.AlwaysOnTop = true
+			bgui.Adornee = obj
+			bgui.Parent = COREGUI:FindFirstChild("RobloxGui") or COREGUI:FindFirstChildOfClass("ScreenGui") or COREGUI:GetChildren()[1]
+			
+			local text = Instance.new("TextLabel")
+			text.Size = UDim2.new(1, 0, 1, 0)
+			text.BackgroundTransparency = 1
+			text.TextSize = 11
+			text.Font = Enum.Font.GothamBold
+			text.TextColor3 = Color3.fromRGB(0, 255, 127)
+			text.RichText = true
+			text.Parent = bgui
+			
+			table.insert(POIWaypoints, bgui)
+			
+			task.spawn(function()
+				while bgui and bgui.Parent and POIActive do
+					local char = Players.LocalPlayer.Character
+					local root = char and char:FindFirstChild("HumanoidRootPart")
+					if root and obj and obj.Parent then
+						local dist = math.floor((root.Position - obj.Position).Magnitude)
+						text.Text = "📍 <b>" .. displayName .. "</b>\n[" .. dist .. "s]"
+					else
+						break
+					end
+					task.wait(0.5)
+				end
+			end)
+		end
+	end
+
+	for _, child in pairs(workspace:GetDescendants()) do
+		pcall(checkPOI, child)
+	end
+	
+	notify("Waypoints", "Waypoints & POI ESP enabled")
+end
+
+-- Safe-Zone variables
+local SafeZoneCoordinate = CFrame.new(0, 5000, 0)
+local SafeZonePlatform = nil
+
+local function setSafeZone(cf)
+	SafeZoneCoordinate = cf
+	notify("Safe-Zone", "Safe-zone set to current location")
+end
+
+local function teleportToSafeZone()
+	local char = Players.LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then
+		notify("Safe-Zone", "Character not loaded")
+		return
+	end
+	
+	if not SafeZonePlatform then
+		SafeZonePlatform = Instance.new("Part")
+		SafeZonePlatform.Size = Vector3.new(20, 1, 20)
+		SafeZonePlatform.CFrame = SafeZoneCoordinate * CFrame.new(0, -3.5, 0)
+		SafeZonePlatform.Anchored = true
+		SafeZonePlatform.CanCollide = true
+		SafeZonePlatform.Material = Enum.Material.Glass
+		SafeZonePlatform.Color = Color3.fromRGB(120, 80, 255)
+		SafeZonePlatform.Parent = workspace
+	end
+	
+	root.CFrame = SafeZoneCoordinate
+	notify("Safe-Zone", "Teleported to safe-zone!")
+end
+
+-- Item Finder & Auto Grabber helpers
+local ItemFinderFrame = nil
+local ItemFinderConnection = nil
+
+local function destroyItemFinderUI()
+	if ItemFinderFrame then ItemFinderFrame:Destroy() ItemFinderFrame = nil end
+	if ItemFinderConnection then ItemFinderConnection:Disconnect() ItemFinderConnection = nil end
+end
+
+local function createItemFinderUI()
+	destroyItemFinderUI()
+	
+	local frame = Instance.new("Frame")
+	frame.Name = "ItemFinderFrame"
+	frame.Size = UDim2.new(0, 280, 0, 300)
+	frame.Position = UDim2.new(0.5, -140, 0.5, -150)
+	frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+	frame.BackgroundTransparency = 0.1
+	frame.BorderSizePixel = 0
+	frame.Active = true
+	frame.Draggable = true
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 10)
+	corner.Parent = frame
+	
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(120, 80, 255)
+	stroke.Thickness = 1.5
+	stroke.Parent = frame
+	
+	local header = Instance.new("Frame")
+	header.Size = UDim2.new(1, 0, 0, 35)
+	header.BackgroundTransparency = 1
+	header.Parent = frame
+	
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, -50, 1, 0)
+	title.Position = UDim2.new(0, 15, 0, 0)
+	title.BackgroundTransparency = 1
+	title.Text = "🔍 WEAPON / ITEM FINDER"
+	title.TextColor3 = Color3.fromRGB(160, 130, 255)
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 12
+	title.Parent = header
+	
+	local close = Instance.new("TextButton")
+	close.Size = UDim2.new(0, 30, 0, 30)
+	close.Position = UDim2.new(1, -35, 0, 2)
+	close.BackgroundTransparency = 1
+	close.Text = "✕"
+	close.TextColor3 = Color3.fromRGB(150, 150, 150)
+	close.Font = Enum.Font.GothamBold
+	close.TextSize = 14
+	close.Parent = header
+	close.MouseButton1Click:Connect(destroyItemFinderUI)
+	
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Size = UDim2.new(1, -20, 1, -50)
+	scroll.Position = UDim2.new(0, 10, 0, 40)
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 4
+	scroll.Parent = frame
+	
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 5)
+	layout.Parent = scroll
+	
+	frame.Parent = PARENT
+	dragGUI(frame)
+	ItemFinderFrame = frame
+	
+	local function updateFinder()
+		for _, c in pairs(scroll:GetChildren()) do
+			if c:IsA("TextButton") then c:Destroy() end
+		end
+		
+		local items = {}
+		for _, child in pairs(workspace:GetDescendants()) do
+			if child:IsA("Tool") and not child:IsDescendantOf(Players) then
+				local handle = child:FindFirstChild("Handle") or child:FindFirstChildOfClass("BasePart")
+				if handle then
+					local root = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+					local dist = root and math.floor((root.Position - handle.Position).Magnitude) or 99999
+					table.insert(items, {Instance = child, Handle = handle, Distance = dist})
+				end
+			end
+		end
+		
+		table.sort(items, function(a, b) return a.Distance < b.Distance end)
+		scroll.CanvasSize = UDim2.new(0, 0, 0, #items * 35)
+		
+		for _, item in ipairs(items) do
+			local btn = Instance.new("TextButton")
+			btn.Size = UDim2.new(1, -5, 0, 30)
+			btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+			btn.BorderSizePixel = 0
+			btn.Text = "  " .. item.Instance.Name .. " [" .. item.Distance .. " studs]"
+			btn.TextColor3 = Color3.fromRGB(220, 220, 230)
+			btn.Font = Enum.Font.GothamMedium
+			btn.TextSize = 11
+			btn.TextXAlignment = Enum.TextXAlignment.Left
+			
+			local btnCorner = Instance.new("UICorner")
+			btnCorner.CornerRadius = UDim.new(0, 5)
+			btnCorner.Parent = btn
+			
+			btn.MouseButton1Click:Connect(function()
+				local root = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+				if root then
+					root.CFrame = item.Handle.CFrame * CFrame.new(0, 1, 0)
+					notify("Item Finder", "Teleported to " .. item.Instance.Name)
+				end
+			end)
+			
+			btn.Parent = scroll
+		end
+	end
+	
+	updateFinder()
+	local lastRef = tick()
+	ItemFinderConnection = RunService.Heartbeat:Connect(function()
+		if tick() - lastRef >= 2 then
+			lastRef = tick()
+			pcall(updateFinder)
+		end
+	end)
+end
+
+local function autoGrabItems()
+	local root = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		notify("Auto Grab", "Character not loaded")
+		return
+	end
+	
+	local items = {}
+	for _, child in pairs(workspace:GetDescendants()) do
+		if child:IsA("Tool") and not child:IsDescendantOf(Players) then
+			local handle = child:FindFirstChild("Handle") or child:FindFirstChildOfClass("BasePart")
+			if handle then
+				table.insert(items, {Instance = child, Handle = handle})
+			end
+		end
+	end
+	
+	if #items == 0 then
+		notify("Auto Grab", "No free tools found in workspace")
+		return
+	end
+	
+	notify("Auto Grab", "Grabbing " .. #items .. " items, please wait...")
+	task.spawn(function()
+		local origCFrame = root.CFrame
+		for _, item in ipairs(items) do
+			if item.Handle and item.Handle.Parent then
+				root.CFrame = item.Handle.CFrame
+				task.wait(0.15)
+			end
+		end
+		root.CFrame = origCFrame
+		notify("Auto Grab", "Finished grabbing items!")
+	end)
+end
+
+-- ==========================================
+
+addcmd("finditems", {"itemlist"}, function(args, speaker)
+	createItemFinderUI()
+end)
+
+addcmd("grabitems", {"autotool"}, function(args, speaker)
+	autoGrabItems()
+end)
+
+addcmd("hitbox", {"hb"}, function(args, speaker)
+	local size = tonumber(args[1]) or 10
+	HitboxSize = size
+	startHitboxLoop()
+	notify("Hitbox Expander", "Hitboxes expanded to size " .. size)
+end)
+
+addcmd("unhitbox", {"nohb"}, function(args, speaker)
+	stopHitboxLoop()
+	notify("Hitbox Expander", "Hitboxes restored to original size")
+end)
+
+addcmd("staffalarm", {"staffproximity"}, function(args, speaker)
+	toggleStaffAlarm(true)
+end)
+
+addcmd("unstaffalarm", {}, function(args, speaker)
+	toggleStaffAlarm(false)
+end)
+
+addcmd("ghostfling", {"gfling"}, function(args, speaker)
+	toggleGhostFling(true)
+end)
+
+addcmd("unghostfling", {"ungfling"}, function(args, speaker)
+	toggleGhostFling(false)
+end)
+
+addcmd("waypoints", {"poi"}, function(args, speaker)
+	createWaypoints()
+end)
+
+addcmd("unwaypoints", {"nopoi"}, function(args, speaker)
+	clearWaypoints()
+	notify("Waypoints", "Waypoints disabled")
+end)
+
+addcmd("safezone", {"escape"}, function(args, speaker)
+	teleportToSafeZone()
+end)
+
+addcmd("setsafezone", {"setescape"}, function(args, speaker)
+	local char = Players.LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root then
+		setSafeZone(root.CFrame)
+	else
+		notify("Safe-Zone", "Character not loaded")
+	end
 end)
 
 addcmd("hop", {"serverhop"}, function(args, speaker)
