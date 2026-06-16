@@ -3293,7 +3293,8 @@ function CreateLabel(Name, Text)
 		if player then
 			local isStaff, role = getCachedStaffRole(player)
 			if isStaff and role then
-				prefix = "<font color=\"rgb(255, 50, 50)\"><b>[" .. role .. "]</b></font> "
+				local rColor = getRoleColor(role)
+				prefix = "<b><font color=\"rgb(255, 215, 0)\">[STAFF]</font> <font color=\"" .. rColor .. "\">[" .. role .. "]</font></b> "
 			end
 		end
 	end
@@ -5925,8 +5926,14 @@ end
 
 TESPmode = 0
 TESPenabled = false
+local TESPConnections = {}
+
 function TESP(plr)
 	task.spawn(function()
+		if TESPConnections[plr.UserId] then
+			pcall(function() TESPConnections[plr.UserId]:Disconnect() end)
+			TESPConnections[plr.UserId] = nil
+		end
 		for i,v in pairs(COREGUI:GetChildren()) do
 			if v.Name == plr.Name..'_TESP' then
 				v:Destroy()
@@ -6067,16 +6074,22 @@ function TESP(plr)
 				local addedFunc
 				addedFunc = plr.CharacterAdded:Connect(function()
 					if TESPenabled or (StaffRolewatchData.Active and isStaff) then
-						ESPholder:Destroy()
-						repeat wait(1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
+						if ESPholder then pcall(function() ESPholder:Destroy() end) end
+						repeat task.wait(0.1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
 						TESP(plr)
-						addedFunc:Disconnect()
 					else
+						if TESPConnections[plr.UserId] == addedFunc then
+							TESPConnections[plr.UserId] = nil
+						end
 						addedFunc:Disconnect()
 					end
 				end)
+				TESPConnections[plr.UserId] = addedFunc
 				
 				local CHMSremoved = ESPholder.AncestryChanged:Connect(function()
+					if TESPConnections[plr.UserId] == addedFunc then
+						TESPConnections[plr.UserId] = nil
+					end
 					addedFunc:Disconnect()
 				end)
 			end
@@ -8791,7 +8804,7 @@ addcmd('view',{'spectate'},function(args, speaker)
 		workspace.CurrentCamera.CameraSubject = humanoid or character
 		notify('Spectate','Viewing ' .. Players[v].Name)
 		local function viewDiedFunc()
-			repeat wait() until Players[v].Character ~= nil and getRoot(Players[v].Character)
+			repeat task.wait(0.05) until Players[v].Character ~= nil and getRoot(Players[v].Character)
 			local char = Players[v].Character
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
 			workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
@@ -13049,6 +13062,9 @@ local function updateStaffListUI(excludingPlayer)
 			local isStaff, role = getCachedStaffRole(player)
 			if isStaff and role then
 				table.insert(staffMembers, {Player = player, Role = role})
+				if StaffRolewatchData.Active then
+					task.spawn(function() TESP(player) end)
+				end
 			end
 		end
 	end
@@ -15319,6 +15335,9 @@ addcmd("viewhud", {}, function(args, speaker)
 	if viewing then
 		createViewHUD(viewing)
 		notify("View HUD", "View HUD Enabled for " .. viewing.DisplayName)
+	elseif ViewFCTarget then
+		createViewHUD(ViewFCTarget)
+		notify("View HUD", "View HUD Enabled for " .. ViewFCTarget.DisplayName)
 	else
 		notify("View HUD", "No player is currently being viewed.")
 	end
@@ -15395,6 +15414,12 @@ startViewFC = function(targetPlayer)
 	end)
 	
 	pcall(function() cam.CameraType = Enum.CameraType.Scriptable end)
+	
+	local char = targetPlayer.Character
+	local root = char and getRoot(char)
+	if root then
+		pcall(function() cam.CFrame = CFrame.new(root.Position + Vector3.new(0, 5, 15), root.Position) end)
+	end
 	
 	createViewHUD(targetPlayer)
 	
