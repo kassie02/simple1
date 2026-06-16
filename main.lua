@@ -6999,7 +6999,7 @@ addcmd('clip',{'unnoclip'},function(args, speaker)
 	Clip = true
 	if speaker.Character then
 		for _, child in pairs(speaker.Character:GetDescendants()) do
-			if child:IsA("BasePart") and child.CanCollide == false and child.Name ~= floatName then
+			if child:IsA("BasePart") and child.CanCollide == false and child.Name ~= floatName and child.Name ~= "HumanoidRootPart" then
 				child.CanCollide = true
 			end
 		end
@@ -13432,8 +13432,8 @@ task.spawn(function()
 end)
 
 local function createAdminPortal()
-	if PARENT:FindFirstChild("AdminPortal") then
-		PARENT.AdminPortal.Visible = true
+	if ScaledHolder:FindFirstChild("AdminPortal") then
+		ScaledHolder.AdminPortal.Visible = true
 		return
 	end
 	
@@ -13727,7 +13727,7 @@ local function createAdminPortal()
 		end
 	end)
 	
-	main.Parent = PARENT
+	main.Parent = ScaledHolder
 end
 
 addcmd("portal", {"panel"}, function(args, speaker)
@@ -13736,7 +13736,7 @@ addcmd("portal", {"panel"}, function(args, speaker)
 end)
 
 addcmd("unportal", {"unpanel"}, function(args, speaker)
-	local portal = PARENT:FindFirstChild("AdminPortal")
+	local portal = ScaledHolder:FindFirstChild("AdminPortal")
 	if portal then
 		portal:Destroy()
 	end
