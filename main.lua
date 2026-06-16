@@ -15021,55 +15021,48 @@ local function createAdminPortal()
 	serversLayout.Padding = UDim.new(0, 8)
 	serversLayout.Parent = serversScroll
 
+	local lastServerRefreshTime = 0
 	local function updateServersUI()
-		for _, child in pairs(serversScroll:GetChildren()) do
-			if child:IsA("Frame") or child:IsA("TextLabel") then
-				child:Destroy()
-			end
+		if os.clock() - lastServerRefreshTime < 3 then
+			notify("Server Browser", "Please wait a moment before refreshing again.")
+			return
 		end
 		
-		local loadingLabel = Instance.new("TextLabel")
-		loadingLabel.Size = UDim2.new(1, 0, 0, 30)
-		loadingLabel.BackgroundTransparency = 1
-		loadingLabel.Text = "Fetching active public servers, please wait..."
-		loadingLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
-		loadingLabel.Font = Enum.Font.GothamMedium
-		loadingLabel.TextSize = 13
-		loadingLabel.Parent = serversScroll
+		local tempLoading = Instance.new("TextLabel")
+		tempLoading.Size = UDim2.new(1, 0, 0, 30)
+		tempLoading.BackgroundTransparency = 1
+		tempLoading.Text = "Refreshing server list..."
+		tempLoading.TextColor3 = Color3.fromRGB(160, 130, 255)
+		tempLoading.Font = Enum.Font.GothamMedium
+		tempLoading.TextSize = 13
+		tempLoading.Parent = serversScroll
 		
 		task.spawn(function()
 			local success, req = pcall(function()
 				return game:HttpGet("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Desc&limit=100")
 			end)
 			
-			loadingLabel:Destroy()
+			if tempLoading then tempLoading:Destroy() end
 			
 			if not success or not req then
-				local errLabel = Instance.new("TextLabel")
-				errLabel.Size = UDim2.new(1, 0, 0, 30)
-				errLabel.BackgroundTransparency = 1
-				errLabel.Text = "Failed to fetch servers. Please try again."
-				errLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
-				errLabel.Font = Enum.Font.GothamMedium
-				errLabel.TextSize = 13
-				errLabel.Parent = serversScroll
+				notify("Server Browser", "Failed to refresh server list (rate limited). Keeping cached servers.")
 				return
 			end
 			
 			local body = HttpService:JSONDecode(req)
 			if not body or not body.data or #body.data == 0 then
-				local emptyLabel = Instance.new("TextLabel")
-				emptyLabel.Size = UDim2.new(1, 0, 0, 30)
-				emptyLabel.BackgroundTransparency = 1
-				emptyLabel.Text = "No other public servers found."
-				emptyLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
-				emptyLabel.Font = Enum.Font.GothamMedium
-				emptyLabel.TextSize = 13
-				emptyLabel.Parent = serversScroll
+				notify("Server Browser", "No servers returned by Roblox. Keeping cached servers.")
 				return
 			end
 			
-			-- Add a refresh button card at the top!
+			lastServerRefreshTime = os.clock()
+			
+			for _, child in pairs(serversScroll:GetChildren()) do
+				if child:IsA("Frame") or child:IsA("TextLabel") then
+					child:Destroy()
+				end
+			end
+			
 			local refreshCard = Instance.new("Frame")
 			refreshCard.Size = UDim2.new(1, -10, 0, 35)
 			refreshCard.BackgroundColor3 = Color3.fromRGB(25, 20, 35)
