@@ -13433,17 +13433,12 @@ end)
 
 local function createAdminPortal()
 	if PARENT:FindFirstChild("AdminPortal") then
-		PARENT.AdminPortal.Enabled = true
+		PARENT.AdminPortal.Visible = true
 		return
 	end
 	
-	local portal = Instance.new("ScreenGui")
-	portal.Name = "AdminPortal"
-	portal.ResetOnSpawn = false
-	portal.DisplayOrder = 999999
-	
 	local main = Instance.new("Frame")
-	main.Name = "Main"
+	main.Name = "AdminPortal"
 	main.Size = UDim2.new(0, 600, 0, 400)
 	main.Position = UDim2.new(0.5, -300, 0.5, -200)
 	main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
@@ -13491,7 +13486,7 @@ local function createAdminPortal()
 	
 	close.MouseEnter:Connect(function() close.TextColor3 = Color3.fromRGB(255, 75, 75) end)
 	close.MouseLeave:Connect(function() close.TextColor3 = Color3.fromRGB(150, 150, 150) end)
-	close.MouseButton1Click:Connect(function() portal.Enabled = false end)
+	close.MouseButton1Click:Connect(function() main.Visible = false end)
 	
 	-- Divider
 	local div = Instance.new("Frame")
@@ -13726,14 +13721,13 @@ local function createAdminPortal()
 	updateList()
 	
 	task.spawn(function()
-		while portal.Parent do
+		while main.Parent do
 			updateList()
 			task.wait(3)
 		end
 	end)
 	
-	main.Parent = portal
-	portal.Parent = PARENT
+	main.Parent = PARENT
 end
 
 addcmd("portal", {"panel"}, function(args, speaker)
