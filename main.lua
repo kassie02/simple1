@@ -13358,19 +13358,22 @@ end
 
 StaffRolewatchConnection = Players.PlayerAdded:Connect(function(player)
 	if not StaffRolewatchData.Active then return end
-	if player:IsInGroup(StaffRolewatchData.Group) then
-		local playerRole = player:GetRoleInGroup(StaffRolewatchData.Group)
-		if StaffRolewatchData.Roles[playerRole] then
-			if StaffRolewatchData.Leave == true then
-				Players.LocalPlayer:Kick("\n\nStaff Watch\nPlayer \"" .. tostring(player.Name) .. "\" has joined with the Role \"" .. playerRole .. "\"\n")
-			else
-				playerStaffRolesCache[player.UserId] = {isStaff = true, role = playerRole}
-				createStaffWatchNotification(player, playerRole)
-				task.spawn(updateStaffListUI)
-				task.spawn(function() TESP(player) end)
+	task.spawn(function()
+		local success, inGroup = pcall(function() return player:IsInGroup(StaffRolewatchData.Group) end)
+		if success and inGroup then
+			local successRole, playerRole = pcall(function() return player:GetRoleInGroup(StaffRolewatchData.Group) end)
+			if successRole and playerRole and StaffRolewatchData.Roles[playerRole] then
+				if StaffRolewatchData.Leave == true then
+					Players.LocalPlayer:Kick("\n\nStaff Watch\nPlayer \"" .. tostring(player.Name) .. "\" has joined with the Role \"" .. playerRole .. "\"\n")
+				else
+					playerStaffRolesCache[player.UserId] = {isStaff = true, role = playerRole}
+					createStaffWatchNotification(player, playerRole)
+					task.spawn(updateStaffListUI)
+					task.spawn(function() TESP(player) end)
+				end
 			end
 		end
-	end
+	end)
 end)
 
 addcmd("tmp", {}, function(args, speaker)
