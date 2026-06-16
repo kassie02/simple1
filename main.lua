@@ -8205,15 +8205,24 @@ addcmd('view',{'spectate'},function(args, speaker)
 			viewChanged:Disconnect()
 		end
 		viewing = Players[v]
-		workspace.CurrentCamera.CameraSubject = viewing.Character
+		local character = viewing.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		workspace.CurrentCamera.CameraSubject = humanoid or character
 		notify('Spectate','Viewing ' .. Players[v].Name)
 		local function viewDiedFunc()
 			repeat wait() until Players[v].Character ~= nil and getRoot(Players[v].Character)
-			workspace.CurrentCamera.CameraSubject = viewing.Character
+			local char = Players[v].Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			workspace.CurrentCamera.CameraSubject = hum or char
 		end
 		viewDied = Players[v].CharacterAdded:Connect(viewDiedFunc)
 		local function viewChangedFunc()
-			workspace.CurrentCamera.CameraSubject = viewing.Character
+			local char = viewing.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			local target = hum or char
+			if workspace.CurrentCamera.CameraSubject ~= target then
+				workspace.CurrentCamera.CameraSubject = target
+			end
 		end
 		viewChanged = workspace.CurrentCamera:GetPropertyChangedSignal("CameraSubject"):Connect(viewChangedFunc)
 	end
@@ -8241,7 +8250,9 @@ addcmd('unview',{'unspectate'},function(args, speaker)
 		viewDied:Disconnect()
 		viewChanged:Disconnect()
 	end
-	workspace.CurrentCamera.CameraSubject = speaker.Character
+	local character = speaker.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	workspace.CurrentCamera.CameraSubject = humanoid or character
 end)
 
 
@@ -12369,7 +12380,10 @@ StaffRolewatchData = {
 	Leave = false
 }
 
-local function createStaffWatchNotification(playerName, roleName)
+local function createStaffWatchNotification(player, roleName)
+	local playerName = typeof(player) == "Instance" and player.Name or tostring(player)
+	local userId = typeof(player) == "Instance" and player.UserId or 0
+	
 	local container = PARENT:FindFirstChild("StaffWatchContainer")
 	if not container then
 		container = Instance.new("Frame")
@@ -12405,9 +12419,23 @@ local function createStaffWatchNotification(playerName, roleName)
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Parent = card
 	
+	-- Avatar Headshot
+	local avatar = Instance.new("ImageLabel")
+	avatar.Name = "Avatar"
+	avatar.Size = UDim2.new(0, 55, 0, 55)
+	avatar.Position = UDim2.new(0, 10, 0, 10)
+	avatar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	avatar.BorderSizePixel = 0
+	avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. userId .. "&w=150&h=150"
+	
+	local avatarCorner = Instance.new("UICorner")
+	avatarCorner.CornerRadius = UDim.new(0, 6)
+	avatarCorner.Parent = avatar
+	avatar.Parent = card
+	
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -40, 0, 25)
-	title.Position = UDim2.new(0, 15, 0, 8)
+	title.Size = UDim2.new(1, -115, 0, 25)
+	title.Position = UDim2.new(0, 75, 0, 8)
 	title.BackgroundTransparency = 1
 	title.Text = "⚠️ STAFF DETECTED"
 	title.TextColor3 = Color3.fromRGB(255, 75, 75)
@@ -12417,8 +12445,8 @@ local function createStaffWatchNotification(playerName, roleName)
 	title.Parent = card
 	
 	local info = Instance.new("TextLabel")
-	info.Size = UDim2.new(1, -40, 0, 35)
-	info.Position = UDim2.new(0, 15, 0, 30)
+	info.Size = UDim2.new(1, -115, 0, 35)
+	info.Position = UDim2.new(0, 75, 0, 30)
 	info.BackgroundTransparency = 1
 	info.Text = "User: " .. playerName .. " | Role: " .. roleName
 	info.TextColor3 = Color3.fromRGB(220, 220, 220)
@@ -12456,7 +12484,7 @@ local function createStaffWatchNotification(playerName, roleName)
 	card.Parent = container
 	
 	local s = Instance.new("Sound")
-	s.SoundId = "rbxassetid://9069609268"
+	s.SoundId = "rbxassetid://18723584764"
 	s.Volume = 0.5
 	s.Parent = game:GetService("SoundService")
 	s:Play()
@@ -12471,7 +12499,7 @@ StaffRolewatchConnection = Players.PlayerAdded:Connect(function(player)
 			if StaffRolewatchData.Leave == true then
 				Players.LocalPlayer:Kick("\n\nStaff Watch\nPlayer \"" .. tostring(player.Name) .. "\" has joined with the Role \"" .. playerRole .. "\"\n")
 			else
-				createStaffWatchNotification(player.Name, playerRole)
+				createStaffWatchNotification(player, playerRole)
 			end
 		end
 	end
@@ -12480,23 +12508,49 @@ end)
 addcmd("tmp", {}, function(args, speaker)
 	StaffRolewatchData.Active = true
 	local found = {}
-	for _, player in pairs(Players:GetPlayers()) do
-		if player ~= Players.LocalPlayer and player:IsInGroup(StaffRolewatchData.Group) then
-			local playerRole = player:GetRoleInGroup(StaffRolewatchData.Group)
-			if StaffRolewatchData.Roles[playerRole] then
-				if StaffRolewatchData.Leave == true then
-					Players.LocalPlayer:Kick("\n\nStaff Watch\nPlayer \"" .. tostring(player.Name) .. "\" is in server with the Role \"" .. playerRole .. "\"\n")
-				else
-					createStaffWatchNotification(player.Name, playerRole)
-					table.insert(found, tostring(player.Name) .. " (" .. playerRole .. ")")
-				end
+	local players = Players:GetPlayers()
+	local total = 0
+	for _, player in pairs(players) do
+		if player ~= Players.LocalPlayer then
+			total = total + 1
+		end
+	end
+	
+	local checked = 0
+	local function checkDone()
+		checked = checked + 1
+		if checked >= total then
+			if #found > 0 then
+				notify("Staff Watch", "Active & Found: " .. table.concat(found, ", "))
+			else
+				notify("Staff Watch", "Enabled (Watching Group 17180419)")
 			end
 		end
 	end
-	if #found > 0 then
-		notify("Staff Watch", "Active & Found: " .. table.concat(found, ", "))
-	else
+	
+	if total <= 0 then
 		notify("Staff Watch", "Enabled (Watching Group 17180419)")
+		return
+	end
+
+	for _, player in pairs(players) do
+		if player ~= Players.LocalPlayer then
+			task.spawn(function()
+				local success, inGroup = pcall(function() return player:IsInGroup(StaffRolewatchData.Group) end)
+				if success and inGroup then
+					local successRole, playerRole = pcall(function() return player:GetRoleInGroup(StaffRolewatchData.Group) end)
+					if successRole and playerRole and StaffRolewatchData.Roles[playerRole] then
+						if StaffRolewatchData.Leave == true then
+							Players.LocalPlayer:Kick("\n\nStaff Watch\nPlayer \"" .. tostring(player.Name) .. "\" is in server with the Role \"" .. playerRole .. "\"\n")
+						else
+							createStaffWatchNotification(player, playerRole)
+							table.insert(found, tostring(player.Name) .. " (" .. playerRole .. ")")
+						end
+					end
+				end
+				checkDone()
+			end)
+		end
 	end
 end)
 
@@ -13594,7 +13648,7 @@ local function createAdminPortal()
 	
 	local gridLayout = Instance.new("UIGridLayout")
 	gridLayout.CellSize = UDim2.new(0, 145, 0, 35)
-	gridLayout.CellSpacing = UDim2.new(0, 10, 0, 10)
+	gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
 	gridLayout.Parent = btnGrid
 	
 	local selectedPlayer = nil
@@ -13804,3 +13858,10 @@ task.spawn(function()
     IntroBackground:Destroy()
     minimizeHolder()
 end)
+
+if game.PlaceId == 98371023930528 or game.GameId == 98371023930528 then
+	task.spawn(function()
+		task.wait(1.5)
+		execCmd("tmp")
+	end)
+end
