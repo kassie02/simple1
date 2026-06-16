@@ -15249,7 +15249,9 @@ local function createAdminPortal()
 	
 	local main = Instance.new("Frame")
 	main.Name = "AdminPortal"
+	local selectedPlayer = nil
 	main.Size = UDim2.new(0, 600, 0, 400)
+
 	main.Position = UDim2.new(0.5, -300, 0.5, -200)
 	main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 	main.BackgroundTransparency = 0.1
@@ -15573,8 +15575,8 @@ local function createAdminPortal()
 	gridLayout.CellPadding = UDim2.new(0, 10, 0, 8)
 	gridLayout.Parent = btnGrid
 	
-	local selectedPlayer = nil
 	local updateDetailFrameForBatch
+
 	
 	local batchPanel = Instance.new("Frame")
 	batchPanel.Name = "BatchPanel"
@@ -15830,7 +15832,10 @@ local function createAdminPortal()
 				staffRoleText = "<b><font color=\"" .. rColor .. "\">" .. role .. "</font></b>"
 			end
 			
-			while selectedPlayer == p and main.Parent do
+			while selectedPlayer == p do
+				local success, hasParent = pcall(function() return main and main.Parent end)
+				if not success or not hasParent then break end
+
 				local distText = "<b>Unknown</b>"
 				local localChar = Players.LocalPlayer.Character
 				local localRoot = localChar and getRoot(localChar)
@@ -16327,12 +16332,19 @@ local function createAdminPortal()
 	local MapDots = {}
 	local MapLabels = {}
 	
-	RunService.Heartbeat:Connect(function()
-		if not mapViewFrame.Visible or not main.Visible then
+	local mapConnection
+	mapConnection = RunService.Heartbeat:Connect(function()
+		local success, isVisible = pcall(function() return main and main.Parent and main.Visible and mapViewFrame.Visible end)
+		if not success or not isVisible then
+			if mapConnection and (not main or not main.Parent) then
+				mapConnection:Disconnect()
+				mapConnection = nil
+			end
 			for _, dot in pairs(MapDots) do dot.Visible = false end
 			for _, label in pairs(MapLabels) do label.Visible = false end
 			return
 		end
+
 		
 		local localChar = Players.LocalPlayer.Character
 		local localRoot = localChar and getRoot(localChar)
@@ -16915,16 +16927,38 @@ local function createAdminPortal()
 	
 	triggerLogsTab = function() setTab("Logs") end
 	
-	Players.PlayerAdded:Connect(updateList)
-	Players.PlayerRemoving:Connect(updateList)
+	local playerAddedConn, playerRemovingConn
+	playerAddedConn = Players.PlayerAdded:Connect(function(plr)
+		local success, hasParent = pcall(function() return main and main.Parent end)
+		if not success or not hasParent then
+			if playerAddedConn then playerAddedConn:Disconnect() playerAddedConn = nil end
+			if playerRemovingConn then playerRemovingConn:Disconnect() playerRemovingConn = nil end
+			return
+		end
+		updateList()
+	end)
+	
+	playerRemovingConn = Players.PlayerRemoving:Connect(function(plr)
+		local success, hasParent = pcall(function() return main and main.Parent end)
+		if not success or not hasParent then
+			if playerAddedConn then playerAddedConn:Disconnect() playerAddedConn = nil end
+			if playerRemovingConn then playerRemovingConn:Disconnect() playerRemovingConn = nil end
+			return
+		end
+		updateList()
+	end)
+	
 	updateList()
 	
 	task.spawn(function()
-		while main.Parent do
+		while true do
+			local success, hasParent = pcall(function() return main and main.Parent end)
+			if not success or not hasParent then break end
 			updateList()
 			task.wait(3)
 		end
 	end)
+
 	
 	main.Parent = ScaledHolder
 end
@@ -16945,8 +16979,11 @@ addcmd("unportal", {"unpanel"}, function(args, speaker)
 	if portal then
 		portal:Destroy()
 	end
+	refreshLogsUI = nil
+	portalLogsActive = false
 	notify("Admin Portal", "Admin Control Portal closed")
 end)
+
 
 addcmd("radar", {}, function(args, speaker)
 	if RadarConnection then RadarConnection:Disconnect() RadarConnection = nil end
