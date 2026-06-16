@@ -2096,11 +2096,16 @@ function vtype(o, t)
 end
 
 function getRoot(char)
-	if char and char:FindFirstChildOfClass("Humanoid") then
-		return char:FindFirstChildOfClass("Humanoid").RootPart
-	else
-		return nil
+	if not char then return nil end
+	if char:IsA("BasePart") then return char end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if hum and hum.RootPart then
+		return hum.RootPart
 	end
+	if char.PrimaryPart then return char.PrimaryPart end
+	local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head")
+	if hrp and hrp:IsA("BasePart") then return hrp end
+	return char:FindFirstChildOfClass("BasePart")
 end
 
 function tools(plr)
@@ -6045,10 +6050,15 @@ function TESP(plr)
 		TESPConnections[plr.UserId] = addedConn
 		
 		local removingConn
-		removingConn = plr.CharacterRemoving:Connect(function()
+		removingConn = plr.CharacterRemoving:Connect(function(char)
 			pcall(function()
 				local folder = COREGUI:FindFirstChild(plr.Name..'_TESP')
-				if folder then folder:Destroy() end
+				if folder then
+					local bbg = folder:FindFirstChild(plr.Name)
+					if bbg and bbg.Adornee and bbg.Adornee:IsDescendantOf(char) then
+						folder:Destroy()
+					end
+				end
 			end)
 			pcall(function() removingConn:Disconnect() end)
 		end)
@@ -9235,13 +9245,15 @@ local function createViewHUD(targetPlayer)
 			end
 		end
 		
-		local dist = "--"
-		local localChar = Players.LocalPlayer.Character
-		local localRoot = localChar and getRoot(localChar)
-		local targetRoot = char and getRoot(char)
-		if localRoot and targetRoot then
-			dist = math.floor((localRoot.Position - targetRoot.Position).Magnitude) .. " studs"
-		end
+		local dist = "Too far"
+		pcall(function()
+			local localChar = Players.LocalPlayer.Character
+			local localRoot = localChar and getRoot(localChar)
+			local targetRoot = char and getRoot(char)
+			if localRoot and localRoot:IsDescendantOf(workspace) and targetRoot and targetRoot:IsDescendantOf(workspace) then
+				dist = math.floor((localRoot.Position - targetRoot.Position).Magnitude) .. " studs"
+			end
+		end)
 		
 		statsLabel.Text = "HP: " .. hp .. "/" .. maxHp .. " | Speed: " .. speed .. " | Tool: " .. tool .. "\nAge: " .. (targetPlayer.AccountAge or 0) .. " days | Dist: " .. dist
 	end)
@@ -13656,7 +13668,7 @@ getCachedStaffRole = function(player)
 	end
 
 	-- Initialize placeholder in cache to prevent duplicate fetching threads
-	playerStaffRolesCache[userId] = {isStaff = false, role = nil}
+	playerStaffRolesCache[userId] = {isStaff = false, role = nil, fetching = true}
 
 	task.spawn(function()
 		local isStaff, role = false, nil
@@ -13753,8 +13765,8 @@ getCachedStaffRole = function(player)
 				end)
 			end
 		else
-			-- Clear placeholder on network failure so it can be retried later
-			playerStaffRolesCache[userId] = nil
+			-- Set cache entry to non-staff on network failure so we don't spam requests
+			playerStaffRolesCache[userId] = {isStaff = false, role = nil}
 		end
 	end)
 
@@ -15827,46 +15839,62 @@ local function createAdminPortal()
 			invisStatusText = "<b><font color=\"rgb(0, 191, 255)\">Yes</font></b>"
 		end
 		
-		infoLabel.Text = "Account Age:  " .. ageText .. "\n\nStaff Member:  <b>Fetching...</b>\n\nInvisible:  " .. invisStatusText .. "\n\nDistance:  <b>Calculating...</b>"
+		local function updateInfoText(staffText, distText)
+			local text = "Account Age:  " .. ageText .. "\n\n"
+			if staffText then
+				text = text .. "Staff Member:  " .. staffText .. "\n\n"
+			end
+			text = text .. "Invisible:  " .. invisStatusText .. "\n\nDistance:  " .. distText
+			infoLabel.Text = text
+		end
+		
+		local initialStaffText = nil
+		local cacheStatus = playerStaffRolesCache[p.UserId]
+		if cacheStatus and not cacheStatus.fetching and cacheStatus.isStaff and cacheStatus.role then
+			local rColor = "rgb(0, 206, 209)"
+			pcall(function() rColor = getRoleColor(cacheStatus.role) end)
+			initialStaffText = "<b><font color=\"" .. rColor .. "\">" .. cacheStatus.role .. "</font></b>"
+		end
+		
+		updateInfoText(initialStaffText, "<b>Calculating...</b>")
 		
 		task.spawn(function()
 			local successRun, errRun = pcall(function()
-				local staffRoleText = "<b>No</b>"
-				local isStaff, role = false, nil
-				local successRole, errRole = pcall(function()
-					if getCachedStaffRole then
-						isStaff, role = getCachedStaffRole(p)
-					end
-				end)
-				if not successRole then
-					warn("Failed to check staff role: " .. tostring(errRole))
-				end
-				if isStaff and role then
-					local successColor, rColor = pcall(getRoleColor, role)
-					if successColor and rColor then
-						staffRoleText = "<b><font color=\"" .. rColor .. "\">" .. role .. "</font></b>"
-					else
-						staffRoleText = "<b>" .. tostring(role) .. "</b>"
-					end
-				end
-				
 				while selectedPlayer == p and p and p.Parent == Players do
-					local successParent, hasParent = pcall(function() return main and main.Parent end)
-					if not successParent or not hasParent then break end
+					local successParent, isVisible = pcall(function() return main and main.Parent and main.Visible end)
+					if not successParent or not isVisible then break end
 					
-					local distText = "<b>Unknown</b>"
+					local isStaff, role = false, nil
+					pcall(function()
+						if getCachedStaffRole then
+							isStaff, role = getCachedStaffRole(p)
+						end
+					end)
+					
+					local staffText = nil
+					local cacheEntry = playerStaffRolesCache[p.UserId]
+					if cacheEntry and cacheEntry.isStaff and cacheEntry.role then
+						local successColor, rColor = pcall(getRoleColor, cacheEntry.role)
+						if successColor and rColor then
+							staffText = "<b><font color=\"" .. rColor .. "\">" .. cacheEntry.role .. "</font></b>"
+						else
+							staffText = "<b>" .. tostring(cacheEntry.role) .. "</b>"
+						end
+					end
+					
+					local distText = "<b>Too far</b>"
 					local localChar = Players.LocalPlayer.Character
 					local localRoot = localChar and getRoot(localChar)
 					local targetChar = p.Character
 					local targetRoot = targetChar and getRoot(targetChar)
 					
-					if localRoot and localRoot.Parent and targetRoot and targetRoot.Parent then
+					if localRoot and localRoot:IsDescendantOf(workspace) and targetRoot and targetRoot:IsDescendantOf(workspace) then
 						local dist = math.floor((targetRoot.Position - localRoot.Position).Magnitude)
 						distText = "<b>" .. dist .. " studs</b>"
 					end
 					
 					if selectedPlayer == p then
-						infoLabel.Text = "Account Age:  " .. ageText .. "\n\nStaff Member:  " .. staffRoleText .. "\n\nInvisible:  " .. invisStatusText .. "\n\nDistance:  " .. distText
+						updateInfoText(staffText, distText)
 						alertBellBtn.Visible = not not isStaff
 					end
 					
@@ -15875,8 +15903,11 @@ local function createAdminPortal()
 			end)
 			if not successRun then
 				warn("Error in selectPlayer updater: " .. tostring(errRun))
-				local cleanErr = tostring(errRun):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")
-				infoLabel.Text = "Account Age:  " .. ageText .. "\n\nStaff Member:  <b>ERROR</b>\n\nInvisible:  " .. invisStatusText .. "\n\nDistance:  <font color=\"rgb(255, 100, 100)\">" .. cleanErr .. "</font>"
+				pcall(function()
+					if selectedPlayer == p then
+						updateInfoText(nil, "<b>Too far</b>")
+					end
+				end)
 			end
 		end)
 	end
@@ -15960,8 +15991,51 @@ local function createAdminPortal()
 			if child:IsA("TextButton") then child:Destroy() end
 		end
 		
+		local function getPlayerDistance(p)
+			local localChar = Players.LocalPlayer.Character
+			local localRoot = localChar and getRoot(localChar)
+			local targetChar = p.Character
+			local targetRoot = targetChar and getRoot(targetChar)
+			if localRoot and localRoot:IsDescendantOf(workspace) and targetRoot and targetRoot:IsDescendantOf(workspace) then
+				return (targetRoot.Position - localRoot.Position).Magnitude
+			end
+			return 999999
+		end
+		
 		local players = Players:GetPlayers()
 		table.sort(players, function(a, b)
+			local function getCategoryVal(plr)
+				local isStaffVal = false
+				if getCachedStaffRole then
+					isStaffVal = getCachedStaffRole(plr)
+				end
+				if isStaffVal then
+					return 1
+				elseif plr.Team and Players.LocalPlayer.Team then
+					if plr.Team == Players.LocalPlayer.Team then
+						return 3
+					else
+						return 2
+					end
+				elseif plr.Team then
+					return 4
+				else
+					return 5
+				end
+			end
+			
+			local catA = getCategoryVal(a)
+			local catB = getCategoryVal(b)
+			if catA ~= catB then
+				return catA < catB
+			end
+			
+			local distA = getPlayerDistance(a)
+			local distB = getPlayerDistance(b)
+			if distA ~= distB then
+				return distA < distB
+			end
+			
 			return (a.DisplayName or a.Name):lower() < (b.DisplayName or b.Name):lower()
 		end)
 		listFrame.CanvasSize = UDim2.new(0, 0, 0, #players * 40)
