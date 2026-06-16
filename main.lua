@@ -5956,7 +5956,18 @@ function TESP(plr)
 				BillboardGui.Size = UDim2.new(4.5, 0, 6, 0)
 				BillboardGui.AlwaysOnTop = true
 				
-				local color = isStaff and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 192, 203) -- Gold for Staff, Light Pink for others
+				local color = Color3.fromRGB(255, 192, 203) -- Default Pink
+				if isStaff then
+					color = Color3.fromRGB(255, 200, 0) -- Gold for Staff
+				elseif plr.Team and Players.LocalPlayer.Team then
+					if plr.Team == Players.LocalPlayer.Team then
+						color = Color3.fromRGB(100, 200, 255) -- Light Blue for Teammates / Allies
+					else
+						color = Color3.fromRGB(255, 100, 100) -- Light Red for Civilians / Other Teams
+					end
+				elseif plr.Team then
+					color = plr.TeamColor.Color -- Fallback to actual team color
+				end
 				
 				local function createLine(pos, size)
 					local line = Instance.new("Frame")
@@ -13159,6 +13170,12 @@ local function layoutActiveStaffCards()
 end
 
 Players.PlayerRemoving:Connect(function(player)
+	local isStaff, role = getCachedStaffRole(player)
+	if isStaff then
+		local rColor = getRoleColor(role or "Staff")
+		addStaffLog("❌ <b><font color=\"" .. rColor .. "\">" .. player.DisplayName .. " (@" .. player.Name .. ")</font></b> [" .. (role or "Staff") .. "] left the server")
+	end
+
 	local removedAny = false
 	for i = #ActiveStaffCards, 1, -1 do
 		local c = ActiveStaffCards[i]
@@ -13380,6 +13397,7 @@ addcmd("tmp", {}, function(args, speaker)
 	StaffRolewatchData.Active = true
 	createPingUI()
 	execCmd("radar")
+	execCmd("staffalarm")
 	task.spawn(function()
 		repeat task.wait() until RadarFrame
 		RadarFrame.Position = UDim2.new(0, 10, 0, 80)
@@ -13440,6 +13458,7 @@ addcmd("untmp", {}, function(args, speaker)
 	StaffRolewatchData.Active = false
 	destroyPingUI()
 	execCmd("unradar")
+	execCmd("unstaffalarm")
 	notify("Staff Watch", "Disabled")
 	for _, card in pairs(ActiveStaffCards) do
 		if card.Parent then
