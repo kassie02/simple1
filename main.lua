@@ -6979,6 +6979,7 @@ addcmd("unload", {"exitgui"}, function(args, speaker)
 	local portal = ScaledHolder:FindFirstChild("AdminPortal")
 	if portal then portal:Destroy() end
 	PARENT:Destroy()
+	pcall(function() getgenv().IY_LOADED = nil end)
 end)
 
 local Noclipping = nil
