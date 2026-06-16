@@ -15711,7 +15711,7 @@ local function createAdminPortal()
 				local idx = 1
 				while carouselActive do
 					local target = pList[idx]
-					if target and target.Parent == Players then
+					if target and target.Parent then
 						execCmd("view " .. target.Name)
 					end
 					task.wait(5)
@@ -15743,7 +15743,7 @@ local function createAdminPortal()
 		local count = 0
 		local names = {}
 		for _, p in pairs(selectedBatchPlayers) do
-			if p and p.Parent == Players then
+			if p and p.Parent then
 				count = count + 1
 				table.insert(names, p.DisplayName or p.Name)
 			else
@@ -15860,7 +15860,7 @@ local function createAdminPortal()
 		
 		task.spawn(function()
 			local successRun, errRun = pcall(function()
-				while selectedPlayer == p and p and p.Parent == Players do
+				while selectedPlayer == p and p and p.Parent do
 					local successParent, isVisible = pcall(function() return main and main.Parent and main.Visible end)
 					if not successParent or not isVisible then break end
 					
@@ -15984,6 +15984,9 @@ local function createAdminPortal()
 				child.Visible = visible
 			end
 		end
+		pcall(function()
+			listFrame.CanvasPosition = Vector2.new(0, 0)
+		end)
 	end
 
 	local function updateList()
@@ -16415,7 +16418,7 @@ local function createAdminPortal()
 	end)
 	
 	local function updateMapSelectionUI()
-		if selectedMapPlayer and selectedMapPlayer.Parent == Players then
+		if selectedMapPlayer and selectedMapPlayer.Parent then
 			selectionLabel.Text = "Selected Player: <b>@" .. selectedMapPlayer.Name .. "</b>"
 		else
 			selectedMapPlayer = nil
@@ -16424,7 +16427,7 @@ local function createAdminPortal()
 	end
 	
 	btnTeleport.MouseButton1Click:Connect(function()
-		if selectedMapPlayer and selectedMapPlayer.Parent == Players then
+		if selectedMapPlayer and selectedMapPlayer.Parent then
 			execCmd("goto " .. selectedMapPlayer.Name)
 		end
 	end)
