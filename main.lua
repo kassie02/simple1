@@ -4521,6 +4521,7 @@ CMDs[#CMDs + 1] = {NAME = 'unalignmentkeys / noalignmentkeys', DESC = 'Disables 
 CMDs[#CMDs + 1] = {NAME = 'ctrllock', DESC = 'Binds Shiftlock to LeftControl'}
 CMDs[#CMDs + 1] = {NAME = 'unctrllock', DESC = 'Re-binds Shiftlock to LeftShift'}
 CMDs[#CMDs + 1] = {NAME = 'exit', DESC = 'Kills roblox process'}
+CMDs[#CMDs + 1] = {NAME = 'unload / exitgui', DESC = 'Unloads Infinite Yield from the game'}
 CMDs[#CMDs + 1] = {NAME = 'removecmd / deletecmd', DESC = 'Removes a command until the script is reloaded'}
 CMDs[#CMDs + 1] = {NAME = 'breakloops / break (cmd loops)', DESC = 'Stops any cmd loops (;100^1^cmd)'}
 CMDs[#CMDs + 1] = {NAME = '', DESC = ''}
@@ -6971,6 +6972,15 @@ addcmd("exit", {}, function(args, speaker)
 	game:Shutdown()
 end)
 
+addcmd("unload", {"exitgui"}, function(args, speaker)
+	if Noclipping then Noclipping:Disconnect() end
+	if StaffRolewatchConnection then StaffRolewatchConnection:Disconnect() end
+	if RolewatchConnection then RolewatchConnection:Disconnect() end
+	local portal = ScaledHolder:FindFirstChild("AdminPortal")
+	if portal then portal:Destroy() end
+	PARENT:Destroy()
+end)
+
 local Noclipping = nil
 addcmd('noclip',{},function(args, speaker)
 	if Noclipping then
@@ -7002,6 +7012,11 @@ addcmd('clip',{'unnoclip'},function(args, speaker)
 			if child:IsA("BasePart") and child.CanCollide == false and child.Name ~= floatName and child.Name ~= "HumanoidRootPart" then
 				child.CanCollide = true
 			end
+		end
+		local hum = speaker.Character:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum.Jump = true
+			hum:ChangeState(Enum.HumanoidStateType.Jumping)
 		end
 	end
 	if args[1] and args[1] == 'nonotify' then return end
@@ -13623,11 +13638,11 @@ local function createAdminPortal()
 		userLabel.Text = "@" .. p.Name
 		profileImage.Image = "rbxthumb://type=AvatarHeadShot&id=" .. p.UserId .. "&w=150&h=150"
 		
-		local isStaff = p:IsInGroup(17180419) or p:IsInGroup(game.CreatorId) or p:IsInGroup(1200769)
+		local isStaff = p:IsInGroup(17180419) or (game.CreatorType == Enum.CreatorType.Group and p:IsInGroup(game.CreatorId)) or p:IsInGroup(1200769)
 		local staffRole = "No"
 		if p:IsInGroup(17180419) then
 			staffRole = p:GetRoleInGroup(17180419) .. " (Staff Group)"
-		elseif p:IsInGroup(game.CreatorId) then
+		elseif game.CreatorType == Enum.CreatorType.Group and p:IsInGroup(game.CreatorId) then
 			staffRole = p:GetRoleInGroup(game.CreatorId) .. " (Game Owner)"
 		elseif p:IsInGroup(1200769) then
 			staffRole = "Roblox Employee"
@@ -13673,7 +13688,7 @@ local function createAdminPortal()
 			
 			-- Badges
 			local badges = {}
-			if p:IsInGroup(17180419) or p:IsInGroup(game.CreatorId) or p:IsInGroup(1200769) then
+			if p:IsInGroup(17180419) or (game.CreatorType == Enum.CreatorType.Group and p:IsInGroup(game.CreatorId)) or p:IsInGroup(1200769) then
 				table.insert(badges, "[STAFF]")
 			end
 			
@@ -13731,6 +13746,7 @@ local function createAdminPortal()
 end
 
 addcmd("portal", {"panel"}, function(args, speaker)
+	notify("Admin Portal", "Opening Admin Control Portal...")
 	createAdminPortal()
 	notify("Admin Portal", "Admin Control Portal opened")
 end)
