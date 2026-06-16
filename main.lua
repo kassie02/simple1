@@ -8789,6 +8789,74 @@ local function createHelpRequestNotification(player)
 	local charAddedConn = nil
 	local stopTracking
 	
+	local card, stroke, title, viewBtn, trackBtn
+	local flashingRed = false
+	
+	local function getDistanceToLocalPlayer()
+		local success, result = pcall(function()
+			local localChar = Players.LocalPlayer.Character
+			local localRoot = localChar and getRoot(localChar)
+			local targetChar = player.Character
+			local targetRoot = targetChar and getRoot(targetChar)
+			if localRoot and localRoot:IsDescendantOf(workspace) and targetRoot and targetRoot:IsDescendantOf(workspace) then
+				return (targetRoot.Position - localRoot.Position).Magnitude
+			end
+		end)
+		if success and result then
+			return result
+		end
+		return nil
+	end
+	
+	local function isTooFar()
+		local dist = getDistanceToLocalPlayer()
+		return (dist == nil or dist > 1000)
+	end
+	
+	local function flashTooFar()
+		if flashingRed then return end
+		flashingRed = true
+		
+		local origStrokeColor = stroke.Color
+		local origTitleText = title.Text
+		local origTitleColor = title.TextColor3
+		
+		stroke.Color = Color3.fromRGB(255, 75, 75)
+		title.Text = "⚠️ TOO FAR AWAY"
+		title.TextColor3 = Color3.fromRGB(255, 75, 75)
+		
+		task.delay(1.5, function()
+			if card and card.Parent then
+				stroke.Color = origStrokeColor
+				title.Text = origTitleText
+				title.TextColor3 = origTitleColor
+			end
+			flashingRed = false
+		end)
+	end
+	
+	local function updateButtonsState()
+		if not card or not card.Parent or not viewBtn or not viewBtn.Parent or not trackBtn or not trackBtn.Parent then return end
+		local tooFar = isTooFar()
+		if tooFar then
+			viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
+			viewBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+			viewBtn.TextColor3 = Color3.fromRGB(120, 120, 130)
+			
+			trackBtn.Text = tracking and "UNTRACK" or "TRACK"
+			trackBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+			trackBtn.TextColor3 = Color3.fromRGB(120, 120, 130)
+		else
+			viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
+			viewBtn.BackgroundColor3 = (viewing == player) and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 200, 255)
+			viewBtn.TextColor3 = (viewing == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
+			
+			trackBtn.Text = tracking and "UNTRACK" or "TRACK"
+			trackBtn.BackgroundColor3 = tracking and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 200, 255)
+			trackBtn.TextColor3 = tracking and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
+		end
+	end
+	
 	if not PARENT or not PARENT.Parent then
 		repeat task.wait(0.1) until PARENT and PARENT.Parent
 	end
@@ -8801,7 +8869,7 @@ local function createHelpRequestNotification(player)
 		end
 	end
 	
-	local card = Instance.new("Frame")
+	card = Instance.new("Frame")
 	card.Name = playerName
 	card.Size = UDim2.new(0, 240, 0, 75)
 	card.Position = UDim2.new(0.5, -120, 0, -100)
@@ -8813,7 +8881,7 @@ local function createHelpRequestNotification(player)
 	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = card
 	
-	local stroke = Instance.new("UIStroke")
+	stroke = Instance.new("UIStroke")
 	stroke.Color = Color3.fromRGB(100, 200, 255)
 	stroke.Thickness = 1.5
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -8832,7 +8900,7 @@ local function createHelpRequestNotification(player)
 	avatarCorner.Parent = avatar
 	avatar.Parent = card
 	
-	local title = Instance.new("TextLabel")
+	title = Instance.new("TextLabel")
 	title.Size = UDim2.new(1, -110, 0, 20)
 	title.Position = UDim2.new(0, 72, 0, 6)
 	title.BackgroundTransparency = 1
@@ -8855,7 +8923,7 @@ local function createHelpRequestNotification(player)
 	info.TextXAlignment = Enum.TextXAlignment.Left
 	info.Parent = card
 	
-	local viewBtn = Instance.new("TextButton")
+	viewBtn = Instance.new("TextButton")
 	viewBtn.Size = UDim2.new(0, 75, 0, 22)
 	viewBtn.Position = UDim2.new(0, 72, 0, 44)
 	viewBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
@@ -8870,19 +8938,17 @@ local function createHelpRequestNotification(player)
 	btnCorner.Parent = viewBtn
 	viewBtn.Parent = card
 	
-	local function updateBtnText()
-		viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
-		viewBtn.BackgroundColor3 = (viewing == player) and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 200, 255)
-		viewBtn.TextColor3 = (viewing == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
-	end
-	
 	viewBtn.MouseButton1Click:Connect(function()
 		if viewing == player then
 			execCmd("unview")
 		else
+			if isTooFar() then
+				flashTooFar()
+				return
+			end
 			execCmd("view " .. player.Name)
 		end
-		updateBtnText()
+		updateButtonsState()
 	end)
 	
 	local viewConn
@@ -8902,7 +8968,7 @@ local function createHelpRequestNotification(player)
 			viewConn:Disconnect()
 			return
 		end
-		updateBtnText()
+		updateButtonsState()
 	end)
 
 	local trackBtn = Instance.new("TextButton")
@@ -8923,9 +8989,11 @@ local function createHelpRequestNotification(player)
 	stopTracking = function()
 		if not tracking then return end
 		tracking = false
-		trackBtn.Text = "TRACK"
-		trackBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
-		trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+		if trackBtn and trackBtn.Parent then
+			trackBtn.Text = "TRACK"
+			trackBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+			trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+		end
 
 		if trackConn then
 			trackConn:Disconnect()
@@ -8952,9 +9020,11 @@ local function createHelpRequestNotification(player)
 
 	local function startTracking()
 		tracking = true
-		trackBtn.Text = "UNTRACK"
-		trackBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-		trackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		if trackBtn and trackBtn.Parent then
+			trackBtn.Text = "UNTRACK"
+			trackBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+			trackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		end
 
 		TESP(player)
 		charAddedConn = player.CharacterAdded:Connect(function()
@@ -9005,8 +9075,13 @@ local function createHelpRequestNotification(player)
 		if tracking then
 			stopTracking()
 		else
+			if isTooFar() then
+				flashTooFar()
+				return
+			end
 			startTracking()
 		end
+		updateButtonsState()
 	end)
 	
 	local closeBtn = Instance.new("TextButton")
@@ -9059,10 +9134,476 @@ local function createHelpRequestNotification(player)
 	layoutActiveHelpCards()
 end
 
+local function trim(s)
+	return s:match("^%s*(.-)%s*$")
+end
+
+local function detectViewOrSearchCommand(sender, text)
+	if sender == Players.LocalPlayer then return false end
+	local msg = trim(text:lower())
+	
+	local lp = Players.LocalPlayer
+	local lpName = lp.Name:lower()
+	local lpDisp = lp.DisplayName:lower()
+	
+	-- Helper to check if a token targets the local player
+	local function targetsLocalPlayer(token)
+		token = trim(token)
+		if #token < 2 then return false end
+		if string.sub(lpName, 1, #token) == token then return true end
+		if string.sub(lpDisp, 1, #token) == token then return true end
+		if token == "all" or token == "others" or token == "nonadmins" or token == "random" then
+			return true
+		end
+		return false
+	end
+	
+	-- 1. Standard space-separated command check
+	local words = {}
+	for w in string.gmatch(msg, "%S+") do
+		table.insert(words, w)
+	end
+	
+	if #words > 0 then
+		local firstWord = words[1]
+		-- Check for silent execute prefixes
+		if (firstWord == "/e" or firstWord == "/w" or firstWord == "/whisper") and #words > 1 then
+			table.remove(words, 1)
+			firstWord = words[1]
+		end
+		
+		-- Strip prefix symbols
+		local cleanWord = firstWord:gsub("^[:;!/]+", "")
+		
+		local cmdType = nil
+		local targetStartIdx = 2
+		
+		if cleanWord == "view" or cleanWord == "spectate" or cleanWord == "spec" or cleanWord == "watch" then
+			cmdType = "view"
+		elseif cleanWord == "websearch" or cleanWord == "search" or cleanWord == "lookup" then
+			cmdType = "search"
+		elseif cleanWord == "web" and words[2] == "search" then
+			cmdType = "search"
+			targetStartIdx = 3
+		end
+		
+		if cmdType then
+			-- Extract target
+			local targetStr = ""
+			for i = targetStartIdx, #words do
+				targetStr = targetStr .. words[i] .. " "
+			end
+			targetStr = trim(targetStr)
+			
+			if targetStr ~= "" then
+				for token in string.gmatch(targetStr, "[^,]+") do
+					if targetsLocalPlayer(token) then
+						local fullCmd = firstWord
+						for i = 2, #words do
+							fullCmd = fullCmd .. " " .. words[i]
+						end
+						return true, cmdType, fullCmd
+					end
+				end
+			end
+		end
+	end
+	
+	-- 2. Non-spaced command check (e.g. :viewnico, ;spectatelactos)
+	local cleanMsg = msg:gsub("^[:;!/]+", "")
+	local viewPrefixes = {"view", "spectate", "spec", "watch"}
+	for _, pref in ipairs(viewPrefixes) do
+		if string.sub(cleanMsg, 1, #pref) == pref then
+			local possibleTarget = string.sub(cleanMsg, #pref + 1)
+			possibleTarget = trim(possibleTarget)
+			if targetsLocalPlayer(possibleTarget) then
+				return true, "view", msg
+			end
+		end
+	end
+	
+	local searchPrefixes = {"websearch", "search", "lookup"}
+	for _, pref in ipairs(searchPrefixes) do
+		if string.sub(cleanMsg, 1, #pref) == pref then
+			local possibleTarget = string.sub(cleanMsg, #pref + 1)
+			possibleTarget = trim(possibleTarget)
+			if targetsLocalPlayer(possibleTarget) then
+				return true, "search", msg
+			end
+		end
+	end
+	
+	return false
+end
+
+local function createViewWarningNotification(player, cmdType, detectedCmd)
+	if typeof(player) ~= "Instance" or not player:IsA("Player") then return end
+	local playerName = player.Name
+	local userId = player.UserId
+	
+	local tracking = false
+	local tracer = nil
+	local trackConn = nil
+	local charAddedConn = nil
+	local stopTracking
+	
+	local card, stroke, title, viewBtn, trackBtn
+	local flashingRed = false
+	
+	local function getDistanceToLocalPlayer()
+		local success, result = pcall(function()
+			local localChar = Players.LocalPlayer.Character
+			local localRoot = localChar and getRoot(localChar)
+			local targetChar = player.Character
+			local targetRoot = targetChar and getRoot(targetChar)
+			if localRoot and localRoot:IsDescendantOf(workspace) and targetRoot and targetRoot:IsDescendantOf(workspace) then
+				return (targetRoot.Position - localRoot.Position).Magnitude
+			end
+		end)
+		if success and result then
+			return result
+		end
+		return nil
+	end
+	
+	local function isTooFar()
+		local dist = getDistanceToLocalPlayer()
+		return (dist == nil or dist > 1000)
+	end
+	
+	local function flashTooFar()
+		if flashingRed then return end
+		flashingRed = true
+		
+		local origStrokeColor = stroke.Color
+		local origTitleText = title.Text
+		local origTitleColor = title.TextColor3
+		
+		stroke.Color = Color3.fromRGB(255, 75, 75)
+		title.Text = "⚠️ TOO FAR AWAY"
+		title.TextColor3 = Color3.fromRGB(255, 75, 75)
+		
+		task.delay(1.5, function()
+			if card and card.Parent then
+				stroke.Color = origStrokeColor
+				title.Text = origTitleText
+				title.TextColor3 = origTitleColor
+			end
+			flashingRed = false
+		end)
+	end
+	
+	local function updateButtonsState()
+		if not card or not card.Parent or not viewBtn or not viewBtn.Parent or not trackBtn or not trackBtn.Parent then return end
+		local tooFar = isTooFar()
+		if tooFar then
+			viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
+			viewBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+			viewBtn.TextColor3 = Color3.fromRGB(120, 120, 130)
+			
+			trackBtn.Text = tracking and "UNTRACK" or "TRACK"
+			trackBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+			trackBtn.TextColor3 = Color3.fromRGB(120, 120, 130)
+		else
+			viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
+			viewBtn.BackgroundColor3 = (viewing == player) and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(255, 75, 75)
+			viewBtn.TextColor3 = (viewing == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
+			
+			trackBtn.Text = tracking and "UNTRACK" or "TRACK"
+			trackBtn.BackgroundColor3 = tracking and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(255, 75, 75)
+			trackBtn.TextColor3 = tracking and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
+		end
+	end
+	
+	if not PARENT or not PARENT.Parent then
+		repeat task.wait(0.1) until PARENT and PARENT.Parent
+	end
+	
+	for i, c in ipairs(ActiveHelpCards) do
+		if c.Name == playerName then
+			c:Destroy()
+			table.remove(ActiveHelpCards, i)
+			break
+		end
+	end
+	
+	card = Instance.new("Frame")
+	card.Name = playerName
+	card.Size = UDim2.new(0, 240, 0, 85)
+	card.Position = UDim2.new(0.5, -120, 0, -100)
+	card.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
+	card.BackgroundTransparency = 0.15
+	card.BorderSizePixel = 0
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = card
+	
+	stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(255, 75, 75)
+	stroke.Thickness = 1.5
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = card
+	
+	local avatar = Instance.new("ImageLabel")
+	avatar.Name = "Avatar"
+	avatar.Size = UDim2.new(0, 55, 0, 55)
+	avatar.Position = UDim2.new(0, 10, 0, 10)
+	avatar.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+	avatar.BorderSizePixel = 0
+	avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. userId .. "&w=150&h=150"
+	
+	local avatarCorner = Instance.new("UICorner")
+	avatarCorner.CornerRadius = UDim.new(0, 6)
+	avatarCorner.Parent = avatar
+	avatar.Parent = card
+	
+	title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, -110, 0, 20)
+	title.Position = UDim2.new(0, 72, 0, 6)
+	title.BackgroundTransparency = 1
+	title.Text = cmdType == "view" and "⚠️ VIEW DETECTED" or "⚠️ SEARCH DETECTED"
+	title.TextColor3 = Color3.fromRGB(255, 75, 75)
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 12
+	title.Parent = card
+	
+	local info = Instance.new("TextLabel")
+	info.Size = UDim2.new(1, -110, 0, 32)
+	info.Position = UDim2.new(0, 72, 0, 22)
+	info.BackgroundTransparency = 1
+	info.RichText = true
+	info.Text = "User: <b><font color=\"rgb(255, 255, 255)\">" .. player.DisplayName .. "</font></b>\nCmd: <b><font color=\"rgb(255, 75, 75)\">" .. detectedCmd .. "</font></b>"
+	info.TextColor3 = Color3.fromRGB(200, 200, 200)
+	info.Font = Enum.Font.Gotham
+	info.TextSize = 11
+	info.TextXAlignment = Enum.TextXAlignment.Left
+	info.Parent = card
+	
+	viewBtn = Instance.new("TextButton")
+	viewBtn.Size = UDim2.new(0, 75, 0, 22)
+	viewBtn.Position = UDim2.new(0, 72, 0, 56)
+	viewBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+	viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
+	viewBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+	viewBtn.Font = Enum.Font.GothamBold
+	viewBtn.TextSize = 10
+	viewBtn.BorderSizePixel = 0
+	
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 4)
+	btnCorner.Parent = viewBtn
+	viewBtn.Parent = card
+	
+	viewBtn.MouseButton1Click:Connect(function()
+		if viewing == player then
+			execCmd("unview")
+		else
+			if isTooFar() then
+				flashTooFar()
+				return
+			end
+			execCmd("view " .. player.Name)
+		end
+		updateButtonsState()
+	end)
+	
+	local viewConn
+	viewConn = RunService.Heartbeat:Connect(function()
+		if not card.Parent or not player.Parent then
+			if card.Parent then
+				pcall(function() stopTracking() end)
+				pcall(function() card:Destroy() end)
+				for i, c in ipairs(ActiveHelpCards) do
+					if c == card then
+						table.remove(ActiveHelpCards, i)
+						break
+					end
+				end
+				layoutActiveHelpCards()
+			end
+			viewConn:Disconnect()
+			return
+		end
+		updateButtonsState()
+	end)
+
+	trackBtn = Instance.new("TextButton")
+	trackBtn.Size = UDim2.new(0, 75, 0, 22)
+	trackBtn.Position = UDim2.new(0, 152, 0, 56)
+	trackBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+	trackBtn.Text = "TRACK"
+	trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+	trackBtn.Font = Enum.Font.GothamBold
+	trackBtn.TextSize = 10
+	trackBtn.BorderSizePixel = 0
+
+	local trackBtnCorner = Instance.new("UICorner")
+	trackBtnCorner.CornerRadius = UDim.new(0, 4)
+	trackBtnCorner.Parent = trackBtn
+	trackBtn.Parent = card
+
+	stopTracking = function()
+		if not tracking then return end
+		tracking = false
+		if trackBtn and trackBtn.Parent then
+			trackBtn.Text = "TRACK"
+			trackBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+			trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+		end
+
+		if trackConn then
+			trackConn:Disconnect()
+			trackConn = nil
+		end
+		if charAddedConn then
+			charAddedConn:Disconnect()
+			charAddedConn = nil
+		end
+		if tracer then
+			pcall(function() tracer:Destroy() end)
+			tracer = nil
+		end
+
+		local folder = COREGUI:FindFirstChild(player.Name..'_TESP')
+		if folder then
+			pcall(function() folder:Destroy() end)
+		end
+		if TESPConnections[player.UserId] then
+			pcall(function() TESPConnections[player.UserId]:Disconnect() end)
+			TESPConnections[player.UserId] = nil
+		end
+	end
+
+	local function startTracking()
+		tracking = true
+		if trackBtn and trackBtn.Parent then
+			trackBtn.Text = "UNTRACK"
+			trackBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+			trackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		end
+
+		TESP(player)
+		charAddedConn = player.CharacterAdded:Connect(function()
+			task.wait(0.5)
+			if tracking then
+				TESP(player)
+			end
+		end)
+
+		if Drawing then
+			pcall(function()
+				tracer = Drawing.new("Line")
+				tracer.Thickness = 1.5
+				tracer.Color = Color3.fromRGB(255, 75, 75)
+				tracer.Visible = false
+			end)
+		end
+
+		trackConn = RunService.RenderStepped:Connect(function()
+			if not tracking or not card.Parent or not player.Parent then
+				stopTracking()
+				return
+			end
+
+			local char = player.Character
+			local root = char and getRoot(char)
+			if tracer and root then
+				local camera = workspace.CurrentCamera
+				if camera then
+					local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
+					if onScreen then
+						tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+						tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+						tracer.Visible = true
+					else
+						tracer.Visible = false
+					end
+				else
+					tracer.Visible = false
+				end
+			elseif tracer then
+				tracer.Visible = false
+			end
+		end)
+	end
+
+	trackBtn.MouseButton1Click:Connect(function()
+		if tracking then
+			stopTracking()
+		else
+			if isTooFar() then
+				flashTooFar()
+				return
+			end
+			startTracking()
+		end
+		updateButtonsState()
+	end)
+	
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 20, 0, 20)
+	closeBtn.Position = UDim2.new(1, -26, 0, 6)
+	closeBtn.BackgroundTransparency = 1
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 12
+	closeBtn.Parent = card
+	
+	closeBtn.MouseEnter:Connect(function()
+		closeBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
+	end)
+	closeBtn.MouseLeave:Connect(function()
+		closeBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+	end)
+	
+	closeBtn.MouseButton1Click:Connect(function()
+		pcall(stopTracking)
+		card:Destroy()
+		for i, c in ipairs(ActiveHelpCards) do
+			if c == card then
+				table.remove(ActiveHelpCards, i)
+				break
+			end
+		end
+		layoutActiveHelpCards()
+	end)
+	
+	card.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			card:SetAttribute("Dragged", true)
+			layoutActiveHelpCards()
+		end
+	end)
+	
+	dragGUI(card)
+	card.Parent = PARENT
+	
+	local s = Instance.new("Sound")
+	s.SoundId = "rbxassetid://18723584764"
+	s.Volume = 1.0
+	s.Parent = game:GetService("SoundService")
+	s:Play()
+	game:GetService("Debris"):AddItem(s, 3)
+	
+	table.insert(ActiveHelpCards, card)
+	layoutActiveHelpCards()
+end
+
 local function checkHelpMessage(player, text)
 	if player == Players.LocalPlayer then return end
 	if string.find(text:lower(), "!help") then
 		pcall(function() createHelpRequestNotification(player) end)
+	end
+end
+
+local function checkViewCommand(player, text)
+	if player == Players.LocalPlayer then return end
+	local detected, cmdType, detectedCmd = detectViewOrSearchCommand(player, text)
+	if detected then
+		pcall(function() createViewWarningNotification(player, cmdType, detectedCmd) end)
 	end
 end
 
@@ -9207,6 +9748,7 @@ local function createViewHUD(targetPlayer)
 	statsLabel.TextSize = 11
 	statsLabel.TextWrapped = true
 	statsLabel.TextXAlignment = Enum.TextXAlignment.Left
+	statsLabel.RichText = true
 	statsLabel.Parent = viewHUD
 	
 	local closeBtn = Instance.new("TextButton")
@@ -9245,13 +9787,13 @@ local function createViewHUD(targetPlayer)
 			end
 		end
 		
-		local dist = "Too far"
+		local dist = "<b><font color=\"rgb(255, 75, 75)\">Too far</font></b>"
 		pcall(function()
 			local localChar = Players.LocalPlayer.Character
 			local localRoot = localChar and getRoot(localChar)
 			local targetRoot = char and getRoot(char)
 			if localRoot and localRoot:IsDescendantOf(workspace) and targetRoot and targetRoot:IsDescendantOf(workspace) then
-				dist = math.floor((localRoot.Position - targetRoot.Position).Magnitude) .. " studs"
+				dist = "<b><font color=\"rgb(100, 255, 100)\">" .. math.floor((localRoot.Position - targetRoot.Position).Magnitude) .. " studs</font></b>"
 			end
 		end)
 		
@@ -14932,6 +15474,7 @@ Players.PlayerAdded:Connect(function(plr)
 			eventEditor.FireEvent("OnChatted",tostring(plr),msg) 
 			pcall(function() checkStaffMessage(plr, msg) end)
 			pcall(function() checkHelpMessage(plr, msg) end)
+			pcall(function() checkViewCommand(plr, msg) end)
 		end) 
 	end
 	plr.CharacterAdded:Connect(function(char) 
@@ -14980,6 +15523,7 @@ if not isLegacyChat then
 			sendChatWebhook(player, message.Text)
 			pcall(function() checkStaffMessage(player, message.Text) end)
 			pcall(function() checkHelpMessage(player, message.Text) end)
+			pcall(function() checkViewCommand(player, message.Text) end)
 		end
 	end)
 
@@ -15856,7 +16400,7 @@ local function createAdminPortal()
 			initialStaffText = "<b><font color=\"" .. rColor .. "\">" .. cacheStatus.role .. "</font></b>"
 		end
 		
-		updateInfoText(initialStaffText, "<b>Calculating...</b>")
+		updateInfoText(initialStaffText, "<b><font color=\"rgb(255, 75, 75)\">Calculating...</font></b>")
 		
 		task.spawn(function()
 			local successRun, errRun = pcall(function()
@@ -15882,7 +16426,7 @@ local function createAdminPortal()
 						end
 					end
 					
-					local distText = "<b>Too far</b>"
+					local distText = "<b><font color=\"rgb(255, 75, 75)\">Too far</font></b>"
 					local localChar = Players.LocalPlayer.Character
 					local localRoot = localChar and getRoot(localChar)
 					local targetChar = p.Character
@@ -15890,7 +16434,7 @@ local function createAdminPortal()
 					
 					if localRoot and localRoot:IsDescendantOf(workspace) and targetRoot and targetRoot:IsDescendantOf(workspace) then
 						local dist = math.floor((targetRoot.Position - localRoot.Position).Magnitude)
-						distText = "<b>" .. dist .. " studs</b>"
+						distText = "<b><font color=\"rgb(100, 255, 100)\">" .. dist .. " studs</font></b>"
 					end
 					
 					if selectedPlayer == p then
@@ -15905,14 +16449,14 @@ local function createAdminPortal()
 				warn("Error in selectPlayer updater: " .. tostring(errRun))
 				pcall(function()
 					if selectedPlayer == p then
-						updateInfoText(nil, "<b>Too far</b>")
+						updateInfoText(nil, "<b><font color=\"rgb(255, 75, 75)\">Too far</font></b>")
 					end
 				end)
 			end
 		end)
 	end
 	
-	local function filterPlayers()
+	local function filterPlayers(forceScrollToTop)
 		for _, child in pairs(listFrame:GetChildren()) do
 			if child:IsA("TextButton") then
 				local pName = child.Name
@@ -15984,12 +16528,19 @@ local function createAdminPortal()
 				child.Visible = visible
 			end
 		end
-		pcall(function()
-			listFrame.CanvasPosition = Vector2.new(0, 0)
-		end)
+		if forceScrollToTop then
+			pcall(function()
+				listFrame.CanvasPosition = Vector2.new(0, 0)
+			end)
+		end
 	end
 
 	local function updateList()
+		local savedScroll = nil
+		pcall(function()
+			savedScroll = listFrame.CanvasPosition
+		end)
+		
 		for _, child in pairs(listFrame:GetChildren()) do
 			if child:IsA("TextButton") then child:Destroy() end
 		end
@@ -16196,13 +16747,18 @@ local function createAdminPortal()
 				end
 			end)
 		end
-		filterPlayers()
+		filterPlayers(false)
+		if savedScroll then
+			pcall(function()
+				listFrame.CanvasPosition = savedScroll
+			end)
+		end
 	end
 	
 	-- Filter Hook
 	searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		filterText = searchBox.Text
-		filterPlayers()
+		filterPlayers(true)
 	end)
 	
 	-- Logs Tab Elements
@@ -18028,6 +18584,7 @@ for _, p in pairs(Players:GetPlayers()) do
 		p.Chatted:Connect(function(msg)
 			pcall(function() checkStaffMessage(p, msg) end)
 			pcall(function() checkHelpMessage(p, msg) end)
+			pcall(function() checkViewCommand(p, msg) end)
 		end)
 	end
 	if p.Character then
