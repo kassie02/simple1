@@ -49,6 +49,10 @@ getconnections = missing("function", getconnections or get_signal_cons)
 local playerStaffRolesCache = {}
 local getCachedStaffRole
 local getRoleColor
+local stopViewFC
+local startViewFC
+StaffChatSounds = true
+StaffChatNotifications = true
 
 Services = setmetatable({}, {
 	__index = function(self, name)
@@ -4926,6 +4930,33 @@ CMDs[#CMDs + 1] = {NAME = 'addplugin / plugin [name]', DESC = 'Add a plugin via 
 CMDs[#CMDs + 1] = {NAME = 'removeplugin / deleteplugin [name]', DESC = 'Remove a plugin via command'}
 CMDs[#CMDs + 1] = {NAME = 'reloadplugin [name]', DESC = 'Reloads a plugin'}
 CMDs[#CMDs + 1] = {NAME = 'addallplugins / loadallplugins', DESC = 'Adds all available plugins from the workspace folder'}
+CMDs[#CMDs + 1] = {NAME = '', DESC = ''}
+CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the player list Admin Portal'}
+CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes the player list Admin Portal'}
+CMDs[#CMDs + 1] = {NAME = 'stafflog / stafflogs', DESC = 'Opens the Admin Portal focused on the Staff Logs tab'}
+CMDs[#CMDs + 1] = {NAME = 'tmp', DESC = 'Enables the custom staff watch (Group 17180419) with warnings and lists'}
+CMDs[#CMDs + 1] = {NAME = 'untmp', DESC = 'Disables the staff watch'}
+CMDs[#CMDs + 1] = {NAME = 'tmpleave', DESC = 'Toggles auto-kick/leave when watched staff members join'}
+CMDs[#CMDs + 1] = {NAME = 'tesp / corneresp [0-3]', DESC = 'Light pink 2D corner brackets ESP (0=box, 1=names, 2=dist, 3=tracers)'}
+CMDs[#CMDs + 1] = {NAME = 'untesp / notesp', DESC = 'Disables the corner box ESP'}
+CMDs[#CMDs + 1] = {NAME = 'radar', DESC = 'Opens the draggable minimap radar'}
+CMDs[#CMDs + 1] = {NAME = 'unradar', DESC = 'Closes the minimap radar'}
+CMDs[#CMDs + 1] = {NAME = 'viewhud', DESC = 'Enables the real-time View HUD overlay'}
+CMDs[#CMDs + 1] = {NAME = 'unviewhud', DESC = 'Disables the View HUD overlay'}
+CMDs[#CMDs + 1] = {NAME = 'shield / antifling', DESC = 'Enables velocity-based anti-fling shield'}
+CMDs[#CMDs + 1] = {NAME = 'unshield / noantifling', DESC = 'Disables anti-fling shield'}
+CMDs[#CMDs + 1] = {NAME = 'finditems / itemlist', DESC = 'Opens a draggable list of loose tools in the workspace'}
+CMDs[#CMDs + 1] = {NAME = 'grabitems / autotool', DESC = 'Teleports to all loose tools in the workspace to grab them'}
+CMDs[#CMDs + 1] = {NAME = 'hitbox / hb [size]', DESC = 'Expands players HumanoidRootPart hitbox client-side (neon green)'}
+CMDs[#CMDs + 1] = {NAME = 'unhitbox / nohb', DESC = 'Restores original hitbox sizes'}
+CMDs[#CMDs + 1] = {NAME = 'staffalarm / staffproximity', DESC = 'Alarms and flashes the screen red when staff is within 150 studs'}
+CMDs[#CMDs + 1] = {NAME = 'unstaffalarm', DESC = 'Disables staff proximity alarm'}
+CMDs[#CMDs + 1] = {NAME = 'waypoints / poi', DESC = 'Enables 3D billboard waypoints for key points of interest'}
+CMDs[#CMDs + 1] = {NAME = 'unwaypoints / nopoi', DESC = 'Disables 3D waypoints'}
+CMDs[#CMDs + 1] = {NAME = 'safezone / escape', DESC = 'Teleports you instantly to the secure out-of-bounds safe zone'}
+CMDs[#CMDs + 1] = {NAME = 'setsafezone / setescape', DESC = 'Sets the custom safe-zone location to your current position'}
+CMDs[#CMDs + 1] = {NAME = 'viewfc / vfc [player]', DESC = 'Views a player using client-side Orbit Freecam (bypasses spectate blocks, hold right-click to orbit)'}
+CMDs[#CMDs + 1] = {NAME = 'unviewfc / unvfc', DESC = 'Stops Orbit Freecam viewing'}
 -- wait()
 
 for i = 1, #CMDs do
@@ -5901,37 +5932,15 @@ function TESP(plr)
 				v:Destroy()
 			end
 		end
-		wait()
+		task.wait()
 		if plr.Character and plr.Name ~= Players.LocalPlayer.Name and not COREGUI:FindFirstChild(plr.Name..'_TESP') then
 			local ESPholder = Instance.new("Folder")
 			ESPholder.Name = plr.Name..'_TESP'
 			ESPholder.Parent = COREGUI
-			repeat wait(1) until plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
+			repeat task.wait(0.1) until plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
 			local root = getRoot(plr.Character)
 			if root then
-				local isStaff = false
-				local success, inGroup17 = pcall(function() return plr:IsInGroup(17180419) end)
-				if success and inGroup17 then
-					local successRole, role = pcall(function() return plr:GetRoleInGroup(17180419) end)
-					if successRole and role and StaffRolewatchData.Roles[role] then
-						isStaff = true
-					end
-				else
-					local successOwner, inOwnerGroup = pcall(function()
-						return game.CreatorType == Enum.CreatorType.Group and plr:IsInGroup(game.CreatorId)
-					end)
-					if successOwner and inOwnerGroup then
-						local successRole, roleInfo = pcall(getStaffRole, plr)
-						if successRole and roleInfo.Staff then
-							isStaff = true
-						end
-					else
-						local successRoblox, inRoblox = pcall(function() return plr:IsInGroup(1200769) end)
-						if successRoblox and inRoblox then
-							isStaff = true
-						end
-					end
-				end
+				local isStaff, role = getCachedStaffRole(plr)
 
 				local BillboardGui = Instance.new("BillboardGui")
 				BillboardGui.Adornee = root
@@ -5981,7 +5990,8 @@ function TESP(plr)
 					label.TextSize = 14
 					label.TextColor3 = color
 					label.TextStrokeTransparency = 0
-					label.Text = (isStaff and "[STAFF] " or "") .. plr.Name
+					local displayName = plr.DisplayName or plr.Name
+					label.Text = (isStaff and "[" .. (role or "STAFF") .. "] " or "") .. displayName .. " (@" .. plr.Name .. ")"
 					label.Parent = BillboardGui
 				end
 
@@ -8302,29 +8312,7 @@ addcmd('untesp',{'notesp','nocorneresp'},function(args, speaker)
 			local plr = Players:FindFirstChild(pName)
 			local keep = false
 			if plr and StaffRolewatchData and StaffRolewatchData.Active then
-				local isStaff = false
-				local success, inGroup17 = pcall(function() return plr:IsInGroup(17180419) end)
-				if success and inGroup17 then
-					local successRole, role = pcall(function() return plr:GetRoleInGroup(17180419) end)
-					if successRole and role and StaffRolewatchData.Roles[role] then
-						isStaff = true
-					end
-				else
-					local successOwner, inOwnerGroup = pcall(function()
-						return game.CreatorType == Enum.CreatorType.Group and plr:IsInGroup(game.CreatorId)
-					end)
-					if successOwner and inOwnerGroup then
-						local successRole, roleInfo = pcall(getStaffRole, plr)
-						if successRole and roleInfo.Staff then
-							isStaff = true
-						end
-					else
-						local successRoblox, inRoblox = pcall(function() return plr:IsInGroup(1200769) end)
-						if successRoblox and inRoblox then
-							isStaff = true
-						end
-					end
-				end
+				local isStaff, role = getCachedStaffRole(plr)
 				if isStaff then
 					keep = true
 				end
@@ -8585,8 +8573,10 @@ local function checkStaffMessage(player, text)
 		if isStaff then
 			local rColor = getRoleColor(role or "Staff")
 			addStaffLog("💬 <b><font color=\"" .. rColor .. "\">" .. player.DisplayName .. "</font></b>: " .. text)
-			if logNotifications then
+			if StaffChatNotifications then
 				notify("Staff Chat", player.DisplayName .. ": " .. text, 5)
+			end
+			if StaffChatSounds then
 				local sound = Instance.new("Sound")
 				sound.SoundId = "rbxassetid://18723584764"
 				sound.Volume = 1
@@ -8819,6 +8809,7 @@ end)
 
 addcmd('unview',{'unspectate'},function(args, speaker)
 	StopFreecam()
+	stopViewFC()
 	if viewing ~= nil then
 		viewing = nil
 		destroyViewHUD()
@@ -13104,32 +13095,36 @@ getCachedStaffRole = function(player)
 
 	local isStaff, role = false, nil
 	local success, inGroup17 = pcall(function() return player:IsInGroup(17180419) end)
-	if success and inGroup17 then
-		local successRole, r = pcall(function() return player:GetRoleInGroup(17180419) end)
-		if successRole and r and StaffRolewatchData.Roles[r] then
-			isStaff = true
-			role = r
-		end
-	end
-	if not isStaff then
-		local successOwner, inOwnerGroup = pcall(function()
-			return game.CreatorType == Enum.CreatorType.Group and player:IsInGroup(game.CreatorId)
-		end)
-		if successOwner and inOwnerGroup then
-			local successRole, roleInfo = pcall(getStaffRole, player)
-			if successRole and roleInfo.Staff then
+	if success then
+		if inGroup17 then
+			local successRole, r = pcall(function() return player:GetRoleInGroup(17180419) end)
+			if successRole and r and StaffRolewatchData.Roles[r] then
 				isStaff = true
-				role = roleInfo.Role
-			end
-		else
-			local successRoblox, inRoblox = pcall(function() return player:IsInGroup(1200769) end)
-			if successRoblox and inRoblox then
-				isStaff = true
-				role = "Roblox Employee"
+				role = r
 			end
 		end
+		if not isStaff then
+			local successOwner, inOwnerGroup = pcall(function()
+				return game.CreatorType == Enum.CreatorType.Group and player:IsInGroup(game.CreatorId)
+			end)
+			if successOwner then
+				if inOwnerGroup then
+					local successRole, roleInfo = pcall(getStaffRole, player)
+					if successRole and roleInfo.Staff then
+						isStaff = true
+						role = roleInfo.Role
+					end
+				else
+					local successRoblox, inRoblox = pcall(function() return player:IsInGroup(1200769) end)
+					if successRoblox and inRoblox then
+						isStaff = true
+						role = "Roblox Employee"
+					end
+				end
+			end
+		end
+		playerStaffRolesCache[userId] = {isStaff = isStaff, role = role}
 	end
-	playerStaffRolesCache[userId] = {isStaff = isStaff, role = role}
 	return isStaff, role
 end
 
@@ -13281,6 +13276,7 @@ StaffRolewatchConnection = Players.PlayerAdded:Connect(function(player)
 			if StaffRolewatchData.Leave == true then
 				Players.LocalPlayer:Kick("\n\nStaff Watch\nPlayer \"" .. tostring(player.Name) .. "\" has joined with the Role \"" .. playerRole .. "\"\n")
 			else
+				playerStaffRolesCache[player.UserId] = {isStaff = true, role = playerRole}
 				createStaffWatchNotification(player, playerRole)
 				task.spawn(updateStaffListUI)
 				task.spawn(function() TESP(player) end)
@@ -13291,6 +13287,12 @@ end)
 
 addcmd("tmp", {}, function(args, speaker)
 	StaffRolewatchData.Active = true
+	execCmd("radar")
+	task.spawn(function()
+		repeat task.wait() until RadarFrame
+		RadarFrame.Position = UDim2.new(0, 10, 0, 80)
+	end)
+	
 	local found = {}
 	local players = Players:GetPlayers()
 	local total = 0
@@ -13329,6 +13331,7 @@ addcmd("tmp", {}, function(args, speaker)
 						if StaffRolewatchData.Leave == true then
 							Players.LocalPlayer:Kick("\n\nStaff Watch\nPlayer \"" .. tostring(player.Name) .. "\" is in server with the Role \"" .. playerRole .. "\"\n")
 						else
+							playerStaffRolesCache[player.UserId] = {isStaff = true, role = playerRole}
 							createStaffWatchNotification(player, playerRole)
 							table.insert(found, tostring(player.Name) .. " (" .. playerRole .. ")")
 							task.spawn(function() TESP(player) end)
@@ -13343,6 +13346,7 @@ end)
 
 addcmd("untmp", {}, function(args, speaker)
 	StaffRolewatchData.Active = false
+	execCmd("unradar")
 	notify("Staff Watch", "Disabled")
 	for _, card in pairs(ActiveStaffCards) do
 		if card.Parent then
@@ -14455,7 +14459,7 @@ local function createAdminPortal()
 	local playersTabBtn = Instance.new("TextButton")
 	playersTabBtn.Name = "PlayersTabBtn"
 	playersTabBtn.Size = UDim2.new(0, 90, 0, 25)
-	playersTabBtn.Position = UDim2.new(1, -240, 0, 8)
+	playersTabBtn.Position = UDim2.new(1, -330, 0, 8)
 	playersTabBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
 	playersTabBtn.Text = "👥 Players"
 	playersTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -14470,7 +14474,7 @@ local function createAdminPortal()
 	local logsTabBtn = Instance.new("TextButton")
 	logsTabBtn.Name = "LogsTabBtn"
 	logsTabBtn.Size = UDim2.new(0, 80, 0, 25)
-	logsTabBtn.Position = UDim2.new(1, -145, 0, 8)
+	logsTabBtn.Position = UDim2.new(1, -235, 0, 8)
 	logsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	logsTabBtn.Text = "📜 Logs"
 	logsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -14481,6 +14485,21 @@ local function createAdminPortal()
 	ltCorner.CornerRadius = UDim.new(0, 5)
 	ltCorner.Parent = logsTabBtn
 	logsTabBtn.Parent = header
+
+	local settingsTabBtn = Instance.new("TextButton")
+	settingsTabBtn.Name = "SettingsTabBtn"
+	settingsTabBtn.Size = UDim2.new(0, 80, 0, 25)
+	settingsTabBtn.Position = UDim2.new(1, -150, 0, 8)
+	settingsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	settingsTabBtn.Text = "⚙️ Settings"
+	settingsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+	settingsTabBtn.Font = Enum.Font.GothamBold
+	settingsTabBtn.TextSize = 11
+	settingsTabBtn.BorderSizePixel = 0
+	local stCorner2 = Instance.new("UICorner")
+	stCorner2.CornerRadius = UDim.new(0, 5)
+	stCorner2.Parent = settingsTabBtn
+	settingsTabBtn.Parent = header
 	
 	local close = Instance.new("TextButton")
 	close.Size = UDim2.new(0, 30, 0, 30)
@@ -14904,6 +14923,136 @@ local function createAdminPortal()
 	logsViewFrame.Visible = false
 	logsViewFrame.Parent = main
 	
+	-- Settings Tab Elements
+	local settingsViewFrame = Instance.new("Frame")
+	settingsViewFrame.Name = "SettingsViewFrame"
+	settingsViewFrame.Size = UDim2.new(1, -20, 1, -60)
+	settingsViewFrame.Position = UDim2.new(0, 10, 0, 50)
+	settingsViewFrame.BackgroundTransparency = 1
+	settingsViewFrame.Visible = false
+	settingsViewFrame.Parent = main
+	
+	local settingsScroll = Instance.new("ScrollingFrame")
+	settingsScroll.Name = "SettingsScroll"
+	settingsScroll.Size = UDim2.new(1, 0, 1, 0)
+	settingsScroll.BackgroundTransparency = 1
+	settingsScroll.BorderSizePixel = 0
+	settingsScroll.CanvasSize = UDim2.new(0, 0, 0, 320)
+	settingsScroll.ScrollBarThickness = 4
+	settingsScroll.Parent = settingsViewFrame
+	
+	local settingsLayout = Instance.new("UIListLayout")
+	settingsLayout.Padding = UDim.new(0, 8)
+	settingsLayout.Parent = settingsScroll
+
+	local function createSettingToggle(text, getValue, setValue)
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, -10, 0, 40)
+		row.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+		row.BorderSizePixel = 0
+		
+		local rCorner = Instance.new("UICorner")
+		rCorner.CornerRadius = UDim.new(0, 6)
+		rCorner.Parent = row
+		
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, -120, 1, 0)
+		label.Position = UDim2.new(0, 15, 0, 0)
+		label.BackgroundTransparency = 1
+		label.Text = text
+		label.TextColor3 = Color3.fromRGB(220, 220, 230)
+		label.Font = Enum.Font.GothamMedium
+		label.TextSize = 13
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Parent = row
+		
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(0, 90, 0, 28)
+		btn.Position = UDim2.new(1, -105, 0.5, -14)
+		btn.BorderSizePixel = 0
+		
+		local bCorner = Instance.new("UICorner")
+		bCorner.CornerRadius = UDim.new(0, 5)
+		bCorner.Parent = btn
+		
+		local function updateBtn()
+			local val = getValue()
+			btn.BackgroundColor3 = val and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(45, 40, 55)
+			btn.Text = val and "ENABLED" or "DISABLED"
+			btn.TextColor3 = val and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
+			btn.Font = Enum.Font.GothamBold
+			btn.TextSize = 10
+		end
+		
+		btn.MouseButton1Click:Connect(function()
+			setValue(not getValue())
+			updateBtn()
+		end)
+		
+		updateBtn()
+		btn.Parent = row
+		row.Parent = settingsScroll
+		return row
+	end
+
+	createSettingToggle("🚨 Staff Proximity Alarm", function() return StaffAlarmConnection ~= nil end, toggleStaffAlarm)
+	createSettingToggle("💬 Staff Chat Notification Popups", function() return StaffChatNotifications end, function(v) StaffChatNotifications = v end)
+	createSettingToggle("🔊 Staff Chat Notification Sounds", function() return StaffChatSounds end, function(v) StaffChatSounds = v end)
+	createSettingToggle("🏃 Staff Watch Auto-Leave (On Join)", function() return StaffRolewatchData.Leave end, function(v) StaffRolewatchData.Leave = v end)
+	createSettingToggle("🛡️ Anti-Fling Collision Shield", function() return ShieldEnabled end, toggleShield)
+
+	-- Hitbox Expander Size Row
+	local hitboxRow = Instance.new("Frame")
+	hitboxRow.Size = UDim2.new(1, -10, 0, 40)
+	hitboxRow.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+	hitboxRow.BorderSizePixel = 0
+	
+	local hbCorner = Instance.new("UICorner")
+	hbCorner.CornerRadius = UDim.new(0, 6)
+	hbCorner.Parent = hitboxRow
+	
+	local hbLabel = Instance.new("TextLabel")
+	hbLabel.Size = UDim2.new(1, -120, 1, 0)
+	hbLabel.Position = UDim2.new(0, 15, 0, 0)
+	hbLabel.BackgroundTransparency = 1
+	hbLabel.Text = "🎯 Hitbox Expander Size"
+	hbLabel.TextColor3 = Color3.fromRGB(220, 220, 230)
+	hbLabel.Font = Enum.Font.GothamMedium
+	hbLabel.TextSize = 13
+	hbLabel.TextXAlignment = Enum.TextXAlignment.Left
+	hbLabel.Parent = hitboxRow
+	
+	local hbInput = Instance.new("TextBox")
+	hbInput.Size = UDim2.new(0, 90, 0, 28)
+	hbInput.Position = UDim2.new(1, -105, 0.5, -14)
+	hbInput.BackgroundColor3 = Color3.fromRGB(45, 40, 55)
+	hbInput.BorderSizePixel = 0
+	hbInput.Text = tostring(HitboxSize)
+	hbInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+	hbInput.PlaceholderText = "Size"
+	hbInput.Font = Enum.Font.GothamBold
+	hbInput.TextSize = 12
+	
+	local hbiCorner = Instance.new("UICorner")
+	hbiCorner.CornerRadius = UDim.new(0, 5)
+	hbiCorner.Parent = hbInput
+	
+	hbInput.FocusLost:Connect(function()
+		local val = tonumber(hbInput.Text)
+		if val then
+			HitboxSize = val
+			if HitboxConnection then
+				expandHitboxes()
+			end
+			notify("Hitbox Expander", "Size updated to " .. val)
+		else
+			hbInput.Text = tostring(HitboxSize)
+		end
+	end)
+	
+	hbInput.Parent = hitboxRow
+	hitboxRow.Parent = settingsScroll
+	
 	local logsScroll = Instance.new("ScrollingFrame")
 	logsScroll.Name = "LogsScroll"
 	logsScroll.Size = UDim2.new(0, 380, 1, 0)
@@ -15004,34 +15153,32 @@ local function createAdminPortal()
 	
 	local function setTab(tabName)
 		portalLogsActive = (tabName == "Logs")
-		if tabName == "Players" then
-			playersTabBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
-			playersTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-			logsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-			logsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
-			
-			listFrame.Visible = true
-			searchFrame.Visible = true
-			filterFrame.Visible = true
-			detailFrame.Visible = true
-			logsViewFrame.Visible = false
-		else
-			logsTabBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
-			logsTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-			playersTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-			playersTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
-			
-			listFrame.Visible = false
-			searchFrame.Visible = false
-			filterFrame.Visible = false
-			detailFrame.Visible = false
-			logsViewFrame.Visible = true
+		
+		playersTabBtn.BackgroundColor3 = (tabName == "Players") and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
+		playersTabBtn.TextColor3 = (tabName == "Players") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
+		
+		logsTabBtn.BackgroundColor3 = (tabName == "Logs") and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
+		logsTabBtn.TextColor3 = (tabName == "Logs") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
+		
+		settingsTabBtn.BackgroundColor3 = (tabName == "Settings") and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
+		settingsTabBtn.TextColor3 = (tabName == "Settings") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
+		
+		listFrame.Visible = (tabName == "Players")
+		searchFrame.Visible = (tabName == "Players")
+		filterFrame.Visible = (tabName == "Players")
+		detailFrame.Visible = (tabName == "Players")
+		
+		logsViewFrame.Visible = (tabName == "Logs")
+		settingsViewFrame.Visible = (tabName == "Settings")
+		
+		if tabName == "Logs" then
 			updateLogsUI()
 		end
 	end
 	
 	playersTabBtn.MouseButton1Click:Connect(function() setTab("Players") end)
 	logsTabBtn.MouseButton1Click:Connect(function() setTab("Logs") end)
+	settingsTabBtn.MouseButton1Click:Connect(function() setTab("Settings") end)
 	
 	triggerLogsTab = function() setTab("Logs") end
 	
@@ -15151,6 +15298,94 @@ end)
 -- ==========================================
 -- PREMIUM GAMEPLAY EXTENSIONS HELPERS
 -- ==========================================
+
+-- ViewFC (Freecam View) variables
+local ViewFCConnection = nil
+local ViewFCTarget = nil
+local ViewFCMouseConnection = nil
+
+stopViewFC = function()
+	if ViewFCConnection then
+		ViewFCConnection:Disconnect()
+		ViewFCConnection = nil
+	end
+	if ViewFCMouseConnection then
+		ViewFCMouseConnection:Disconnect()
+		ViewFCMouseConnection = nil
+	end
+	ViewFCTarget = nil
+	if cameraType then
+		Camera.CameraType = cameraType
+		cameraType = nil
+		Camera.CameraSubject = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+	else
+		Camera.CameraType = Enum.CameraType.Custom
+	end
+	destroyViewHUD()
+end
+
+startViewFC = function(targetPlayer)
+	stopViewFC()
+	if not targetPlayer then return end
+	ViewFCTarget = targetPlayer
+	
+	if not cameraType then
+		cameraType = Camera.CameraType
+		cameraCFrame = Camera.CFrame
+		cameraFocus = Camera.Focus
+	end
+	
+	Camera.CameraType = Enum.CameraType.Scriptable
+	
+	createViewHUD(targetPlayer)
+	
+	local yaw = 0
+	local pitch = 0.5
+	local radius = 15
+	
+	ViewFCMouseConnection = UserInputService.InputChanged:Connect(function(input)
+		if not ViewFCTarget then
+			if ViewFCMouseConnection then
+				ViewFCMouseConnection:Disconnect()
+				ViewFCMouseConnection = nil
+			end
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.MouseMovement and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+			local delta = input.Delta
+			yaw = yaw - delta.X * 0.01
+			pitch = math.clamp(pitch - delta.Y * 0.01, -math.pi/2.2, math.pi/2.2)
+		end
+	end)
+	
+	ViewFCConnection = RunService.RenderStepped:Connect(function()
+		if not ViewFCTarget or not ViewFCTarget.Parent then
+			stopViewFC()
+			return
+		end
+		local char = ViewFCTarget.Character
+		local root = char and getRoot(char)
+		if not root then return end
+		
+		local targetPos = root.Position
+		local cosPitch = math.cos(pitch)
+		local sinPitch = math.sin(pitch)
+		local cosYaw = math.cos(yaw)
+		local sinYaw = math.sin(yaw)
+		
+		local cameraOffset = Vector3.new(
+			radius * cosPitch * sinYaw,
+			radius * sinPitch,
+			radius * cosPitch * cosYaw
+		)
+		
+		local targetCFrame = CFrame.new(targetPos + cameraOffset, targetPos)
+		Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 0.15)
+		Camera.Focus = root.CFrame
+	end)
+	
+	notify("View FC", "Viewing " .. targetPlayer.DisplayName .. " (@" .. targetPlayer.Name .. ") via Freecam View")
+end
 
 -- Hitbox Expander variables
 local HitboxSize = 2
@@ -15666,7 +15901,19 @@ local function autoGrabItems()
 	end)
 end
 
--- ==========================================
+addcmd("viewfc", {"vfc", "spectatefc"}, function(args, speaker)
+	local players = getPlayer(args[1], speaker)
+	if #players > 0 then
+		startViewFC(players[1])
+	else
+		notify("View FC", "Player not found")
+	end
+end)
+
+addcmd("unviewfc", {"unvfc", "unspectatefc"}, function(args, speaker)
+	stopViewFC()
+	notify("View FC", "Freecam View disabled")
+end)
 
 addcmd("finditems", {"itemlist"}, function(args, speaker)
 	createItemFinderUI()
