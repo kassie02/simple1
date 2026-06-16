@@ -8473,6 +8473,19 @@ triggerLogsTab = nil
 local RadarFrame = nil
 local RadarConnection = nil
 local radarRange = 250
+local RadarDots = {}
+local RadarArrows = {}
+
+local function clearRadarPool()
+	for _, dot in pairs(RadarDots) do
+		pcall(function() dot:Destroy() end)
+	end
+	for _, arrow in pairs(RadarArrows) do
+		pcall(function() arrow:Destroy() end)
+	end
+	RadarDots = {}
+	RadarArrows = {}
+end
 
 local function updateRadar()
 	if not RadarFrame or not RadarFrame.Parent then return end
@@ -8480,48 +8493,27 @@ local function updateRadar()
 	local localRoot = localChar and getRoot(localChar)
 	if not localRoot then return end
 	
-	-- Clear old dots and arrows
-	for _, child in pairs(RadarFrame.Content:GetChildren()) do
-		if child.Name == "Dot" or child.Name == "Arrow" then
-			child:Destroy()
-		end
+	-- Hide all existing dots and arrows to start
+	for _, dot in pairs(RadarDots) do
+		dot.Visible = false
+	end
+	for _, arrow in pairs(RadarArrows) do
+		arrow.Visible = false
 	end
 	
 	local localPos = localRoot.Position
 	local localLook = localRoot.CFrame.LookVector
 	local localRight = localRoot.CFrame.RightVector
 	
+	local activePlayers = {}
 	for _, player in pairs(Players:GetPlayers()) do
 		if player ~= Players.LocalPlayer and player.Character and getRoot(player.Character) then
+			activePlayers[player] = true
 			local targetRoot = getRoot(player.Character)
 			local targetPos = targetRoot.Position
 			local offset = targetPos - localPos
-			local distance = offset.Magnitude
 			
-			-- Determine if staff
-			local isStaff = false
-			local success, inGroup17 = pcall(function() return player:IsInGroup(17180419) end)
-			if success and inGroup17 then
-				local successRole, role = pcall(function() return player:GetRoleInGroup(17180419) end)
-				if successRole and role and StaffRolewatchData.Roles[role] then
-					isStaff = true
-				end
-			else
-				local successOwner, inOwnerGroup = pcall(function()
-					return game.CreatorType == Enum.CreatorType.Group and player:IsInGroup(game.CreatorId)
-				end)
-				if successOwner and inOwnerGroup then
-					local successRole, roleInfo = pcall(getStaffRole, player)
-					if successRole and roleInfo.Staff then
-						isStaff = true
-					end
-				else
-					local successRoblox, inRoblox = pcall(function() return player:IsInGroup(1200769) end)
-					if successRoblox and inRoblox then
-						isStaff = true
-					end
-				end
-			end
+			local isStaff, role = getCachedStaffRole(player)
 			
 			local radarRadius = 90
 			local xOffset = offset:Dot(localRight)
@@ -8532,40 +8524,70 @@ local function updateRadar()
 			local distScaled = math.sqrt(xScaled^2 + yScaled^2)
 			
 			if distScaled <= radarRadius then
-				local dot = Instance.new("Frame")
-				dot.Name = "Dot"
-				dot.Size = UDim2.new(0, 6, 0, 6)
+				local dot = RadarDots[player]
+				if not dot then
+					dot = Instance.new("Frame")
+					dot.Name = "Dot"
+					dot.Size = UDim2.new(0, 6, 0, 6)
+					local dotCorner = Instance.new("UICorner")
+					dotCorner.CornerRadius = UDim.new(0.5, 0)
+					dotCorner.Parent = dot
+					dot.Parent = RadarFrame.Content
+					RadarDots[player] = dot
+				end
+				
 				dot.Position = UDim2.new(0.5, xScaled - 3, 0.5, yScaled - 3)
 				dot.BackgroundColor3 = isStaff and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 192, 203)
 				dot.BorderSizePixel = 0
 				
-				local dotCorner = Instance.new("UICorner")
-				dotCorner.CornerRadius = UDim.new(0.5, 0)
-				dotCorner.Parent = dot
-				
+				local stroke = dot:FindFirstChildOfClass("UIStroke")
 				if isStaff then
-					local glow = Instance.new("UIStroke")
-					glow.Color = Color3.fromRGB(255, 255, 255)
-					glow.Thickness = 1
-					glow.Parent = dot
+					if not stroke then
+						stroke = Instance.new("UIStroke")
+						stroke.Color = Color3.fromRGB(255, 255, 255)
+						stroke.Thickness = 1
+						stroke.Parent = dot
+					end
+				else
+					if stroke then stroke:Destroy() end
 				end
 				
-				dot.Parent = RadarFrame.Content
+				dot.Visible = true
 			elseif isStaff then
 				local angle = math.atan2(yScaled, xScaled)
 				local arrowX = math.cos(angle) * radarRadius
 				local arrowY = math.sin(angle) * radarRadius
 				
-				local arrow = Instance.new("ImageLabel")
-				arrow.Name = "Arrow"
-				arrow.Size = UDim2.new(0, 12, 0, 12)
+				local arrow = RadarArrows[player]
+				if not arrow then
+					arrow = Instance.new("ImageLabel")
+					arrow.Name = "Arrow"
+					arrow.Size = UDim2.new(0, 12, 0, 12)
+					arrow.BackgroundTransparency = 1
+					arrow.Image = "rbxassetid://6031094687"
+					arrow.ImageColor3 = Color3.fromRGB(255, 200, 0)
+					arrow.Parent = RadarFrame.Content
+					RadarArrows[player] = arrow
+				end
+				
 				arrow.Position = UDim2.new(0.5, arrowX - 6, 0.5, arrowY - 6)
-				arrow.BackgroundTransparency = 1
-				arrow.Image = "rbxassetid://6031094687"
-				arrow.ImageColor3 = Color3.fromRGB(255, 200, 0)
 				arrow.Rotation = math.deg(angle) + 90
-				arrow.Parent = RadarFrame.Content
+				arrow.Visible = true
 			end
+		end
+	end
+	
+	-- Clean up players that left or have no character/root
+	for player, dot in pairs(RadarDots) do
+		if not activePlayers[player] then
+			pcall(function() dot:Destroy() end)
+			RadarDots[player] = nil
+		end
+	end
+	for player, arrow in pairs(RadarArrows) do
+		if not activePlayers[player] then
+			pcall(function() arrow:Destroy() end)
+			RadarArrows[player] = nil
 		end
 	end
 end
@@ -8793,31 +8815,45 @@ addcmd('view',{'spectate'},function(args, speaker)
 	local players = getPlayer(args[1], speaker)
 	for i,v in pairs(players) do
 		if viewDied then
-			viewDied:Disconnect()
-			viewChanged:Disconnect()
+			pcall(function() viewDied:Disconnect() end)
+			pcall(function() viewChanged:Disconnect() end)
+			viewDied = nil
+			viewChanged = nil
 		end
 		viewing = Players[v]
 		createViewHUD(viewing)
 		local character = viewing.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-		workspace.CurrentCamera.CameraSubject = humanoid or character
+		pcall(function()
+			workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+			workspace.CurrentCamera.CameraSubject = humanoid or character
+		end)
 		notify('Spectate','Viewing ' .. Players[v].Name)
 		local function viewDiedFunc()
-			repeat task.wait(0.05) until Players[v].Character ~= nil and getRoot(Players[v].Character)
+			repeat 
+				task.wait(0.05) 
+			until viewing ~= Players[v] or (Players[v].Character ~= nil and getRoot(Players[v].Character))
+			
+			if viewing ~= Players[v] then return end
+			
 			local char = Players[v].Character
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-			workspace.CurrentCamera.CameraSubject = hum or char
+			pcall(function()
+				workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+				workspace.CurrentCamera.CameraSubject = hum or char
+			end)
 		end
 		viewDied = Players[v].CharacterAdded:Connect(viewDiedFunc)
 		local function viewChangedFunc()
+			if viewing ~= Players[v] then return end
 			local char = viewing.Character
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
 			local target = hum or char
 			if workspace.CurrentCamera.CameraSubject ~= target then
-				workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-				workspace.CurrentCamera.CameraSubject = target
+				pcall(function()
+					workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+					workspace.CurrentCamera.CameraSubject = target
+				end)
 			end
 		end
 		viewChanged = workspace.CurrentCamera:GetPropertyChangedSignal("CameraSubject"):Connect(viewChangedFunc)
@@ -8846,8 +8882,10 @@ addcmd('unview',{'unspectate'},function(args, speaker)
 		notify('Spectate','View turned off')
 	end
 	if viewDied then
-		viewDied:Disconnect()
-		viewChanged:Disconnect()
+		pcall(function() viewDied:Disconnect() end)
+		pcall(function() viewChanged:Disconnect() end)
+		viewDied = nil
+		viewChanged = nil
 	end
 	local character = speaker.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -15474,6 +15512,7 @@ end)
 
 addcmd("radar", {}, function(args, speaker)
 	if RadarConnection then RadarConnection:Disconnect() RadarConnection = nil end
+	clearRadarPool()
 	if RadarFrame then RadarFrame:Destroy() RadarFrame = nil end
 	
 	RadarFrame = Instance.new("Frame")
@@ -15524,6 +15563,7 @@ end)
 
 addcmd("unradar", {}, function(args, speaker)
 	if RadarConnection then RadarConnection:Disconnect() RadarConnection = nil end
+	clearRadarPool()
 	if RadarFrame then RadarFrame:Destroy() RadarFrame = nil end
 	notify("Radar", "Radar Disabled")
 end)
@@ -15809,6 +15849,17 @@ end
 Players.PlayerRemoving:Connect(function(player)
 	OriginalHitboxes[player.UserId] = nil
 end)
+
+local function hookHitboxCleanup(player)
+	player.CharacterAdded:Connect(function()
+		OriginalHitboxes[player.UserId] = nil
+	end)
+end
+
+Players.PlayerAdded:Connect(hookHitboxCleanup)
+for _, p in pairs(Players:GetPlayers()) do
+	hookHitboxCleanup(p)
+end
 
 -- Staff Proximity Radar Alarm variables
 local StaffAlarmConnection = nil
