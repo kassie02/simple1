@@ -3286,15 +3286,46 @@ end
 local lastMessage = nil
 local lastLabel = nil
 local dupeCount = 1
+local function isNearStaff(player)
+	if not getCachedStaffRole or not getRoot then return false end
+	if not player or not player.Character then return false end
+	local root = getRoot(player.Character)
+	if not root then return false end
+	local pos = root.Position
+	
+	for _, other in pairs(Players:GetPlayers()) do
+		if other ~= player then
+			local isStaff, role = getCachedStaffRole(other)
+			if isStaff and other.Character then
+				local otherRoot = getRoot(other.Character)
+				if otherRoot then
+					local dist = (pos - otherRoot.Position).Magnitude
+					if dist <= 45 then
+						return true
+					end
+				end
+			end
+		end
+	end
+	return false
+end
+
 function CreateLabel(Name, Text)
 	local prefix = ""
+	local isStaffMessage = false
+	local isNearStaffMessage = false
+
 	if getCachedStaffRole and getRoleColor then
 		local player = Players:FindFirstChild(Name)
 		if player then
 			local isStaff, role = getCachedStaffRole(player)
 			if isStaff and role then
+				isStaffMessage = true
 				local rColor = getRoleColor(role)
 				prefix = "<b><font color=\"rgb(255, 215, 0)\">[STAFF]</font> <font color=\"" .. rColor .. "\">[" .. role .. "]</font></b> "
+			elseif isNearStaff(player) then
+				isNearStaffMessage = true
+				prefix = "<b><font color=\"rgb(255, 100, 100)\">[NEAR MOD]</font></b> "
 			end
 		end
 	end
@@ -3336,10 +3367,49 @@ function CreateLabel(Name, Text)
 		tl.TextXAlignment = "Left"
 		tl.TextYAlignment = "Top"
 		tl.TextColor3 = currentText1
-		tl.Size = UDim2.new(0,322,0,tl.TextBounds.Y)
+		
+		-- Style and outline
+		local extraHeight = 0
+		if isStaffMessage then
+			tl.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+			tl.BackgroundTransparency = 0.92
+			
+			local stroke = Instance.new("UIStroke")
+			stroke.Color = Color3.fromRGB(255, 200, 0)
+			stroke.Thickness = 1
+			stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			stroke.Parent = tl
+			
+			local padding = Instance.new("UIPadding")
+			padding.PaddingLeft = UDim.new(0, 6)
+			padding.PaddingRight = UDim.new(0, 6)
+			padding.PaddingTop = UDim.new(0, 3)
+			padding.PaddingBottom = UDim.new(0, 3)
+			padding.Parent = tl
+			extraHeight = 6
+		elseif isNearStaffMessage then
+			tl.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+			tl.BackgroundTransparency = 0.92
+			
+			local stroke = Instance.new("UIStroke")
+			stroke.Color = Color3.fromRGB(255, 100, 100)
+			stroke.Thickness = 1
+			stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			stroke.Parent = tl
+			
+			local padding = Instance.new("UIPadding")
+			padding.PaddingLeft = UDim.new(0, 6)
+			padding.PaddingRight = UDim.new(0, 6)
+			padding.PaddingTop = UDim.new(0, 3)
+			padding.PaddingBottom = UDim.new(0, 3)
+			padding.Parent = tl
+			extraHeight = 6
+		end
+		
+		tl.Size = UDim2.new(0,322,0,tl.TextBounds.Y + extraHeight)
 		table.insert(text1,tl)
-		scroll_2.CanvasSize = UDim2.new(0,0,0,alls+tl.TextBounds.Y)
-		scroll_2.CanvasPosition = Vector2.new(0,scroll_2.CanvasPosition.Y+tl.TextBounds.Y)
+		scroll_2.CanvasSize = UDim2.new(0,0,0,alls+tl.TextBounds.Y + extraHeight)
+		scroll_2.CanvasPosition = Vector2.new(0,scroll_2.CanvasPosition.Y+tl.TextBounds.Y + extraHeight)
 		tl:TweenPosition(UDim2.new(0,3,0,alls), 'In', 'Quint', 0.5)
 		TweenService:Create(tl, TweenInfo.new(1.25, Enum.EasingStyle.Linear), { TextTransparency = 0 }):Play()
 	end
@@ -5929,181 +5999,194 @@ TESPenabled = false
 local TESPConnections = {}
 
 function TESP(plr)
+	if plr == Players.LocalPlayer then return end
+	
 	task.spawn(function()
 		if TESPConnections[plr.UserId] then
 			pcall(function() TESPConnections[plr.UserId]:Disconnect() end)
 			TESPConnections[plr.UserId] = nil
 		end
-		for i,v in pairs(COREGUI:GetChildren()) do
+		
+		for _, v in pairs(COREGUI:GetChildren()) do
 			if v.Name == plr.Name..'_TESP' then
-				v:Destroy()
+				pcall(function() v:Destroy() end)
 			end
 		end
-		task.wait()
-		if plr.Character and plr.Name ~= Players.LocalPlayer.Name and not COREGUI:FindFirstChild(plr.Name..'_TESP') then
+		
+		local isStaff = false
+		if getCachedStaffRole then
+			local staffCheck, _ = getCachedStaffRole(plr)
+			isStaff = staffCheck
+		end
+		
+		local addedConn
+		addedConn = plr.CharacterAdded:Connect(function()
+			task.wait()
+			if TESPenabled or (StaffRolewatchData and StaffRolewatchData.Active and isStaff) then
+				TESP(plr)
+			else
+				if TESPConnections[plr.UserId] == addedConn then
+					TESPConnections[plr.UserId] = nil
+				end
+				pcall(function() addedConn:Disconnect() end)
+			end
+		end)
+		TESPConnections[plr.UserId] = addedConn
+		
+		local removingConn
+		removingConn = plr.CharacterRemoving:Connect(function()
+			pcall(function()
+				local folder = COREGUI:FindFirstChild(plr.Name..'_TESP')
+				if folder then folder:Destroy() end
+			end)
+			pcall(function() removingConn:Disconnect() end)
+		end)
+		
+		if plr.Character then
+			repeat task.wait(0.1) until plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
+			local root = getRoot(plr.Character)
+			if not root then return end
+			
+			if COREGUI:FindFirstChild(plr.Name..'_TESP') then return end
+			
 			local ESPholder = Instance.new("Folder")
 			ESPholder.Name = plr.Name..'_TESP'
 			ESPholder.Parent = COREGUI
-			repeat task.wait(0.1) until plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
-			local root = getRoot(plr.Character)
-			if root then
-				local isStaff, role = getCachedStaffRole(plr)
-
-				local BillboardGui = Instance.new("BillboardGui")
-				BillboardGui.Adornee = root
-				BillboardGui.Name = plr.Name
-				BillboardGui.Parent = ESPholder
-				BillboardGui.Size = UDim2.new(4.5, 0, 6, 0)
-				BillboardGui.AlwaysOnTop = true
-				
-				local color = Color3.fromRGB(255, 192, 203) -- Default Pink
-				if isStaff then
-					color = Color3.fromRGB(255, 200, 0) -- Gold for Staff
-				elseif plr.Team and Players.LocalPlayer.Team then
-					if plr.Team == Players.LocalPlayer.Team then
-						color = Color3.fromRGB(100, 200, 255) -- Light Blue for Teammates / Allies
-					else
-						color = Color3.fromRGB(255, 100, 100) -- Light Red for Civilians / Other Teams
-					end
-				elseif plr.Team then
-					color = plr.TeamColor.Color -- Fallback to actual team color
+			
+			local BillboardGui = Instance.new("BillboardGui")
+			BillboardGui.Adornee = root
+			BillboardGui.Name = plr.Name
+			BillboardGui.Parent = ESPholder
+			BillboardGui.Size = UDim2.new(4.5, 0, 6, 0)
+			BillboardGui.AlwaysOnTop = true
+			
+			local color = Color3.fromRGB(255, 192, 203) -- Default Pink
+			if isStaff then
+				color = Color3.fromRGB(255, 200, 0) -- Gold for Staff
+			elseif plr.Team and Players.LocalPlayer.Team then
+				if plr.Team == Players.LocalPlayer.Team then
+					color = Color3.fromRGB(100, 200, 255) -- Light Blue for Teammates
+				else
+					color = Color3.fromRGB(255, 100, 100) -- Light Red for Civilians
+				end
+			elseif plr.Team then
+				color = plr.TeamColor.Color
+			end
+			
+			local function createLine(pos, size)
+				local line = Instance.new("Frame")
+				line.BackgroundColor3 = color
+				line.BorderSizePixel = 0
+				line.Position = pos
+				line.Size = size
+				line.Parent = BillboardGui
+			end
+			
+			local thickness = 2
+			local len = 0.2
+			
+			createLine(UDim2.new(0, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
+			createLine(UDim2.new(0, 0, 0, 0), UDim2.new(0, thickness, len, 0))
+			createLine(UDim2.new(1 - len, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
+			createLine(UDim2.new(1, -thickness, 0, 0), UDim2.new(0, thickness, len, 0))
+			createLine(UDim2.new(0, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
+			createLine(UDim2.new(0, 0, 1 - len, 0), UDim2.new(0, thickness, len, 0))
+			createLine(UDim2.new(1 - len, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
+			createLine(UDim2.new(1, -thickness, 1 - len, 0), UDim2.new(0, thickness, len, 0))
+			
+			local showName = (TESPmode >= 1) or isStaff
+			if showName then
+				local label = Instance.new("TextLabel")
+				label.BackgroundTransparency = 1
+				label.Position = UDim2.new(0.5, -75, 0, -20)
+				label.Size = UDim2.new(0, 150, 0, 15)
+				label.Font = Enum.Font.SourceSansSemibold
+				label.TextSize = 14
+				label.TextColor3 = color
+				label.TextStrokeTransparency = 0
+				local role = nil
+				if isStaff and getCachedStaffRole then
+					local _, r = getCachedStaffRole(plr)
+					role = r
+				end
+				local displayName = plr.DisplayName or plr.Name
+				label.Text = (isStaff and "[" .. (role or "STAFF") .. "] " or "") .. displayName .. " (@" .. plr.Name .. ")"
+				label.Parent = BillboardGui
+			end
+			
+			local distanceLabel
+			if TESPmode >= 2 then
+				distanceLabel = Instance.new("TextLabel")
+				distanceLabel.BackgroundTransparency = 1
+				distanceLabel.Position = UDim2.new(0.5, -75, 1, 5)
+				distanceLabel.Size = UDim2.new(0, 150, 0, 15)
+				distanceLabel.Font = Enum.Font.SourceSansSemibold
+				distanceLabel.TextSize = 13
+				distanceLabel.TextColor3 = color
+				distanceLabel.TextStrokeTransparency = 0
+				distanceLabel.Text = ""
+				distanceLabel.Parent = BillboardGui
+			end
+			
+			local tracer
+			if TESPmode >= 3 and Drawing then
+				pcall(function()
+					tracer = Drawing.new("Line")
+					tracer.Thickness = 1
+					tracer.Color = color
+					tracer.Visible = false
+				end)
+			end
+			
+			local conn
+			conn = RunService.RenderStepped:Connect(function()
+				if not ESPholder or not ESPholder.Parent then
+					conn:Disconnect()
+					if tracer then pcall(function() tracer:Destroy() end) end
+					return
 				end
 				
-				local function createLine(pos, size)
-					local line = Instance.new("Frame")
-					line.BackgroundColor3 = color
-					line.BorderSizePixel = 0
-					line.Position = pos
-					line.Size = size
-					line.Parent = BillboardGui
-				end
+				local char = plr.Character
+				local rootPart = char and getRoot(char)
+				local localChar = Players.LocalPlayer.Character
+				local localRoot = localChar and getRoot(localChar)
 				
-				local thickness = 2
-				local len = 0.2
-				
-				-- Top-Left
-				createLine(UDim2.new(0, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
-				createLine(UDim2.new(0, 0, 0, 0), UDim2.new(0, thickness, len, 0))
-				
-				-- Top-Right
-				createLine(UDim2.new(1 - len, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
-				createLine(UDim2.new(1, -thickness, 0, 0), UDim2.new(0, thickness, len, 0))
-				
-				-- Bottom-Left
-				createLine(UDim2.new(0, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
-				createLine(UDim2.new(0, 0, 1 - len, 0), UDim2.new(0, thickness, len, 0))
-				
-				-- Bottom-Right
-				createLine(UDim2.new(1 - len, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
-				createLine(UDim2.new(1, -thickness, 1 - len, 0), UDim2.new(0, thickness, len, 0))
-				
-				-- Text Label
-				local showName = (TESPmode >= 1) or isStaff
-				if showName then
-					local label = Instance.new("TextLabel")
-					label.BackgroundTransparency = 1
-					label.Position = UDim2.new(0.5, -75, 0, -20)
-					label.Size = UDim2.new(0, 150, 0, 15)
-					label.Font = Enum.Font.SourceSansSemibold
-					label.TextSize = 14
-					label.TextColor3 = color
-					label.TextStrokeTransparency = 0
-					local displayName = plr.DisplayName or plr.Name
-					label.Text = (isStaff and "[" .. (role or "STAFF") .. "] " or "") .. displayName .. " (@" .. plr.Name .. ")"
-					label.Parent = BillboardGui
-				end
-
-				-- Distance Label
-				local distanceLabel
-				if TESPmode >= 2 then
-					distanceLabel = Instance.new("TextLabel")
-					distanceLabel.BackgroundTransparency = 1
-					distanceLabel.Position = UDim2.new(0.5, -75, 1, 5)
-					distanceLabel.Size = UDim2.new(0, 150, 0, 15)
-					distanceLabel.Font = Enum.Font.SourceSansSemibold
-					distanceLabel.TextSize = 13
-					distanceLabel.TextColor3 = color
-					distanceLabel.TextStrokeTransparency = 0
+				if TESPmode >= 2 and distanceLabel and rootPart and localRoot then
+					local dist = math.floor((rootPart.Position - localRoot.Position).Magnitude)
+					distanceLabel.Text = tostring(dist) .. " studs"
+				elseif distanceLabel then
 					distanceLabel.Text = ""
-					distanceLabel.Parent = BillboardGui
 				end
-
-				-- Tracers and RenderStepped connection
-				local tracer
-				if TESPmode >= 3 and Drawing then
-					pcall(function()
-						tracer = Drawing.new("Line")
-						tracer.Thickness = 1
-						tracer.Color = color
-						tracer.Visible = false
-					end)
-				end
-
-				local conn
-				conn = RunService.RenderStepped:Connect(function()
-					if not ESPholder or not ESPholder.Parent then
-						conn:Disconnect()
-						if tracer then
-							pcall(function() tracer:Destroy() end)
-						end
-						return
-					end
-
-					local char = plr.Character
-					local rootPart = char and getRoot(char)
-					local localChar = Players.LocalPlayer.Character
-					local localRoot = localChar and getRoot(localChar)
-
-					if TESPmode >= 2 and distanceLabel and rootPart and localRoot then
-						local dist = math.floor((rootPart.Position - localRoot.Position).Magnitude)
-						distanceLabel.Text = tostring(dist) .. " studs"
-					elseif distanceLabel then
-						distanceLabel.Text = ""
-					end
-
-					if tracer then
-						if rootPart then
-							local camera = workspace.CurrentCamera
-							if camera then
-								local screenPos, onScreen = camera:WorldToViewportPoint(rootPart.Position)
-								if onScreen then
-									tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-									tracer.To = Vector2.new(screenPos.X, screenPos.Y)
-									tracer.Visible = true
-								else
-									tracer.Visible = false
-								end
+				
+				if tracer then
+					if rootPart then
+						local camera = workspace.CurrentCamera
+						if camera then
+							local screenPos, onScreen = camera:WorldToViewportPoint(rootPart.Position)
+							if onScreen then
+								tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+								tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+								tracer.Visible = true
 							else
 								tracer.Visible = false
 							end
 						else
 							tracer.Visible = false
 						end
-					end
-				end)
-				
-				local addedFunc
-				addedFunc = plr.CharacterAdded:Connect(function()
-					if TESPenabled or (StaffRolewatchData.Active and isStaff) then
-						if ESPholder then pcall(function() ESPholder:Destroy() end) end
-						repeat task.wait(0.1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
-						TESP(plr)
 					else
-						if TESPConnections[plr.UserId] == addedFunc then
-							TESPConnections[plr.UserId] = nil
-						end
-						addedFunc:Disconnect()
+						tracer.Visible = false
 					end
-				end)
-				TESPConnections[plr.UserId] = addedFunc
-				
-				local CHMSremoved = ESPholder.AncestryChanged:Connect(function()
-					if TESPConnections[plr.UserId] == addedFunc then
-						TESPConnections[plr.UserId] = nil
-					end
-					addedFunc:Disconnect()
-				end)
-			end
+				end
+			end)
+			
+			local CHMSremoved
+			CHMSremoved = ESPholder.AncestryChanged:Connect(function()
+				if not ESPholder or not ESPholder.Parent then
+					pcall(function() conn:Disconnect() end)
+					if tracer then pcall(function() tracer:Destroy() end) end
+					pcall(function() CHMSremoved:Disconnect() end)
+				end
+			end)
 		end
 	end)
 end
@@ -8637,6 +8720,184 @@ local function checkStaffMessage(player, text)
 	end)
 end
 
+local ActiveHelpCards = {}
+local function layoutActiveHelpCards()
+	local spacing = 15
+	local cardWidth = 240
+	local startY = 125
+	
+	local valid = {}
+	for _, c in ipairs(ActiveHelpCards) do
+		if c.Parent then
+			table.insert(valid, c)
+		end
+	end
+	ActiveHelpCards = valid
+	
+	local count = #ActiveHelpCards
+	if count > 0 then
+		local totalWidth = count * cardWidth + (count - 1) * spacing
+		local startX = -totalWidth / 2
+		for i, c in ipairs(ActiveHelpCards) do
+			c:TweenPosition(UDim2.new(0.5, startX + (i - 1) * (cardWidth + spacing), 0, startY), "Out", "Quart", 0.3, true)
+		end
+	end
+end
+
+local function createHelpRequestNotification(player)
+	if typeof(player) ~= "Instance" or not player:IsA("Player") then return end
+	local playerName = player.Name
+	local userId = player.UserId
+	
+	for i, c in ipairs(ActiveHelpCards) do
+		if c.Name == playerName then
+			c:Destroy()
+			table.remove(ActiveHelpCards, i)
+			break
+		end
+	end
+	
+	local card = Instance.new("Frame")
+	card.Name = playerName
+	card.Size = UDim2.new(0, 240, 0, 75)
+	card.Position = UDim2.new(0.5, -120, 0, -100)
+	card.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
+	card.BackgroundTransparency = 0.15
+	card.BorderSizePixel = 0
+	card.Parent = PARENT
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = card
+	
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(100, 200, 255)
+	stroke.Thickness = 1.5
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = card
+	
+	local avatar = Instance.new("ImageLabel")
+	avatar.Name = "Avatar"
+	avatar.Size = UDim2.new(0, 55, 0, 55)
+	avatar.Position = UDim2.new(0, 10, 0, 10)
+	avatar.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+	avatar.BorderSizePixel = 0
+	avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. userId .. "&w=150&h=150"
+	
+	local avatarCorner = Instance.new("UICorner")
+	avatarCorner.CornerRadius = UDim.new(0, 6)
+	avatarCorner.Parent = avatar
+	avatar.Parent = card
+	
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, -110, 0, 20)
+	title.Position = UDim2.new(0, 72, 0, 6)
+	title.BackgroundTransparency = 1
+	title.Text = "ℹ️ HELP REQUESTED"
+	title.TextColor3 = Color3.fromRGB(100, 200, 255)
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 12
+	title.Parent = card
+	
+	local info = Instance.new("TextLabel")
+	info.Size = UDim2.new(1, -110, 0, 20)
+	info.Position = UDim2.new(0, 72, 0, 22)
+	info.BackgroundTransparency = 1
+	info.RichText = true
+	info.Text = "User: <b><font color=\"rgb(255, 255, 255)\">" .. player.DisplayName .. "</font></b>"
+	info.TextColor3 = Color3.fromRGB(200, 200, 200)
+	info.Font = Enum.Font.Gotham
+	info.TextSize = 11
+	info.TextXAlignment = Enum.TextXAlignment.Left
+	info.Parent = card
+	
+	local viewBtn = Instance.new("TextButton")
+	viewBtn.Size = UDim2.new(0, 80, 0, 22)
+	viewBtn.Position = UDim2.new(0, 72, 0, 44)
+	viewBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+	viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
+	viewBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+	viewBtn.Font = Enum.Font.GothamBold
+	viewBtn.TextSize = 10
+	viewBtn.BorderSizePixel = 0
+	
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 4)
+	btnCorner.Parent = viewBtn
+	viewBtn.Parent = card
+	
+	local function updateBtnText()
+		viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
+		viewBtn.BackgroundColor3 = (viewing == player) and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 200, 255)
+		viewBtn.TextColor3 = (viewing == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
+	end
+	
+	viewBtn.MouseButton1Click:Connect(function()
+		if viewing == player then
+			execCmd("unview")
+		else
+			execCmd("view " .. player.Name)
+		end
+		updateBtnText()
+	end)
+	
+	local viewConn
+	viewConn = RunService.Heartbeat:Connect(function()
+		if not card.Parent then
+			viewConn:Disconnect()
+			return
+		end
+		updateBtnText()
+	end)
+	
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 20, 0, 20)
+	closeBtn.Position = UDim2.new(1, -26, 0, 6)
+	closeBtn.BackgroundTransparency = 1
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 12
+	closeBtn.Parent = card
+	
+	closeBtn.MouseEnter:Connect(function()
+		closeBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
+	end)
+	closeBtn.MouseLeave:Connect(function()
+		closeBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+	end)
+	
+	closeBtn.MouseButton1Click:Connect(function()
+		card:Destroy()
+		layoutActiveHelpCards()
+	end)
+	
+	local s = Instance.new("Sound")
+	s.SoundId = "rbxassetid://9114223293"
+	s.Volume = 0.5
+	s.Parent = game:GetService("SoundService")
+	s:Play()
+	game:GetService("Debris"):AddItem(s, 3)
+	
+	table.insert(ActiveHelpCards, card)
+	layoutActiveHelpCards()
+	
+	task.delay(20, function()
+		if card.Parent then
+			card:Destroy()
+			layoutActiveHelpCards()
+		end
+	end)
+end
+
+local function checkHelpMessage(player, text)
+	if player == Players.LocalPlayer then return end
+	if string.find(text:lower(), "!help") then
+		pcall(function() createHelpRequestNotification(player) end)
+	end
+end
+
 local function monitorStaffChar(player, char)
 	task.spawn(function()
 		local isStaff, role = getCachedStaffRole(player)
@@ -8821,53 +9082,86 @@ local function createViewHUD(targetPlayer)
 end
 
 viewing = nil
+local viewDied = nil
+local viewChanged = nil
+local cameraChangedConn = nil
+
+local function stopViewingHooks()
+	if viewDied then pcall(function() viewDied:Disconnect() end) viewDied = nil end
+	if viewChanged then pcall(function() viewChanged:Disconnect() end) viewChanged = nil end
+	if cameraChangedConn then pcall(function() cameraChangedConn:Disconnect() end) cameraChangedConn = nil end
+end
+
+local function applyViewing(player)
+	if not player then return end
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local target = hum or char
+	if target then
+		pcall(function()
+			workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+			workspace.CurrentCamera.CameraSubject = target
+		end)
+	end
+end
+
 addcmd('view',{'spectate'},function(args, speaker)
 	StopFreecam()
 	local players = getPlayer(args[1], speaker)
 	for i,v in pairs(players) do
-		if viewDied then
-			pcall(function() viewDied:Disconnect() end)
-			pcall(function() viewChanged:Disconnect() end)
-			viewDied = nil
-			viewChanged = nil
-		end
+		stopViewingHooks()
 		viewing = Players[v]
 		createViewHUD(viewing)
-		local character = viewing.Character
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		pcall(function()
-			workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-			workspace.CurrentCamera.CameraSubject = humanoid or character
-		end)
+		applyViewing(viewing)
 		notify('Spectate','Viewing ' .. Players[v].Name)
-		local function viewDiedFunc()
-			repeat 
-				task.wait(0.05) 
-			until viewing ~= Players[v] or (Players[v].Character ~= nil and getRoot(Players[v].Character))
-			
-			if viewing ~= Players[v] then return end
-			
-			local char = Players[v].Character
-			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			pcall(function()
-				workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-				workspace.CurrentCamera.CameraSubject = hum or char
+		
+		viewDied = Players[v].CharacterAdded:Connect(function()
+			repeat task.wait(0.05) until viewing ~= Players[v] or (Players[v].Character and getRoot(Players[v].Character))
+			if viewing == Players[v] then
+				applyViewing(viewing)
+			end
+		end)
+		
+		local function setupSubjectHook(camera)
+			if viewChanged then pcall(function() viewChanged:Disconnect() end) end
+			viewChanged = camera:GetPropertyChangedSignal("CameraSubject"):Connect(function()
+				if viewing ~= Players[v] then return end
+				local char = viewing.Character
+				local hum = char and char:FindFirstChildOfClass("Humanoid")
+				local target = hum or char
+				if target and camera.CameraSubject ~= target then
+					pcall(function()
+						camera.CameraType = Enum.CameraType.Custom
+						camera.CameraSubject = target
+					end)
+				end
 			end)
 		end
-		viewDied = Players[v].CharacterAdded:Connect(viewDiedFunc)
-		local function viewChangedFunc()
+		setupSubjectHook(workspace.CurrentCamera)
+		
+		cameraChangedConn = workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
 			if viewing ~= Players[v] then return end
-			local char = viewing.Character
-			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			local target = hum or char
-			if workspace.CurrentCamera.CameraSubject ~= target then
-				pcall(function()
-					workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-					workspace.CurrentCamera.CameraSubject = target
-				end)
+			local newCamera = workspace.CurrentCamera
+			if newCamera then
+				applyViewing(viewing)
+				setupSubjectHook(newCamera)
 			end
-		end
-		viewChanged = workspace.CurrentCamera:GetPropertyChangedSignal("CameraSubject"):Connect(viewChangedFunc)
+		end)
+		
+		task.spawn(function()
+			while viewing == Players[v] do
+				local char = viewing.Character
+				local hum = char and char:FindFirstChildOfClass("Humanoid")
+				local target = hum or char
+				if target and workspace.CurrentCamera.CameraSubject ~= target then
+					pcall(function()
+						workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+						workspace.CurrentCamera.CameraSubject = target
+					end)
+				end
+				task.wait(0.25)
+			end
+		end)
 	end
 end)
 
@@ -8892,16 +9186,13 @@ addcmd('unview',{'unspectate'},function(args, speaker)
 		destroyViewHUD()
 		notify('Spectate','View turned off')
 	end
-	if viewDied then
-		pcall(function() viewDied:Disconnect() end)
-		pcall(function() viewChanged:Disconnect() end)
-		viewDied = nil
-		viewChanged = nil
-	end
+	stopViewingHooks()
 	local character = speaker.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-	workspace.CurrentCamera.CameraSubject = humanoid or character
+	pcall(function()
+		workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+		workspace.CurrentCamera.CameraSubject = humanoid or character
+	end)
 end)
 
 
@@ -14241,6 +14532,7 @@ Players.PlayerAdded:Connect(function(plr)
 		plr.Chatted:Connect(function(msg) 
 			eventEditor.FireEvent("OnChatted",tostring(plr),msg) 
 			pcall(function() checkStaffMessage(plr, msg) end)
+			pcall(function() checkHelpMessage(plr, msg) end)
 		end) 
 	end
 	plr.CharacterAdded:Connect(function(char) 
@@ -14269,7 +14561,6 @@ Players.PlayerAdded:Connect(function(plr)
 		CHMS(plr)
 	end
 	if TESPenabled then
-		repeat wait(1) until plr.Character and getRoot(plr.Character)
 		TESP(plr)
 	end
 end)
@@ -14289,6 +14580,7 @@ if not isLegacyChat then
 			eventEditor.FireEvent("OnChatted", player.Name, message.Text)
 			sendChatWebhook(player, message.Text)
 			pcall(function() checkStaffMessage(player, message.Text) end)
+			pcall(function() checkHelpMessage(player, message.Text) end)
 		end
 	end)
 
@@ -14302,6 +14594,8 @@ if not isLegacyChat then
 					local isStaff, role = getCachedStaffRole(player)
 					if isStaff and role then
 						properties.PrefixText = "<font color=\"rgb(255, 50, 50)\"><b>[" .. role .. "]</b></font> " .. message.PrefixText
+					elseif isNearStaff and isNearStaff(player) then
+						properties.PrefixText = "<font color=\"rgb(255, 100, 100)\"><b>[NEAR MOD]</b></font> " .. message.PrefixText
 					end
 				end
 			end
@@ -14321,6 +14615,33 @@ else
 						if isStaff and role then
 							local prefix = "<font color=\"rgb(255, 50, 50)\"><b>[" .. role .. "]</b></font> "
 							if not string.find(label.Text, "%[" .. role .. "%]") then
+								local dName = p.DisplayName or p.Name
+								local uName = p.Name
+								local escapedDName = dName:gsub("([^%w])", "%%%1")
+								local escapedUName = uName:gsub("([^%w])", "%%%1")
+								
+								local pattern1 = "^(" .. escapedDName .. ")%s*:"
+								local pattern2 = "^(" .. escapedUName .. ")%s*:"
+								local pattern3 = "^%[(" .. escapedDName .. ")%]%s*:"
+								local pattern4 = "^%[(" .. escapedUName .. ")%]%s*:"
+
+								if label.Text:match(pattern1) then
+									label.Text = label.Text:gsub(pattern1, prefix .. "%1:", 1)
+									break
+								elseif label.Text:match(pattern2) then
+									label.Text = label.Text:gsub(pattern2, prefix .. "%1:", 1)
+									break
+								elseif label.Text:match(pattern3) then
+									label.Text = label.Text:gsub(pattern3, prefix .. "[%1]:", 1)
+									break
+								elseif label.Text:match(pattern4) then
+									label.Text = label.Text:gsub(pattern4, prefix .. "[%1]:", 1)
+									break
+								end
+							end
+						elseif isNearStaff and isNearStaff(p) then
+							local prefix = "<font color=\"rgb(255, 100, 100)\"><b>[NEAR MOD]</b></font> "
+							if not string.find(label.Text, "%[NEAR MOD%]") then
 								local dName = p.DisplayName or p.Name
 								local uName = p.Name
 								local escapedDName = dName:gsub("([^%w])", "%%%1")
@@ -15886,6 +16207,7 @@ end
 -- Staff Proximity Radar Alarm variables
 local StaffAlarmConnection = nil
 local AlarmFlasher = nil
+local StaffProximityState = {}
 
 local function triggerStaffAlarmEffect()
 	if not AlarmFlasher then
@@ -15920,6 +16242,12 @@ local function checkStaffProximity()
 	local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
 	if not localRoot then return end
 
+	local currentNear = {}
+	local anyNewNear = false
+	local nearestNewPlayer = nil
+	local nearestNewRole = ""
+	local nearestNewDist = 9999
+
 	for _, p in pairs(Players:GetPlayers()) do
 		if p ~= Players.LocalPlayer and p.Character then
 			local root = p.Character:FindFirstChild("HumanoidRootPart")
@@ -15928,19 +16256,44 @@ local function checkStaffProximity()
 				if isStaff then
 					local dist = (localRoot.Position - root.Position).Magnitude
 					if dist <= 150 then
-						triggerStaffAlarmEffect()
-						notify("STAFF ALARM", "Staff member " .. p.DisplayName .. " (" .. role .. ") is near! (" .. math.floor(dist) .. " studs)", 5)
-						break
+						currentNear[p] = true
+						if not StaffProximityState[p] then
+							anyNewNear = true
+							if dist < nearestNewDist then
+								nearestNewDist = dist
+								nearestNewPlayer = p
+								nearestNewRole = role or "Staff"
+							end
+						end
 					end
 				end
 			end
 		end
+	end
+
+	-- Update state: unflag players that are no longer near (or left)
+	for p, _ in pairs(StaffProximityState) do
+		if not currentNear[p] then
+			StaffProximityState[p] = nil
+		end
+	end
+
+	-- Flag new near players
+	for p, _ in pairs(currentNear) do
+		StaffProximityState[p] = true
+	end
+
+	-- Trigger alarm once if any new staff member entered the radius
+	if anyNewNear and nearestNewPlayer then
+		triggerStaffAlarmEffect()
+		notify("STAFF ALARM", "Staff member " .. nearestNewPlayer.DisplayName .. " (" .. nearestNewRole .. ") is near! (" .. math.floor(nearestNewDist) .. " studs)", 5)
 	end
 end
 
 local function toggleStaffAlarm(enable)
 	if StaffAlarmConnection then StaffAlarmConnection:Disconnect() StaffAlarmConnection = nil end
 	if AlarmFlasher then AlarmFlasher:Destroy() AlarmFlasher = nil end
+	StaffProximityState = {}
 	if enable then
 		notify("Staff Alarm", "Proximity alarm enabled (watching 150 stud radius)")
 		local lastCheck = tick()
@@ -16436,6 +16789,7 @@ for _, p in pairs(Players:GetPlayers()) do
 	if isLegacyChat then
 		p.Chatted:Connect(function(msg)
 			pcall(function() checkStaffMessage(p, msg) end)
+			pcall(function() checkHelpMessage(p, msg) end)
 		end)
 	end
 	if p.Character then
@@ -16466,7 +16820,25 @@ end)
 
 if game.PlaceId == 98371023930528 or game.GameId == 98371023930528 then
 	task.spawn(function()
+		if not game:IsLoaded() then
+			game.Loaded:Wait()
+		end
+		local player = Players.LocalPlayer
+		while not player do
+			task.wait(0.1)
+			player = Players.LocalPlayer
+		end
+		while not player.Character or not getRoot(player.Character) do
+			task.wait(0.1)
+		end
+		while not PARENT do
+			task.wait(0.1)
+		end
 		task.wait(1.5)
 		execCmd("tmp")
+		task.wait(0.2)
+		execCmd("radar")
+		task.wait(0.2)
+		execCmd("staffalarm")
 	end)
 end
