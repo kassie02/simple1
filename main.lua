@@ -363,52 +363,41 @@ Holder.BorderSizePixel = 0
 Holder.Position = UDim2.new(1, -250, 1, -220)
 Holder.Size = UDim2.new(0, 250, 0, 220)
 Holder.ZIndex = 10
+Holder.ClipsDescendants = true
 table.insert(shade2,Holder)
+
+local HolderCorner = Instance.new("UICorner")
+HolderCorner.CornerRadius = UDim.new(0, 8)
+HolderCorner.Parent = Holder
+
+local HolderStroke = Instance.new("UIStroke")
+HolderStroke.Color = Color3.fromRGB(55, 55, 60)
+HolderStroke.Thickness = 1
+HolderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+HolderStroke.Transparency = 0.2
+HolderStroke.Parent = Holder
 
 Title.Name = "Title"
 Title.Parent = Holder
 Title.Active = true
-Title.BackgroundColor3 = Color3.fromRGB(36,36,37)
+Title.BackgroundColor3 = Color3.fromRGB(25, 26, 32)
 Title.BorderSizePixel = 0
-Title.Size = UDim2.new(0, 250, 0, 20)
-Title.Font = Enum.Font.SourceSans
-Title.TextSize = 18
-Title.Text = "Infinite Yield FE v" .. currentVersion
+Title.Size = UDim2.new(0, 250, 0, 22)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 11
+Title.Text = "Bloxstrap Menu"
 
-do
-	local emoji = ({
-		["01 01"] = "🎆",
-		["02 14"] = "💝",
-		["03 17"] = "☘️",
-		[(function(Year)
-			local A = math.floor(Year/100)
-			local B = math.floor((13+8*A)/25)
-			local C = (15-B+A-math.floor(A/4))%30
-			local D = (4+A-math.floor(A/4))%7
-			local E = (19*(Year%19)+C)%30
-			local F = (2*(Year%4)+4*(Year%7)+6*E+D)%7
-			local G = (22+E+F)
-			if E == 29 and F == 6 then
-				return "04 19"
-			elseif E == 28 and F == 6 then
-				return "04 18"
-			elseif 31 < G then
-				return ("04 %02d"):format(G-31)
-			end
-			return ("03 %02d"):format(G)
-		end)(tonumber(os.date"%Y"))] = "🥚",
-		["10 31"] = "🎃",
-		["12 25"] = "🎄"
-	})[os.date("%m %d")]
-	if emoji then
-		Title.Text = ("%s %s %s"):format(emoji, Title.Text, emoji)
-	end
-end
-
-Title.TextColor3 = Color3.new(1, 1, 1)
+Title.TextColor3 = Color3.fromRGB(240, 240, 245)
 Title.ZIndex = 10
 table.insert(shade1,Title)
 table.insert(text1,Title)
+
+local TitleGradient = Instance.new("UIGradient")
+TitleGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 180, 185))
+})
+TitleGradient.Parent = Title
 
 Dark.Name = "Dark"
 Dark.Parent = Holder
@@ -455,18 +444,20 @@ cmdListLayout.Parent = CMDsF
 SettingsButton.Name = "SettingsButton"
 SettingsButton.Parent = Holder
 SettingsButton.BackgroundTransparency = 1
-SettingsButton.Position = UDim2.new(0, 230, 0, 0)
-SettingsButton.Size = UDim2.new(0, 20, 0, 20)
-SettingsButton.Image = getcustomasset("infiniteyield/assets/settings.png")
+SettingsButton.Position = UDim2.new(0, 230, 0, 4)
+SettingsButton.Size = UDim2.new(0, 14, 0, 14)
+SettingsButton.Image = "rbxassetid://10734950309"
+SettingsButton.ImageColor3 = Color3.fromRGB(220, 220, 225)
 SettingsButton.ZIndex = 10
 
 ReferenceButton = Instance.new("ImageButton")
 ReferenceButton.Name = "ReferenceButton"
 ReferenceButton.Parent = Holder
 ReferenceButton.BackgroundTransparency = 1
-ReferenceButton.Position = UDim2.new(0, 212, 0, 2)
-ReferenceButton.Size = UDim2.new(0, 16, 0, 16)
-ReferenceButton.Image = getcustomasset("infiniteyield/assets/reference.png")
+ReferenceButton.Position = UDim2.new(0, 212, 0, 4)
+ReferenceButton.Size = UDim2.new(0, 14, 0, 14)
+ReferenceButton.Image = "rbxassetid://10734923549"
+ReferenceButton.ImageColor3 = Color3.fromRGB(220, 220, 225)
 ReferenceButton.ZIndex = 10
 
 Settings.Name = "Settings"
@@ -1763,7 +1754,7 @@ logs.Parent = ScaledHolder
 logs.Active = true
 logs.BackgroundTransparency = 1
 logs.Position = UDim2.new(0, 0, 1, 10)
-logs.Size = UDim2.new(0, 338, 0, 20)
+logs.Size = UDim2.new(0, 550, 0, 20)
 logs.ZIndex = 10
 
 shadow.Name = "shadow"
@@ -1771,7 +1762,7 @@ shadow.Parent = logs
 shadow.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 shadow.BorderSizePixel = 0
 shadow.Position = UDim2.new(0, 0, 0.00999999978, 0)
-shadow.Size = UDim2.new(0, 338, 0, 20)
+shadow.Size = UDim2.new(0, 550, 0, 20)
 shadow.ZIndex = 10
 table.insert(shade2,shadow)
 
@@ -1826,7 +1817,7 @@ background.BackgroundColor3 = Color3.new(0.141176, 0.141176, 0.145098)
 background.BorderSizePixel = 0
 background.ClipsDescendants = true
 background.Position = UDim2.new(0, 0, 1, 0)
-background.Size = UDim2.new(0, 338, 0, 245)
+background.Size = UDim2.new(0, 550, 0, 450)
 background.ZIndex = 10
 
 chat.Name = "chat"
@@ -1835,7 +1826,7 @@ chat.Active = true
 chat.BackgroundColor3 = Color3.new(0.141176, 0.141176, 0.145098)
 chat.BorderSizePixel = 0
 chat.ClipsDescendants = true
-chat.Size = UDim2.new(0, 338, 0, 245)
+chat.Size = UDim2.new(0, 550, 0, 450)
 chat.ZIndex = 10
 table.insert(shade1,chat)
 
@@ -1843,7 +1834,7 @@ Clear.Name = "Clear"
 Clear.Parent = chat
 Clear.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 Clear.BorderSizePixel = 0
-Clear.Position = UDim2.new(0, 5, 0, 220)
+Clear.Position = UDim2.new(0, 5, 0, 425)
 Clear.Size = UDim2.new(0, 50, 0, 20)
 Clear.ZIndex = 10
 Clear.Font = Enum.Font.SourceSans
@@ -1857,7 +1848,7 @@ SaveChatlogs.Name = "SaveChatlogs"
 SaveChatlogs.Parent = chat
 SaveChatlogs.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 SaveChatlogs.BorderSizePixel = 0
-SaveChatlogs.Position = UDim2.new(0, 258, 0, 220)
+SaveChatlogs.Position = UDim2.new(0, 470, 0, 425)
 SaveChatlogs.Size = UDim2.new(0, 75, 0, 20)
 SaveChatlogs.ZIndex = 10
 SaveChatlogs.Font = Enum.Font.SourceSans
@@ -1871,7 +1862,7 @@ Toggle.Name = "Toggle"
 Toggle.Parent = chat
 Toggle.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 Toggle.BorderSizePixel = 0
-Toggle.Position = UDim2.new(0, 60, 0, 220)
+Toggle.Position = UDim2.new(0, 60, 0, 425)
 Toggle.Size = UDim2.new(0, 66, 0, 20)
 Toggle.ZIndex = 10
 Toggle.Font = Enum.Font.SourceSans
@@ -1886,7 +1877,7 @@ scroll_2.Parent = chat
 scroll_2.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 scroll_2.BorderSizePixel = 0
 scroll_2.Position = UDim2.new(0, 5, 0, 25)
-scroll_2.Size = UDim2.new(0, 328, 0, 190)
+scroll_2.Size = UDim2.new(0, 540, 0, 395)
 scroll_2.ZIndex = 10
 scroll_2.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 scroll_2.CanvasSize = UDim2.new(0, 0, 0, 10)
@@ -1901,7 +1892,7 @@ join.Active = true
 join.BackgroundColor3 = Color3.new(0.141176, 0.141176, 0.145098)
 join.BorderSizePixel = 0
 join.ClipsDescendants = true
-join.Size = UDim2.new(0, 338, 0, 245)
+join.Size = UDim2.new(0, 550, 0, 450)
 join.Visible = false
 join.ZIndex = 10
 table.insert(shade1,join)
@@ -1910,7 +1901,7 @@ Toggle_2.Name = "Toggle"
 Toggle_2.Parent = join
 Toggle_2.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 Toggle_2.BorderSizePixel = 0
-Toggle_2.Position = UDim2.new(0, 60, 0, 220)
+Toggle_2.Position = UDim2.new(0, 60, 0, 425)
 Toggle_2.Size = UDim2.new(0, 66, 0, 20)
 Toggle_2.ZIndex = 10
 Toggle_2.Font = Enum.Font.SourceSans
@@ -1924,7 +1915,7 @@ Clear_2.Name = "Clear"
 Clear_2.Parent = join
 Clear_2.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 Clear_2.BorderSizePixel = 0
-Clear_2.Position = UDim2.new(0, 5, 0, 220)
+Clear_2.Position = UDim2.new(0, 5, 0, 425)
 Clear_2.Size = UDim2.new(0, 50, 0, 20)
 Clear_2.ZIndex = 10
 Clear_2.Font = Enum.Font.SourceSans
@@ -1939,7 +1930,7 @@ scroll_3.Parent = join
 scroll_3.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 scroll_3.BorderSizePixel = 0
 scroll_3.Position = UDim2.new(0, 5, 0, 25)
-scroll_3.Size = UDim2.new(0, 328, 0, 190)
+scroll_3.Size = UDim2.new(0, 540, 0, 395)
 scroll_3.ZIndex = 10
 scroll_3.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 scroll_3.CanvasSize = UDim2.new(0, 0, 0, 10)
@@ -1953,7 +1944,7 @@ selectChat.Parent = background
 selectChat.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 selectChat.BorderSizePixel = 0
 selectChat.Position = UDim2.new(0, 5, 0, 5)
-selectChat.Size = UDim2.new(0, 164, 0, 20)
+selectChat.Size = UDim2.new(0, 267, 0, 20)
 selectChat.ZIndex = 10
 selectChat.Font = Enum.Font.SourceSans
 selectChat.FontSize = Enum.FontSize.Size14
@@ -1966,8 +1957,8 @@ selectJoin.Name = "selectJoin"
 selectJoin.Parent = background
 selectJoin.BackgroundColor3 = Color3.new(0.305882, 0.305882, 0.309804)
 selectJoin.BorderSizePixel = 0
-selectJoin.Position = UDim2.new(0, 169, 0, 5)
-selectJoin.Size = UDim2.new(0, 164, 0, 20)
+selectJoin.Position = UDim2.new(0, 278, 0, 5)
+selectJoin.Size = UDim2.new(0, 267, 0, 20)
 selectJoin.ZIndex = 10
 selectJoin.Font = Enum.Font.SourceSans
 selectJoin.FontSize = Enum.FontSize.Size14
@@ -3238,7 +3229,7 @@ function maximizeHolder()
 	end
 end
 
-minimizeNum = -20
+minimizeNum = -22
 function minimizeHolder()
 	if StayOpen == false then
 		Holder:TweenPosition(UDim2.new(1, Holder.Position.X.Offset, 1, minimizeNum), "InOut", "Quart", 0.5, true, nil)
@@ -3316,7 +3307,7 @@ local function isNearStaff(player)
 				local otherRoot = getRoot(other.Character)
 				if otherRoot then
 					local dist = (pos - otherRoot.Position).Magnitude
-					if dist <= 45 then
+					if dist <= 30 then
 						return true
 					end
 				end
@@ -3326,7 +3317,7 @@ local function isNearStaff(player)
 	return false
 end
 
-function CreateLabel(Name, Text)
+function CreateLabel(Name, Text, channelName)
 	local prefix = ""
 	local isStaffMessage = false
 	local isNearStaffMessage = false
@@ -3346,9 +3337,22 @@ function CreateLabel(Name, Text)
 		end
 	end
 
-	if lastMessage == Name..Text then
+	local channelPrefix = ""
+	if channelName then
+		local isWhisper = string.find(channelName:lower(), "whisper") or string.sub(channelName, 1, 3) == "To " or string.sub(channelName, 1, 5) == "From "
+		local isTeam = string.find(channelName:lower(), "team")
+		if isWhisper then
+			channelPrefix = "<b><font color=\"rgb(255, 100, 255)\">[WHISPER]</font></b> "
+		elseif isTeam then
+			channelPrefix = "<b><font color=\"rgb(100, 255, 100)\">[TEAM]</font></b> "
+		end
+	end
+
+	local nameFormatted = "<b><font size=\"19\">" .. Name .. "</font></b>"
+
+	if lastMessage == Name..Text..(channelName or "") then
 		dupeCount = dupeCount+1
-		lastLabel.Text = Time()..' - '..prefix..'['..Name..']: '..Text..' (x'..dupeCount..')'
+		lastLabel.Text = Time()..' - '..prefix..channelPrefix..'['..nameFormatted..']: '..Text..' (x'..dupeCount..')'
 	else
 		if dupeCount > 1 then dupeCount = 1 end
 		if #scroll_2:GetChildren() >= 2546 then
@@ -3364,21 +3368,21 @@ function CreateLabel(Name, Text)
 			end
 		end
 		local tl = Instance.new('TextLabel')
-		lastMessage = Name..Text
+		lastMessage = Name..Text..(channelName or "")
 		lastLabel = tl
 		tl.Name = Name
 		tl.Parent = scroll_2
 		tl.ZIndex = 10
 		tl.RichText = true
-		tl.Text = Time().." - " .. prefix .. "["..Name.."]: "..Text
-		tl.Size = UDim2.new(0,322,0,84)
+		tl.Text = Time().." - " .. prefix .. channelPrefix .. "["..nameFormatted.."]: "..Text
+		tl.Size = UDim2.new(0,534,0,84)
 		tl.BackgroundTransparency = 1
 		tl.BorderSizePixel = 0
 		tl.Font = "SourceSans"
 		tl.Position = UDim2.new(-1,0,0,alls)
 		tl.TextTransparency = 1
 		tl.TextScaled = false
-		tl.TextSize = 14
+		tl.TextSize = 16
 		tl.TextWrapped = true
 		tl.TextXAlignment = "Left"
 		tl.TextYAlignment = "Top"
@@ -3422,7 +3426,7 @@ function CreateLabel(Name, Text)
 			extraHeight = 6
 		end
 		
-		tl.Size = UDim2.new(0,322,0,tl.TextBounds.Y + extraHeight)
+		tl.Size = UDim2.new(0,534,0,tl.TextBounds.Y + extraHeight)
 		table.insert(text1,tl)
 		scroll_2.CanvasSize = UDim2.new(0,0,0,alls+tl.TextBounds.Y + extraHeight)
 		scroll_2.CanvasPosition = Vector2.new(0,scroll_2.CanvasPosition.Y+tl.TextBounds.Y + extraHeight)
@@ -3453,7 +3457,7 @@ function CreateJoinLabel(plr,ID)
 	info1.Size = UDim2.new(0, 135, 1, 0)
 	info1.ZIndex = 10
 	info1.Font = Enum.Font.SourceSans
-	info1.FontSize = Enum.FontSize.Size14
+	info1.TextSize = 16
 	info1.Text = "Username: "..plr.Name.."\nJoined Server: "..Time()
 	info1.TextColor3 = Color3.new(1, 1, 1)
 	info1.TextWrapped = true
@@ -3463,10 +3467,10 @@ function CreateJoinLabel(plr,ID)
 	info2.BackgroundTransparency = 1
 	info2.BorderSizePixel = 0
 	info2.Position = UDim2.new(0, 185, 0, 0)
-	info2.Size = UDim2.new(0, 140, 1, -5)
+	info2.Size = UDim2.new(1, -195, 1, -5)
 	info2.ZIndex = 10
 	info2.Font = Enum.Font.SourceSans
-	info2.FontSize = Enum.FontSize.Size14
+	info2.TextSize = 16
 	info2.Text = "User ID: "..ID.."\nAccount Age: "..plr.AccountAge.."\nJoined Roblox: Loading..."
 	info2.TextColor3 = Color3.new(1, 1, 1)
 	info2.TextWrapped = true
@@ -4099,7 +4103,22 @@ end
 ChatLog = function(player)
 	player.Chatted:Connect(function(message)
 		if logsEnabled == true then
-			CreateLabel(player.Name, message)
+			local cleanMessage = message
+			local channel = nil
+			if string.sub(message, 1, 6):lower() == "/team " then
+				channel = "Team"
+				cleanMessage = string.sub(message, 7)
+			elseif string.sub(message, 1, 3):lower() == "/t " then
+				channel = "Team"
+				cleanMessage = string.sub(message, 4)
+			elseif string.sub(message, 1, 9):lower() == "/whisper " then
+				channel = "Whisper"
+				cleanMessage = string.sub(message, 10)
+			elseif string.sub(message, 1, 3):lower() == "/w " then
+				channel = "Whisper"
+				cleanMessage = string.sub(message, 4)
+			end
+			CreateLabel(player.Name, cleanMessage, channel)
 			sendChatWebhook(player, message)
 		end
 	end)
@@ -4195,7 +4214,7 @@ Hide.MouseButton1Down:Connect(function()
 	if logs.Position ~= UDim2.new(0, 0, 1, -20) then
 		logs:TweenPosition(UDim2.new(0, 0, 1, -20), "InOut", "Quart", 0.3, true, nil)
 	else
-		logs:TweenPosition(UDim2.new(0, 0, 1, -265), "InOut", "Quart", 0.3, true, nil)
+		logs:TweenPosition(UDim2.new(0, 0, 1, -470), "InOut", "Quart", 0.3, true, nil)
 	end
 end)
 
@@ -4859,8 +4878,8 @@ CMDs[#CMDs + 1] = {NAME = 'rolewatchleave', DESC = 'Toggle if you should leave t
 CMDs[#CMDs + 1] = {NAME = 'tmp', DESC = 'Notify if someone from group 17180419 with staff roles joins the server'}
 CMDs[#CMDs + 1] = {NAME = 'untmp', DESC = 'Disable staff rolewatch'}
 CMDs[#CMDs + 1] = {NAME = 'tmpleave', DESC = 'Toggle if you should leave the game if a watched staff member joins'}
-CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the graphical Admin Control Portal panel'}
-CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes/hides the Admin Control Portal panel'}
+CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the graphical Sentinel Admin Panel'}
+CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes/hides the Sentinel Admin Panel'}
 CMDs[#CMDs + 1] = {NAME = 'staffwatch', DESC = 'Notify if a staff member of the game joins the server'}
 CMDs[#CMDs + 1] = {NAME = 'unstaffwatch', DESC = 'Disable Staffwatch'}
 CMDs[#CMDs + 1] = {NAME = 'findfriendgroups', DESC = 'Notifies you if any players are friends with each other'}
@@ -5018,9 +5037,9 @@ CMDs[#CMDs + 1] = {NAME = 'removeplugin / deleteplugin [name]', DESC = 'Remove a
 CMDs[#CMDs + 1] = {NAME = 'reloadplugin [name]', DESC = 'Reloads a plugin'}
 CMDs[#CMDs + 1] = {NAME = 'addallplugins / loadallplugins', DESC = 'Adds all available plugins from the workspace folder'}
 CMDs[#CMDs + 1] = {NAME = '', DESC = ''}
-CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the player list Admin Portal'}
-CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes the player list Admin Portal'}
-CMDs[#CMDs + 1] = {NAME = 'stafflog / stafflogs', DESC = 'Opens the Admin Portal focused on the Staff Logs tab'}
+CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the Sentinel Admin Panel'}
+CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes the Sentinel Admin Panel'}
+CMDs[#CMDs + 1] = {NAME = 'stafflog / stafflogs', DESC = 'Opens the Sentinel Admin Panel focused on the Staff Logs tab'}
 CMDs[#CMDs + 1] = {NAME = 'tmp', DESC = 'Enables the custom staff watch (Group 17180419) with warnings and lists'}
 CMDs[#CMDs + 1] = {NAME = 'untmp', DESC = 'Disables the staff watch'}
 CMDs[#CMDs + 1] = {NAME = 'tmpleave', DESC = 'Toggles auto-kick/leave when watched staff members join'}
@@ -6218,6 +6237,19 @@ function TESP(plr)
 	end)
 end
 
+task.spawn(function()
+	while true do
+		task.wait(60)
+		if TESPenabled then
+			for _, v in ipairs(Players:GetPlayers()) do
+				if v ~= Players.LocalPlayer then
+					pcall(function() TESP(v) end)
+				end
+			end
+		end
+	end
+end)
+
 function Locate(plr)
 	task.spawn(function()
 		for i,v in pairs(COREGUI:GetChildren()) do
@@ -7343,6 +7375,11 @@ local Noclipping = nil
 addcmd('noclip',{},function(args, speaker)
 	if Noclipping then
 		Noclipping:Disconnect()
+		Noclipping = nil
+		Clip = true
+		if args[1] and args[1] == 'nonotify' then return end
+		notify('Noclip','Noclip Disabled')
+		return
 	end
 	Clip = false
 	wait(0.1)
@@ -7363,6 +7400,7 @@ end)
 addcmd('clip',{'unnoclip'},function(args, speaker)
 	if Noclipping then
 		Noclipping:Disconnect()
+		Noclipping = nil
 	end
 	Clip = true
 	if speaker.Character then
@@ -8176,7 +8214,7 @@ end)
 
 addcmd('showiy',{'unhideiy'},function(args, speaker)
 	isHidden = false
-	minimizeNum = -20
+	minimizeNum = -22
 	if wasStayOpen then
 		maximizeHolder()
 		StayOpen = true
@@ -8837,24 +8875,13 @@ local function createHelpRequestNotification(player)
 	
 	local function updateButtonsState()
 		if not card or not card.Parent or not viewBtn or not viewBtn.Parent or not trackBtn or not trackBtn.Parent then return end
-		local tooFar = isTooFar()
-		if tooFar then
-			viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
-			viewBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-			viewBtn.TextColor3 = Color3.fromRGB(120, 120, 130)
-			
-			trackBtn.Text = tracking and "UNTRACK" or "TRACK"
-			trackBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-			trackBtn.TextColor3 = Color3.fromRGB(120, 120, 130)
-		else
-			viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
-			viewBtn.BackgroundColor3 = (viewing == player) and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 200, 255)
-			viewBtn.TextColor3 = (viewing == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
-			
-			trackBtn.Text = tracking and "UNTRACK" or "TRACK"
-			trackBtn.BackgroundColor3 = tracking and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 200, 255)
-			trackBtn.TextColor3 = tracking and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
-		end
+		viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
+		viewBtn.BackgroundColor3 = (viewing == player) and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 200, 255)
+		viewBtn.TextColor3 = (viewing == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
+		
+		trackBtn.Text = tracking and "UNTRACK" or "TRACK"
+		trackBtn.BackgroundColor3 = tracking and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 200, 255)
+		trackBtn.TextColor3 = tracking and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
 	end
 	
 	if not PARENT or not PARENT.Parent then
@@ -8871,7 +8898,7 @@ local function createHelpRequestNotification(player)
 	
 	card = Instance.new("Frame")
 	card.Name = playerName
-	card.Size = UDim2.new(0, 240, 0, 75)
+	card.Size = UDim2.new(0, 240, 0, 95)
 	card.Position = UDim2.new(0.5, -120, 0, -100)
 	card.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
 	card.BackgroundTransparency = 0.15
@@ -8889,8 +8916,8 @@ local function createHelpRequestNotification(player)
 	
 	local avatar = Instance.new("ImageLabel")
 	avatar.Name = "Avatar"
-	avatar.Size = UDim2.new(0, 55, 0, 55)
-	avatar.Position = UDim2.new(0, 10, 0, 10)
+	avatar.Size = UDim2.new(0, 60, 0, 60)
+	avatar.Position = UDim2.new(0, 10, 0, 17)
 	avatar.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
 	avatar.BorderSizePixel = 0
 	avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. userId .. "&w=150&h=150"
@@ -8912,11 +8939,11 @@ local function createHelpRequestNotification(player)
 	title.Parent = card
 	
 	local info = Instance.new("TextLabel")
-	info.Size = UDim2.new(1, -110, 0, 20)
+	info.Size = UDim2.new(1, -110, 0, 35)
 	info.Position = UDim2.new(0, 72, 0, 22)
 	info.BackgroundTransparency = 1
 	info.RichText = true
-	info.Text = "User: <b><font color=\"rgb(255, 255, 255)\">" .. player.DisplayName .. "</font></b>"
+	info.Text = "User: <b><font color=\"rgb(255, 255, 255)\">" .. player.DisplayName .. "</font></b>\nDistance: <b><font color=\"rgb(255, 75, 75)\">Calculating...</font></b>"
 	info.TextColor3 = Color3.fromRGB(200, 200, 200)
 	info.Font = Enum.Font.Gotham
 	info.TextSize = 11
@@ -8925,7 +8952,7 @@ local function createHelpRequestNotification(player)
 	
 	viewBtn = Instance.new("TextButton")
 	viewBtn.Size = UDim2.new(0, 75, 0, 22)
-	viewBtn.Position = UDim2.new(0, 72, 0, 44)
+	viewBtn.Position = UDim2.new(0, 72, 0, 62)
 	viewBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
 	viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
 	viewBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
@@ -8942,38 +8969,14 @@ local function createHelpRequestNotification(player)
 		if viewing == player then
 			execCmd("unview")
 		else
-			if isTooFar() then
-				flashTooFar()
-				return
-			end
 			execCmd("view " .. player.Name)
-		end
-		updateButtonsState()
-	end)
-	
-	local viewConn
-	viewConn = RunService.Heartbeat:Connect(function()
-		if not card.Parent or not player.Parent then
-			if card.Parent then
-				pcall(function() stopTracking() end)
-				pcall(function() card:Destroy() end)
-				for i, c in ipairs(ActiveHelpCards) do
-					if c == card then
-						table.remove(ActiveHelpCards, i)
-						break
-					end
-				end
-				layoutActiveHelpCards()
-			end
-			viewConn:Disconnect()
-			return
 		end
 		updateButtonsState()
 	end)
 
 	local trackBtn = Instance.new("TextButton")
 	trackBtn.Size = UDim2.new(0, 75, 0, 22)
-	trackBtn.Position = UDim2.new(0, 152, 0, 44)
+	trackBtn.Position = UDim2.new(0, 152, 0, 62)
 	trackBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
 	trackBtn.Text = "TRACK"
 	trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
@@ -9075,10 +9078,6 @@ local function createHelpRequestNotification(player)
 		if tracking then
 			stopTracking()
 		else
-			if isTooFar() then
-				flashTooFar()
-				return
-			end
 			startTracking()
 		end
 		updateButtonsState()
@@ -9132,6 +9131,39 @@ local function createHelpRequestNotification(player)
 	
 	table.insert(ActiveHelpCards, card)
 	layoutActiveHelpCards()
+	
+	task.spawn(function()
+		while card and card.Parent and player.Parent do
+			updateButtonsState()
+			
+			local distText = "<b><font color=\"rgb(255, 75, 75)\">Too far</font></b>"
+			local localChar = Players.LocalPlayer.Character
+			local localRoot = localChar and getRoot(localChar)
+			local targetChar = player.Character
+			local targetRoot = targetChar and getRoot(targetChar)
+			
+			if localRoot and localRoot:IsDescendantOf(workspace) and targetRoot and targetRoot:IsDescendantOf(workspace) then
+				local dist = math.floor((targetRoot.Position - localRoot.Position).Magnitude)
+				distText = "<b><font color=\"rgb(100, 255, 100)\">" .. dist .. " studs</font></b>"
+			end
+			
+			info.Text = "User: <b><font color=\"rgb(255, 255, 255)\">" .. player.DisplayName .. "</font></b>\nDistance: " .. distText
+			
+			task.wait(0.2)
+		end
+		
+		pcall(function() stopTracking() end)
+		if card and card.Parent then
+			pcall(function() card:Destroy() end)
+			for i, c in ipairs(ActiveHelpCards) do
+				if c == card then
+					table.remove(ActiveHelpCards, i)
+					break
+				end
+			end
+			layoutActiveHelpCards()
+		end
+	end)
 end
 
 local function trim(s)
@@ -9295,24 +9327,13 @@ local function createViewWarningNotification(player, cmdType, detectedCmd)
 	
 	local function updateButtonsState()
 		if not card or not card.Parent or not viewBtn or not viewBtn.Parent or not trackBtn or not trackBtn.Parent then return end
-		local tooFar = isTooFar()
-		if tooFar then
-			viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
-			viewBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-			viewBtn.TextColor3 = Color3.fromRGB(120, 120, 130)
-			
-			trackBtn.Text = tracking and "UNTRACK" or "TRACK"
-			trackBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-			trackBtn.TextColor3 = Color3.fromRGB(120, 120, 130)
-		else
-			viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
-			viewBtn.BackgroundColor3 = (viewing == player) and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(255, 75, 75)
-			viewBtn.TextColor3 = (viewing == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
-			
-			trackBtn.Text = tracking and "UNTRACK" or "TRACK"
-			trackBtn.BackgroundColor3 = tracking and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(255, 75, 75)
-			trackBtn.TextColor3 = tracking and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
-		end
+		viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
+		viewBtn.BackgroundColor3 = (viewing == player) and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(255, 75, 75)
+		viewBtn.TextColor3 = (viewing == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
+		
+		trackBtn.Text = tracking and "UNTRACK" or "TRACK"
+		trackBtn.BackgroundColor3 = tracking and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(255, 75, 75)
+		trackBtn.TextColor3 = tracking and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
 	end
 	
 	if not PARENT or not PARENT.Parent then
@@ -9329,7 +9350,7 @@ local function createViewWarningNotification(player, cmdType, detectedCmd)
 	
 	card = Instance.new("Frame")
 	card.Name = playerName
-	card.Size = UDim2.new(0, 240, 0, 85)
+	card.Size = UDim2.new(0, 240, 0, 110)
 	card.Position = UDim2.new(0.5, -120, 0, -100)
 	card.BackgroundColor3 = Color3.fromRGB(15, 20, 25)
 	card.BackgroundTransparency = 0.15
@@ -9347,8 +9368,8 @@ local function createViewWarningNotification(player, cmdType, detectedCmd)
 	
 	local avatar = Instance.new("ImageLabel")
 	avatar.Name = "Avatar"
-	avatar.Size = UDim2.new(0, 55, 0, 55)
-	avatar.Position = UDim2.new(0, 10, 0, 10)
+	avatar.Size = UDim2.new(0, 60, 0, 60)
+	avatar.Position = UDim2.new(0, 10, 0, 25)
 	avatar.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
 	avatar.BorderSizePixel = 0
 	avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. userId .. "&w=150&h=150"
@@ -9370,11 +9391,11 @@ local function createViewWarningNotification(player, cmdType, detectedCmd)
 	title.Parent = card
 	
 	local info = Instance.new("TextLabel")
-	info.Size = UDim2.new(1, -110, 0, 32)
+	info.Size = UDim2.new(1, -110, 0, 50)
 	info.Position = UDim2.new(0, 72, 0, 22)
 	info.BackgroundTransparency = 1
 	info.RichText = true
-	info.Text = "User: <b><font color=\"rgb(255, 255, 255)\">" .. player.DisplayName .. "</font></b>\nCmd: <b><font color=\"rgb(255, 75, 75)\">" .. detectedCmd .. "</font></b>"
+	info.Text = "User: <b><font color=\"rgb(255, 255, 255)\">" .. player.DisplayName .. "</font></b>\nCmd: <b><font color=\"rgb(255, 75, 75)\">" .. detectedCmd .. "</font></b>\nDistance: <b><font color=\"rgb(255, 75, 75)\">Calculating...</font></b>"
 	info.TextColor3 = Color3.fromRGB(200, 200, 200)
 	info.Font = Enum.Font.Gotham
 	info.TextSize = 11
@@ -9383,7 +9404,7 @@ local function createViewWarningNotification(player, cmdType, detectedCmd)
 	
 	viewBtn = Instance.new("TextButton")
 	viewBtn.Size = UDim2.new(0, 75, 0, 22)
-	viewBtn.Position = UDim2.new(0, 72, 0, 56)
+	viewBtn.Position = UDim2.new(0, 72, 0, 77)
 	viewBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
 	viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
 	viewBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
@@ -9400,38 +9421,14 @@ local function createViewWarningNotification(player, cmdType, detectedCmd)
 		if viewing == player then
 			execCmd("unview")
 		else
-			if isTooFar() then
-				flashTooFar()
-				return
-			end
 			execCmd("view " .. player.Name)
-		end
-		updateButtonsState()
-	end)
-	
-	local viewConn
-	viewConn = RunService.Heartbeat:Connect(function()
-		if not card.Parent or not player.Parent then
-			if card.Parent then
-				pcall(function() stopTracking() end)
-				pcall(function() card:Destroy() end)
-				for i, c in ipairs(ActiveHelpCards) do
-					if c == card then
-						table.remove(ActiveHelpCards, i)
-						break
-					end
-				end
-				layoutActiveHelpCards()
-			end
-			viewConn:Disconnect()
-			return
 		end
 		updateButtonsState()
 	end)
 
 	trackBtn = Instance.new("TextButton")
 	trackBtn.Size = UDim2.new(0, 75, 0, 22)
-	trackBtn.Position = UDim2.new(0, 152, 0, 56)
+	trackBtn.Position = UDim2.new(0, 152, 0, 77)
 	trackBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
 	trackBtn.Text = "TRACK"
 	trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
@@ -9533,10 +9530,6 @@ local function createViewWarningNotification(player, cmdType, detectedCmd)
 		if tracking then
 			stopTracking()
 		else
-			if isTooFar() then
-				flashTooFar()
-				return
-			end
 			startTracking()
 		end
 		updateButtonsState()
@@ -9590,6 +9583,39 @@ local function createViewWarningNotification(player, cmdType, detectedCmd)
 	
 	table.insert(ActiveHelpCards, card)
 	layoutActiveHelpCards()
+	
+	task.spawn(function()
+		while card and card.Parent and player.Parent do
+			updateButtonsState()
+			
+			local distText = "<b><font color=\"rgb(255, 75, 75)\">Too far</font></b>"
+			local localChar = Players.LocalPlayer.Character
+			local localRoot = localChar and getRoot(localChar)
+			local targetChar = player.Character
+			local targetRoot = targetChar and getRoot(targetChar)
+			
+			if localRoot and localRoot:IsDescendantOf(workspace) and targetRoot and targetRoot:IsDescendantOf(workspace) then
+				local dist = math.floor((targetRoot.Position - localRoot.Position).Magnitude)
+				distText = "<b><font color=\"rgb(100, 255, 100)\">" .. dist .. " studs</font></b>"
+			end
+			
+			info.Text = "User: <b><font color=\"rgb(255, 255, 255)\">" .. player.DisplayName .. "</font></b>\nCmd: <b><font color=\"rgb(255, 75, 75)\">" .. detectedCmd .. "</font></b>\nDistance: " .. distText
+			
+			task.wait(0.2)
+		end
+		
+		pcall(function() stopTracking() end)
+		if card and card.Parent then
+			pcall(function() card:Destroy() end)
+			for i, c in ipairs(ActiveHelpCards) do
+				if c == card then
+					table.remove(ActiveHelpCards, i)
+					break
+				end
+			end
+			layoutActiveHelpCards()
+		end
+	end)
 end
 
 local function checkHelpMessage(player, text)
@@ -9717,6 +9743,7 @@ local function createViewHUD(targetPlayer)
 	viewHUD.BackgroundTransparency = 0.2
 	viewHUD.BorderSizePixel = 0
 	viewHUD.Parent = PARENT
+	dragGUI(viewHUD)
 	
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 8)
@@ -13299,7 +13326,7 @@ addcmd("logs", {}, function(args, speaker)
 	jLogsEnabled = true
 	Toggle.Text = "Enabled"
 	Toggle_2.Text = "Enabled"
-	logs:TweenPosition(UDim2.new(0, 0, 1, -265), "InOut", "Quart", 0.3, true, nil)
+	logs:TweenPosition(UDim2.new(0, 0, 1, -470), "InOut", "Quart", 0.3, true, nil)
 end)
 
 addcmd("chatlogs", {"clogs"}, function(args, speaker)
@@ -13313,7 +13340,7 @@ addcmd("chatlogs", {"clogs"}, function(args, speaker)
 	selectJoin.BackgroundColor3 = currentShade3
 	selectChat.BackgroundColor3 = currentShade2
 	Toggle.Text = "Enabled"
-	logs:TweenPosition(UDim2.new(0, 0, 1, -265), "InOut", "Quart", 0.3, true, nil)
+	logs:TweenPosition(UDim2.new(0, 0, 1, -470), "InOut", "Quart", 0.3, true, nil)
 end)
 
 addcmd("joinlogs", {"jlogs"}, function(args, speaker)
@@ -13327,7 +13354,7 @@ addcmd("joinlogs", {"jlogs"}, function(args, speaker)
 	selectChat.BackgroundColor3 = currentShade3
 	selectJoin.BackgroundColor3 = currentShade2
 	Toggle_2.Text = "Enabled"
-	logs:TweenPosition(UDim2.new(0, 0, 1, -265), "InOut", "Quart", 0.3, true, nil)
+	logs:TweenPosition(UDim2.new(0, 0, 1, -470), "InOut", "Quart", 0.3, true, nil)
 end)
 
 addcmd("chatlogswebhook", {"logswebhook"}, function(args, speaker)
@@ -14158,6 +14185,15 @@ local function updateStaffListUI(excludingPlayer)
 	end
 end
 
+task.spawn(function()
+	while true do
+		if StaffRolewatchData and StaffRolewatchData.Active then
+			pcall(updateStaffListUI)
+		end
+		task.wait(3)
+	end
+end)
+
 ActiveStaffCards = ActiveStaffCards or {}
 
 local function layoutActiveStaffCards()
@@ -14309,6 +14345,11 @@ getCachedStaffRole = function(player)
 		else
 			-- Set cache entry to non-staff on network failure so we don't spam requests
 			playerStaffRolesCache[userId] = {isStaff = false, role = nil}
+			task.delay(30, function()
+				if playerStaffRolesCache[userId] and playerStaffRolesCache[userId].isStaff == false and playerStaffRolesCache[userId].role == nil then
+					playerStaffRolesCache[userId] = nil
+				end
+			end)
 		end
 	end)
 
@@ -14343,6 +14384,12 @@ local function createStaffWatchNotification(player, roleName)
 	local playerName = typeof(player) == "Instance" and player.Name or tostring(player)
 	local userId = typeof(player) == "Instance" and player.UserId or 0
 	
+	local tracking = false
+	local tracer = nil
+	local trackConn = nil
+	local charAddedConn = nil
+	local stopTracking
+	
 	-- Clean out old card for this user if it exists
 	for i, c in ipairs(ActiveStaffCards) do
 		if c.Name == playerName then
@@ -14354,7 +14401,7 @@ local function createStaffWatchNotification(player, roleName)
 	
 	local card = Instance.new("Frame")
 	card.Name = playerName
-	card.Size = UDim2.new(0, 240, 0, 75)
+	card.Size = UDim2.new(0, 240, 0, 115)
 	card.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 	card.BackgroundTransparency = 0.15
 	card.BorderSizePixel = 0
@@ -14372,8 +14419,8 @@ local function createStaffWatchNotification(player, roleName)
 	-- Avatar Headshot
 	local avatar = Instance.new("ImageLabel")
 	avatar.Name = "Avatar"
-	avatar.Size = UDim2.new(0, 55, 0, 55)
-	avatar.Position = UDim2.new(0, 10, 0, 10)
+	avatar.Size = UDim2.new(0, 60, 0, 60)
+	avatar.Position = UDim2.new(0, 10, 0, 27.5)
 	avatar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 	avatar.BorderSizePixel = 0
 	avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. userId .. "&w=150&h=150"
@@ -14387,7 +14434,7 @@ local function createStaffWatchNotification(player, roleName)
 	title.Size = UDim2.new(1, -110, 0, 25)
 	title.Position = UDim2.new(0, 72, 0, 8)
 	title.BackgroundTransparency = 1
-	title.Text = "⚠️ STAFF DETECTED"
+	title.Text = "BLOXSTRAP MENU"
 	title.TextColor3 = Color3.fromRGB(255, 75, 75)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Font = Enum.Font.GothamBold
@@ -14395,13 +14442,13 @@ local function createStaffWatchNotification(player, roleName)
 	title.Parent = card
 	
 	local info = Instance.new("TextLabel")
-	info.Size = UDim2.new(1, -110, 0, 35)
+	info.Size = UDim2.new(1, -110, 0, 50)
 	info.Position = UDim2.new(0, 72, 0, 30)
 	info.BackgroundTransparency = 1
 	info.RichText = true
 	
 	local rColor = getRoleColor(roleName)
-	info.Text = "User: <b><font size=\"13\" color=\"rgb(255, 255, 255)\">" .. playerName .. "</font></b>\nRole: <b><font color=\"" .. rColor .. "\">" .. roleName .. "</font></b>"
+	info.Text = "User: <b><font size=\"13\" color=\"rgb(255, 255, 255)\">" .. playerName .. "</font></b>\nRole: <b><font color=\"" .. rColor .. "\">" .. roleName .. "</font></b>\nDistance: <b><font color=\"rgb(255, 75, 75)\">Calculating...</font></b>"
 	
 	info.TextColor3 = Color3.fromRGB(220, 220, 220)
 	info.TextXAlignment = Enum.TextXAlignment.Left
@@ -14410,9 +14457,153 @@ local function createStaffWatchNotification(player, roleName)
 	info.TextWrapped = true
 	info.Parent = card
 	
+	local viewBtn = Instance.new("TextButton")
+	viewBtn.Size = UDim2.new(0, 75, 0, 22)
+	viewBtn.Position = UDim2.new(0, 72, 0, 85)
+	viewBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+	viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
+	viewBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+	viewBtn.Font = Enum.Font.GothamBold
+	viewBtn.TextSize = 10
+	viewBtn.BorderSizePixel = 0
+	
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 4)
+	btnCorner.Parent = viewBtn
+	viewBtn.Parent = card
+	
+	local trackBtn = Instance.new("TextButton")
+	trackBtn.Size = UDim2.new(0, 75, 0, 22)
+	trackBtn.Position = UDim2.new(0, 152, 0, 85)
+	trackBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+	trackBtn.Text = "TRACK"
+	trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+	trackBtn.Font = Enum.Font.GothamBold
+	trackBtn.TextSize = 10
+	trackBtn.BorderSizePixel = 0
+	
+	local btnCorner2 = Instance.new("UICorner")
+	btnCorner2.CornerRadius = UDim.new(0, 4)
+	btnCorner2.Parent = trackBtn
+	trackBtn.Parent = card
+	
+	local function updateButtonsState()
+		if not card or not card.Parent or not viewBtn or not viewBtn.Parent or not trackBtn or not trackBtn.Parent then return end
+		viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
+		viewBtn.BackgroundColor3 = (viewing == player) and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(255, 75, 75)
+		viewBtn.TextColor3 = (viewing == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
+		
+		trackBtn.Text = tracking and "UNTRACK" or "TRACK"
+		trackBtn.BackgroundColor3 = tracking and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(255, 75, 75)
+		trackBtn.TextColor3 = tracking and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
+	end
+	
+	viewBtn.MouseButton1Click:Connect(function()
+		if viewing == player then
+			execCmd("unview")
+		else
+			execCmd("view " .. player.Name)
+		end
+		updateButtonsState()
+	end)
+	
+	stopTracking = function()
+		if not tracking then return end
+		tracking = false
+		if trackBtn and trackBtn.Parent then
+			trackBtn.Text = "TRACK"
+			trackBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+			trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+		end
+
+		if trackConn then
+			trackConn:Disconnect()
+			trackConn = nil
+		end
+		if charAddedConn then
+			charAddedConn:Disconnect()
+			charAddedConn = nil
+		end
+		if tracer then
+			pcall(function() tracer:Destroy() end)
+			tracer = nil
+		end
+
+		local folder = COREGUI:FindFirstChild(player.Name..'_TESP')
+		if folder then
+			pcall(function() folder:Destroy() end)
+		end
+		if TESPConnections[player.UserId] then
+			pcall(function() TESPConnections[player.UserId]:Disconnect() end)
+			TESPConnections[player.UserId] = nil
+		end
+	end
+
+	local function startTracking()
+		tracking = true
+		if trackBtn and trackBtn.Parent then
+			trackBtn.Text = "UNTRACK"
+			trackBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+			trackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		end
+
+		TESP(player)
+		charAddedConn = player.CharacterAdded:Connect(function()
+			task.wait(0.5)
+			if tracking then
+				TESP(player)
+			end
+		end)
+
+		if Drawing then
+			pcall(function()
+				tracer = Drawing.new("Line")
+				tracer.Thickness = 1.5
+				tracer.Color = Color3.fromRGB(255, 75, 75)
+				tracer.Visible = false
+			end)
+		end
+
+		trackConn = RunService.RenderStepped:Connect(function()
+			if not tracking or not card.Parent or not player.Parent then
+				stopTracking()
+				return
+			end
+
+			local char = player.Character
+			local root = char and getRoot(char)
+			if tracer and root then
+				local camera = workspace.CurrentCamera
+				if camera then
+					local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
+					if onScreen then
+						tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+						tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+						tracer.Visible = true
+					else
+						tracer.Visible = false
+					end
+				else
+					tracer.Visible = false
+				end
+			elseif tracer then
+				tracer.Visible = false
+			end
+		end)
+	end
+	
+	trackBtn.MouseButton1Click:Connect(function()
+		if tracking then
+			stopTracking()
+		else
+			startTracking()
+		end
+		updateButtonsState()
+	end)
+	
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Size = UDim2.new(0, 24, 0, 24)
-	closeBtn.Position = UDim2.new(1, -30, 0, 8)
+	closeBtn.Position = UDim2.new(1, -22, 0, 8)
 	closeBtn.BackgroundTransparency = 1
 	closeBtn.Text = "✕"
 	closeBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -14428,6 +14619,7 @@ local function createStaffWatchNotification(player, roleName)
 	end)
 	
 	closeBtn.MouseButton1Click:Connect(function()
+		pcall(stopTracking)
 		card:Destroy()
 		for i, c in ipairs(ActiveStaffCards) do
 			if c == card then
@@ -14449,6 +14641,39 @@ local function createStaffWatchNotification(player, roleName)
 	card.Parent = PARENT
 	table.insert(ActiveStaffCards, card)
 	layoutActiveStaffCards()
+	
+	task.spawn(function()
+		while card and card.Parent and player.Parent do
+			updateButtonsState()
+			
+			local distText = "<b><font color=\"rgb(255, 75, 75)\">Too far</font></b>"
+			local localChar = Players.LocalPlayer.Character
+			local localRoot = localChar and getRoot(localChar)
+			local targetChar = player.Character
+			local targetRoot = targetChar and getRoot(targetChar)
+			
+			if localRoot and localRoot:IsDescendantOf(workspace) and targetRoot and targetRoot:IsDescendantOf(workspace) then
+				local dist = math.floor((targetRoot.Position - localRoot.Position).Magnitude)
+				distText = "<b><font color=\"rgb(100, 255, 100)\">" .. dist .. " studs</font></b>"
+			end
+			
+			info.Text = "User: <b><font size=\"13\" color=\"rgb(255, 255, 255)\">" .. playerName .. "</font></b>\nRole: <b><font color=\"" .. rColor .. "\">" .. roleName .. "</font></b>\nDistance: " .. distText
+			
+			task.wait(0.2)
+		end
+		
+		pcall(function() stopTracking() end)
+		if card and card.Parent then
+			pcall(function() card:Destroy() end)
+			for i, c in ipairs(ActiveStaffCards) do
+				if c == card then
+					table.remove(ActiveStaffCards, i)
+					break
+				end
+			end
+			layoutActiveStaffCards()
+		end
+	end)
 	
 	local s = Instance.new("Sound")
 	s.SoundId = "rbxassetid://18723584764"
@@ -15514,7 +15739,7 @@ if not isLegacyChat then
 			if not player then return end
 
 			if logsEnabled == true then
-				CreateLabel(player.Name, message.Text)
+				CreateLabel(player.Name, message.Text, message.TextChannel and message.TextChannel.Name)
 			end
 			if player.UserId == Players.LocalPlayer.UserId then
 				do_exec(message.Text, Players.LocalPlayer)
@@ -15806,9 +16031,10 @@ local function createAdminPortal()
 	local main = Instance.new("Frame")
 	main.Name = "AdminPortal"
 	local selectedPlayer = nil
-	main.Size = UDim2.new(0, 600, 0, 400)
+	local portalViewBtn, portalTrackBtn = nil, nil
+	main.Size = UDim2.new(0, 780, 0, 480)
 
-	main.Position = UDim2.new(0.5, -300, 0.5, -200)
+	main.Position = UDim2.new(0.5, -390, 0.5, -240)
 	main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 	main.BackgroundTransparency = 0.1
 	main.BorderSizePixel = 0
@@ -15836,10 +16062,10 @@ local function createAdminPortal()
 	header.Parent = main
 	
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -300, 1, 0)
+	title.Size = UDim2.new(1, -500, 1, 0)
 	title.Position = UDim2.new(0, 15, 0, 0)
 	title.BackgroundTransparency = 1
-	title.Text = "ADMIN CONTROL PORTAL"
+	title.Text = "SENTINEL ADMIN PANEL"
 	title.TextColor3 = Color3.fromRGB(160, 130, 255)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Font = Enum.Font.GothamBold
@@ -15946,8 +16172,8 @@ local function createAdminPortal()
 	-- Search Bar
 	local searchFrame = Instance.new("Frame")
 	searchFrame.Name = "SearchFrame"
-	searchFrame.Size = UDim2.new(0, 240, 0, 30)
-	searchFrame.Position = UDim2.new(0, 10, 0, 50)
+	searchFrame.Size = UDim2.new(0, 280, 0, 30)
+	searchFrame.Position = UDim2.new(0, 15, 0, 50)
 	searchFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	searchFrame.BorderSizePixel = 0
 	searchFrame.Parent = main
@@ -15973,8 +16199,8 @@ local function createAdminPortal()
 	-- Filter Toggles
 	local filterFrame = Instance.new("Frame")
 	filterFrame.Name = "FilterFrame"
-	filterFrame.Size = UDim2.new(0, 240, 0, 25)
-	filterFrame.Position = UDim2.new(0, 10, 0, 85)
+	filterFrame.Size = UDim2.new(0, 280, 0, 25)
+	filterFrame.Position = UDim2.new(0, 15, 0, 85)
 	filterFrame.BackgroundTransparency = 1
 	filterFrame.Parent = main
 	
@@ -16005,11 +16231,21 @@ local function createAdminPortal()
 		return btn
 	end
 	
+	createFilterButton("🛡️ Staff Only", 0, 135, function(active)
+		filterStaffOnly = active
+		filterPlayers(true)
+	end)
+	
+	createFilterButton("👻 Invisible Only", 145, 135, function(active)
+		filterInvisOnly = active
+		filterPlayers(true)
+	end)
+	
 	-- Player List (Left Column)
 	local listFrame = Instance.new("ScrollingFrame")
 	listFrame.Name = "PlayerList"
-	listFrame.Size = UDim2.new(0, 240, 1, -125)
-	listFrame.Position = UDim2.new(0, 10, 0, 115)
+	listFrame.Size = UDim2.new(0, 280, 1, -135)
+	listFrame.Position = UDim2.new(0, 15, 0, 125)
 	listFrame.BackgroundTransparency = 1
 	listFrame.BorderSizePixel = 0
 	listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -16024,15 +16260,17 @@ local function createAdminPortal()
 	-- Details Panel (Right Column)
 	local detailFrame = Instance.new("Frame")
 	detailFrame.Name = "Details"
-	detailFrame.Size = UDim2.new(1, -270, 1, -60)
-	detailFrame.Position = UDim2.new(0, 260, 0, 50)
+	detailFrame.Size = UDim2.new(1, -325, 1, -60)
+	detailFrame.Position = UDim2.new(0, 310, 0, 50)
+	detailFrame.BackgroundTransparency = 1
+	detailFrame.Parent = main
 	detailFrame.BackgroundTransparency = 1
 	detailFrame.Parent = main
 	
 	local profileImage = Instance.new("ImageLabel")
 	profileImage.Name = "Avatar"
-	profileImage.Size = UDim2.new(0, 80, 0, 80)
-	profileImage.Position = UDim2.new(0, 10, 0, 10)
+	profileImage.Size = UDim2.new(0, 100, 0, 100)
+	profileImage.Position = UDim2.new(0, 15, 0, 15)
 	profileImage.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	profileImage.BorderSizePixel = 0
 	local imgCorner = Instance.new("UICorner")
@@ -16043,32 +16281,32 @@ local function createAdminPortal()
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "DisplayName"
 	nameLabel.Size = UDim2.new(1, -150, 0, 25)
-	nameLabel.Position = UDim2.new(0, 100, 0, 15)
+	nameLabel.Position = UDim2.new(0, 130, 0, 25)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = "Select a player"
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.TextSize = 16
+	nameLabel.TextSize = 18
 	nameLabel.Parent = detailFrame
 	
 	local userLabel = Instance.new("TextLabel")
 	userLabel.Name = "Username"
 	userLabel.Size = UDim2.new(1, -150, 0, 20)
-	userLabel.Position = UDim2.new(0, 100, 0, 40)
+	userLabel.Position = UDim2.new(0, 130, 0, 55)
 	userLabel.BackgroundTransparency = 1
 	userLabel.Text = ""
 	userLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
 	userLabel.TextXAlignment = Enum.TextXAlignment.Left
 	userLabel.Font = Enum.Font.Gotham
-	userLabel.TextSize = 13
+	userLabel.TextSize = 14
 	userLabel.RichText = true
 	userLabel.Parent = detailFrame
 	
 	local infoLabel = Instance.new("TextLabel")
 	infoLabel.Name = "Info"
-	infoLabel.Size = UDim2.new(1, -20, 0, 110)
-	infoLabel.Position = UDim2.new(0, 10, 0, 100)
+	infoLabel.Size = UDim2.new(1, -30, 0, 140)
+	infoLabel.Position = UDim2.new(0, 15, 0, 130)
 	infoLabel.BackgroundTransparency = 1
 	infoLabel.Text = ""
 	infoLabel.TextColor3 = Color3.fromRGB(180, 180, 190)
@@ -16082,7 +16320,7 @@ local function createAdminPortal()
 	local alertBellBtn = Instance.new("TextButton")
 	alertBellBtn.Name = "AlertBell"
 	alertBellBtn.Size = UDim2.new(0, 30, 0, 30)
-	alertBellBtn.Position = UDim2.new(1, -40, 0, 15)
+	alertBellBtn.Position = UDim2.new(1, -45, 0, 15)
 	alertBellBtn.BackgroundColor3 = Color3.fromRGB(45, 20, 25)
 	alertBellBtn.Text = "⚠️"
 	alertBellBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
@@ -16121,13 +16359,13 @@ local function createAdminPortal()
 	-- Action buttons container
 	local btnGrid = Instance.new("Frame")
 	btnGrid.Name = "Buttons"
-	btnGrid.Size = UDim2.new(1, -20, 0, 110)
-	btnGrid.Position = UDim2.new(0, 10, 0, 220)
+	btnGrid.Size = UDim2.new(1, -30, 0, 120)
+	btnGrid.Position = UDim2.new(0, 15, 0, 285)
 	btnGrid.BackgroundTransparency = 1
 	btnGrid.Parent = detailFrame
 	
 	local gridLayout = Instance.new("UIGridLayout")
-	gridLayout.CellSize = UDim2.new(0, 145, 0, 30)
+	gridLayout.CellSize = UDim2.new(0, 140, 0, 32)
 	gridLayout.CellPadding = UDim2.new(0, 10, 0, 8)
 	gridLayout.Parent = btnGrid
 	
@@ -16316,25 +16554,33 @@ local function createAdminPortal()
 		end
 	end
 	
-	local function createButton(text, onClick)
+	local function createButton(text, onClick, baseColor, textColor, hoverColor)
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(0, 145, 0, 30)
-		btn.BackgroundColor3 = Color3.fromRGB(35, 30, 50)
+		btn.BackgroundColor3 = baseColor or Color3.fromRGB(35, 30, 50)
 		btn.Text = text
-		btn.TextColor3 = Color3.fromRGB(200, 180, 255)
+		btn.TextColor3 = textColor or Color3.fromRGB(200, 180, 255)
 		btn.Font = Enum.Font.GothamMedium
 		btn.TextSize = 12
 		btn.BorderSizePixel = 0
+		
+		btn:SetAttribute("BaseColor", btn.BackgroundColor3)
+		btn:SetAttribute("TextColor", btn.TextColor3)
+		btn:SetAttribute("HoverColor", hoverColor or Color3.fromRGB(50, 40, 75))
 		
 		local btnCorner = Instance.new("UICorner")
 		btnCorner.CornerRadius = UDim.new(0, 6)
 		btnCorner.Parent = btn
 		
-		btn.MouseEnter:Connect(function() btn.BackgroundColor3 = Color3.fromRGB(50, 40, 75) end)
-		btn.MouseLeave:Connect(function() btn.BackgroundColor3 = Color3.fromRGB(35, 30, 50) end)
+		btn.MouseEnter:Connect(function()
+			btn.BackgroundColor3 = btn:GetAttribute("HoverColor") or Color3.fromRGB(50, 40, 75)
+		end)
+		btn.MouseLeave:Connect(function()
+			btn.BackgroundColor3 = btn:GetAttribute("BaseColor") or Color3.fromRGB(35, 30, 50)
+		end)
 		btn.MouseButton1Click:Connect(function()
 			if selectedPlayer then
-				onClick(selectedPlayer)
+				onClick(selectedPlayer, btn)
 			end
 		end)
 		
@@ -16342,19 +16588,116 @@ local function createAdminPortal()
 		return btn
 	end
 	
-	createButton("View", function(p) execCmd("view " .. p.Name) end)
-	createButton("Unview", function(p) execCmd("unview") end)
-	createButton("Go To", function(p) execCmd("goto " .. p.Name) end)
-	createButton("Bring (Client)", function(p) execCmd("cbring " .. p.Name) end)
-	createButton("Freeze (Client)", function(p) execCmd("freeze " .. p.Name) end)
-	createButton("Stare At", function(p) execCmd("stareat " .. p.Name) end)
+	portalViewBtn = createButton("View", function(p)
+		if viewing == p then
+			execCmd("unview")
+		else
+			execCmd("view " .. p.Name)
+		end
+	end, Color3.fromRGB(42, 32, 63), Color3.fromRGB(208, 184, 255), Color3.fromRGB(60, 46, 90))
+	
+	portalTrackBtn = createButton("Track", function(p)
+		local folder = COREGUI:FindFirstChild(p.Name..'_TESP')
+		if folder then
+			pcall(function() folder:Destroy() end)
+			if TESPConnections[p.UserId] then
+				pcall(function() TESPConnections[p.UserId]:Disconnect() end)
+				TESPConnections[p.UserId] = nil
+			end
+		else
+			TESP(p)
+		end
+	end, Color3.fromRGB(28, 53, 45), Color3.fromRGB(155, 242, 210), Color3.fromRGB(43, 80, 68))
+	
+	local confirmGotoPlayer = nil
+	local confirmGotoTime = 0
+	
+	local gotoBtn = createButton("Go To", function(p, btn)
+		local isStaff = false
+		local cacheStatus = playerStaffRolesCache[p.UserId]
+		if cacheStatus and not cacheStatus.fetching and cacheStatus.isStaff then
+			isStaff = true
+		end
+		
+		if isStaff then
+			if confirmGotoPlayer == p and (tick() - confirmGotoTime) <= 3 then
+				execCmd("goto " .. p.Name)
+				confirmGotoPlayer = nil
+				btn.Text = "Go To"
+				btn.BackgroundColor3 = btn:GetAttribute("BaseColor")
+				btn.TextColor3 = btn:GetAttribute("TextColor")
+			else
+				confirmGotoPlayer = p
+				confirmGotoTime = tick()
+				btn.Text = "Confirm Goto?"
+				btn.BackgroundColor3 = Color3.fromRGB(82, 60, 20)
+				btn.TextColor3 = Color3.fromRGB(255, 208, 96)
+				
+				task.delay(3, function()
+					if confirmGotoPlayer == p and btn.Text == "Confirm Goto?" then
+						confirmGotoPlayer = nil
+						btn.Text = "Go To"
+						btn.BackgroundColor3 = btn:GetAttribute("BaseColor")
+						btn.TextColor3 = btn:GetAttribute("TextColor")
+					end
+				end)
+			end
+		else
+			execCmd("goto " .. p.Name)
+		end
+	end, Color3.fromRGB(24, 51, 62), Color3.fromRGB(162, 227, 248), Color3.fromRGB(35, 74, 91))
+	
+	createButton("Bring (Client)", function(p) execCmd("cbring " .. p.Name) end, Color3.fromRGB(62, 40, 24), Color3.fromRGB(248, 202, 175), Color3.fromRGB(91, 59, 35))
+	createButton("Freeze (Client)", function(p) execCmd("freeze " .. p.Name) end, Color3.fromRGB(24, 35, 62), Color3.fromRGB(175, 212, 248), Color3.fromRGB(35, 53, 91))
+	createButton("Stare At", function(p) execCmd("stareat " .. p.Name) end, Color3.fromRGB(51, 28, 51), Color3.fromRGB(227, 162, 227), Color3.fromRGB(78, 42, 78))
 	
 	local function selectPlayer(p)
 		selectedPlayer = p
+		
+		confirmGotoPlayer = nil
+		gotoBtn.Text = "Go To"
+		gotoBtn.BackgroundColor3 = gotoBtn:GetAttribute("BaseColor")
+		gotoBtn.TextColor3 = gotoBtn:GetAttribute("TextColor")
+		
 		alertBellBtn.Visible = false
 		nameLabel.Text = p.DisplayName or p.Name
 		userLabel.Text = "<b>@" .. p.Name .. "</b>"
 		profileImage.Image = "rbxthumb://type=AvatarHeadShot&id=" .. p.UserId .. "&w=150&h=150"
+		
+		local function updatePortalButtons()
+			if not portalViewBtn or not portalTrackBtn then return end
+			
+			if viewing == p then
+				portalViewBtn.Text = "Unview"
+				portalViewBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+				portalViewBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				portalViewBtn:SetAttribute("BaseColor", Color3.fromRGB(180, 50, 50))
+				portalViewBtn:SetAttribute("HoverColor", Color3.fromRGB(210, 70, 70))
+			else
+				portalViewBtn.Text = "View"
+				portalViewBtn.BackgroundColor3 = Color3.fromRGB(42, 32, 63)
+				portalViewBtn.TextColor3 = Color3.fromRGB(208, 184, 255)
+				portalViewBtn:SetAttribute("BaseColor", Color3.fromRGB(42, 32, 63))
+				portalViewBtn:SetAttribute("HoverColor", Color3.fromRGB(60, 46, 90))
+			end
+			
+			local isTracking = COREGUI:FindFirstChild(p.Name..'_TESP') ~= nil
+			if isTracking then
+				portalTrackBtn.Text = "Untrack"
+				portalTrackBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+				portalTrackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				portalTrackBtn:SetAttribute("BaseColor", Color3.fromRGB(180, 50, 50))
+				portalTrackBtn:SetAttribute("HoverColor", Color3.fromRGB(210, 70, 70))
+			else
+				portalTrackBtn.Text = "Track"
+				portalTrackBtn.BackgroundColor3 = Color3.fromRGB(28, 53, 45)
+				portalTrackBtn.TextColor3 = Color3.fromRGB(155, 242, 210)
+				portalTrackBtn:SetAttribute("BaseColor", Color3.fromRGB(28, 53, 45))
+				portalTrackBtn:SetAttribute("HoverColor", Color3.fromRGB(43, 80, 68))
+			end
+		end
+		
+		updatePortalButtons()
 		
 		local age = "Unknown"
 		pcall(function() age = tostring(p.AccountAge) end)
@@ -16440,6 +16783,7 @@ local function createAdminPortal()
 					if selectedPlayer == p then
 						updateInfoText(staffText, distText)
 						alertBellBtn.Visible = not not isStaff
+						updatePortalButtons()
 					end
 					
 					task.wait(0.2)
@@ -16803,8 +17147,8 @@ local function createAdminPortal()
 	
 	local mapContainer = Instance.new("Frame")
 	mapContainer.Name = "MapContainer"
-	mapContainer.Size = UDim2.new(0, 320, 0, 320)
-	mapContainer.Position = UDim2.new(0, 10, 0.5, -160)
+	mapContainer.Size = UDim2.new(0, 360, 0, 360)
+	mapContainer.Position = UDim2.new(0, 15, 0.5, -180)
 	mapContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
 	mapContainer.BorderSizePixel = 0
 	mapContainer.Parent = mapViewFrame
@@ -16840,8 +17184,8 @@ local function createAdminPortal()
 	-- Right side controls container
 	local mapControls = Instance.new("Frame")
 	mapControls.Name = "Controls"
-	mapControls.Size = UDim2.new(1, -350, 1, -20)
-	mapControls.Position = UDim2.new(0, 345, 0, 10)
+	mapControls.Size = UDim2.new(1, -405, 1, -20)
+	mapControls.Position = UDim2.new(0, 390, 0, 10)
 	mapControls.BackgroundTransparency = 1
 	mapControls.Parent = mapViewFrame
 	
@@ -17609,6 +17953,14 @@ local function createAdminPortal()
 			if playerRemovingConn then playerRemovingConn:Disconnect() playerRemovingConn = nil end
 			return
 		end
+		if selectedPlayer == plr then
+			selectedPlayer = nil
+			if alertBellBtn then alertBellBtn.Visible = false end
+			if nameLabel then nameLabel.Text = "Select a player" end
+			if userLabel then userLabel.Text = "" end
+			if infoLabel then infoLabel.Text = "" end
+			if profileImage then profileImage.Image = "" end
+		end
 		updateList()
 	end)
 	
@@ -17626,13 +17978,13 @@ end
 
 
 addcmd("portal", {"panel"}, function(args, speaker)
-	notify("Admin Portal", "Opening Admin Control Portal...")
+	notify("Sentinel Panel", "Opening Sentinel Panel...")
 	local success, err = pcall(createAdminPortal)
 	if success then
-		notify("Admin Portal", "Admin Control Portal opened")
+		notify("Sentinel Panel", "Sentinel Panel opened")
 	else
-		notify("Portal Error", tostring(err), 15)
-		warn("Portal Error: " .. tostring(err))
+		notify("Sentinel Error", tostring(err), 15)
+		warn("Sentinel Error: " .. tostring(err))
 	end
 end)
 
@@ -17643,7 +17995,7 @@ addcmd("unportal", {"unpanel"}, function(args, speaker)
 	end
 	refreshLogsUI = nil
 	portalLogsActive = false
-	notify("Admin Portal", "Admin Control Portal closed")
+	notify("Sentinel Panel", "Sentinel Panel closed")
 end)
 
 
@@ -18002,6 +18354,7 @@ end
 local StaffAlarmConnection = nil
 local AlarmFlasher = nil
 local StaffProximityState = {}
+local isAlarmFlashing = false
 
 local function triggerStaffAlarmEffect()
 	if not AlarmFlasher then
@@ -18014,13 +18367,15 @@ local function triggerStaffAlarmEffect()
 		AlarmFlasher.Parent = COREGUI:FindFirstChild("RobloxGui") or COREGUI:FindFirstChildOfClass("ScreenGui") or COREGUI:GetChildren()[1]
 	end
 	
+	if isAlarmFlashing then return end
+	isAlarmFlashing = true
+	
 	task.spawn(function()
-		for i = 1, 3 do
-			TweenService:Create(AlarmFlasher, TweenInfo.new(0.25), {BackgroundTransparency = 0.5}):Play()
-			task.wait(0.25)
-			TweenService:Create(AlarmFlasher, TweenInfo.new(0.25), {BackgroundTransparency = 1}):Play()
-			task.wait(0.25)
-		end
+		TweenService:Create(AlarmFlasher, TweenInfo.new(0.25), {BackgroundTransparency = 0.5}):Play()
+		task.wait(0.25)
+		TweenService:Create(AlarmFlasher, TweenInfo.new(0.25), {BackgroundTransparency = 1}):Play()
+		task.wait(0.25)
+		isAlarmFlashing = false
 	end)
 
 	local s = Instance.new("Sound")
@@ -18080,7 +18435,7 @@ local function checkStaffProximity()
 	-- Trigger alarm once if any new staff member entered the radius
 	if anyNewNear and nearestNewPlayer then
 		triggerStaffAlarmEffect()
-		notify("STAFF ALARM", "Staff member " .. nearestNewPlayer.DisplayName .. " (" .. nearestNewRole .. ") is near! (" .. math.floor(nearestNewDist) .. " studs)", 5)
+		createStaffWatchNotification(nearestNewPlayer, nearestNewRole)
 	end
 end
 
@@ -18101,6 +18456,80 @@ local function toggleStaffAlarm(enable)
 		notify("Staff Alarm", "Proximity alarm disabled")
 	end
 end
+
+-- View Proximity Alarm variables
+local ViewProximityState = {}
+local ViewProximityFlasher = nil
+
+local function triggerViewProximityEffect()
+	if not ViewProximityFlasher then
+		ViewProximityFlasher = Instance.new("Frame")
+		ViewProximityFlasher.Name = "ViewProximityFlasher"
+		ViewProximityFlasher.Size = UDim2.new(1, 0, 1, 0)
+		ViewProximityFlasher.BackgroundColor3 = Color3.fromRGB(0, 120, 255) -- Blue
+		ViewProximityFlasher.BackgroundTransparency = 1
+		ViewProximityFlasher.ZIndex = 999999
+		ViewProximityFlasher.Parent = COREGUI:FindFirstChild("RobloxGui") or COREGUI:FindFirstChildOfClass("ScreenGui") or COREGUI:GetChildren()[1]
+	end
+	
+	task.spawn(function()
+		TweenService:Create(ViewProximityFlasher, TweenInfo.new(0.25), {BackgroundTransparency = 0.6}):Play()
+		task.wait(0.25)
+		TweenService:Create(ViewProximityFlasher, TweenInfo.new(0.25), {BackgroundTransparency = 1}):Play()
+	end)
+end
+
+task.spawn(function()
+	while true do
+		task.wait(1)
+		if viewing ~= nil or ViewFCTarget ~= nil then
+			local localChar = Players.LocalPlayer.Character
+			local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
+			if localRoot then
+				local currentNear = {}
+				local anyNewNear = false
+				for _, p in pairs(Players:GetPlayers()) do
+					if p ~= Players.LocalPlayer and p ~= viewing and p ~= ViewFCTarget and p.Character then
+						local root = p.Character:FindFirstChild("HumanoidRootPart")
+						if root then
+							local isStaff = false
+							if getCachedStaffRole then
+								isStaff = getCachedStaffRole(p)
+							end
+							if not isStaff then
+								local dist = (localRoot.Position - root.Position).Magnitude
+								if dist <= 50 then
+									currentNear[p] = true
+									if not ViewProximityState[p] then
+										anyNewNear = true
+									end
+								end
+							end
+						end
+					end
+				end
+				
+				-- Clean up players no longer near
+				for p, _ in pairs(ViewProximityState) do
+					if not currentNear[p] then
+						ViewProximityState[p] = nil
+					end
+				end
+				
+				-- Add new players to near state
+				for p, _ in pairs(currentNear) do
+					ViewProximityState[p] = true
+				end
+				
+				if anyNewNear then
+					pcall(triggerViewProximityEffect)
+				end
+			end
+		else
+			ViewProximityState = {}
+		end
+	end
+end)
 
 -- Ghost Fling variables
 local GhostFlingEnabled = false
