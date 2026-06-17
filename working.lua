@@ -3323,7 +3323,7 @@ local function isNearStaff(player)
 				local otherRoot = getRoot(other.Character)
 				if otherRoot then
 					local dist = (pos - otherRoot.Position).Magnitude
-					if dist <= 45 then
+					if dist <= 30 then
 						return true
 					end
 				end
@@ -4186,13 +4186,26 @@ Players.PlayerRemoving:Connect(function(player)
 		end
 		notify('Spectate','View turned off (player left)')
 	end
+	if RecentHelpRequests then
+		local changed = false
+		for i = #RecentHelpRequests, 1, -1 do
+			if RecentHelpRequests[i].Player == player then
+				table.remove(RecentHelpRequests, i)
+				changed = true
+			end
+		end
+		if changed and refreshHelpRequestsUI then
+			pcall(refreshHelpRequestsUI)
+		end
+	end
 	if StaffRolewatchData and StaffRolewatchData.Active and updateStaffListUI then
 		task.spawn(function() updateStaffListUI(player) end)
 	end
 	task.spawn(function()
+		if not getCachedStaffRole then return end
 		local isStaff, role = getCachedStaffRole(player)
 		if isStaff then
-			local rColor = getRoleColor(role or "Staff")
+			local rColor = getRoleColor and getRoleColor(role or "Staff") or "rgb(255, 255, 255)"
 			if addStaffLog then
 				pcall(function() addStaffLog("⬅️ <b><font color=\"" .. rColor .. "\">" .. player.DisplayName .. "</font></b> (Staff) left the server") end)
 			end
@@ -6875,7 +6888,7 @@ local TeleportCheck = false
 Players.LocalPlayer.OnTeleport:Connect(function(State)
 	if KeepInfYield and (not TeleportCheck) and queueteleport then
 		TeleportCheck = true
-		queueteleport("loadstring(game:HttpGet('https://raw.githubusercontent.com/kassie02/simple1/refs/heads/main/main.lua'))()")
+		queueteleport("loadstring(game:HttpGet('https://raw.githubusercontent.com/kassie02/simple1/refs/heads/main/working.lua'))()")
 	end
 end)
 
@@ -8735,10 +8748,12 @@ addcmd('nolocate',{'unlocate'},function(args, speaker)
 end)
 
 StaffLogs = StaffLogs or {}
+RecentHelpRequests = RecentHelpRequests or {}
 logNotifications = true
 StaffServerBlacklist = StaffServerBlacklist or {}
 portalLogsActive = false
 refreshLogsUI = nil
+refreshHelpRequestsUI = nil
 triggerLogsTab = nil
 
 local RadarFrame = nil
@@ -9065,9 +9080,10 @@ local function createHelpRequestNotification(player)
 	viewBtn = Instance.new("TextButton")
 	viewBtn.Size = UDim2.new(0, 75, 0, 22)
 	viewBtn.Position = UDim2.new(0, 72, 0, 62)
-	viewBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+	-- Reflect current viewing state on creation (mirrors TRACK toggle behaviour)
+	viewBtn.BackgroundColor3 = (viewing == player) and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 200, 255)
 	viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
-	viewBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+	viewBtn.TextColor3 = (viewing == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
 	viewBtn.Font = Enum.Font.GothamBold
 	viewBtn.TextSize = 10
 	viewBtn.BorderSizePixel = 0
@@ -9079,12 +9095,14 @@ local function createHelpRequestNotification(player)
 	
 	viewBtn.MouseButton1Click:Connect(function()
 		if viewing == player then
+			viewing = nil
+			updateButtonsState()
 			execCmd("unview")
 		else
+			viewing = player
+			updateButtonsState()
 			execCmd("view " .. player.Name)
 		end
-		task.wait()
-		updateButtonsState()
 	end)
 
 	local trackBtn = Instance.new("TextButton")
@@ -9519,9 +9537,10 @@ local function createViewWarningNotification(player, cmdType, detectedCmd)
 	viewBtn = Instance.new("TextButton")
 	viewBtn.Size = UDim2.new(0, 75, 0, 22)
 	viewBtn.Position = UDim2.new(0, 72, 0, 77)
-	viewBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+	-- Reflect current viewing state on creation (mirrors TRACK toggle behaviour)
+	viewBtn.BackgroundColor3 = (viewing == player) and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(255, 75, 75)
 	viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
-	viewBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+	viewBtn.TextColor3 = (viewing == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
 	viewBtn.Font = Enum.Font.GothamBold
 	viewBtn.TextSize = 10
 	viewBtn.BorderSizePixel = 0
@@ -9533,12 +9552,14 @@ local function createViewWarningNotification(player, cmdType, detectedCmd)
 	
 	viewBtn.MouseButton1Click:Connect(function()
 		if viewing == player then
+			viewing = nil
+			updateButtonsState()
 			execCmd("unview")
 		else
+			viewing = player
+			updateButtonsState()
 			execCmd("view " .. player.Name)
 		end
-		task.wait()
-		updateButtonsState()
 	end)
 
 	trackBtn = Instance.new("TextButton")
@@ -9733,9 +9754,27 @@ local function createViewWarningNotification(player, cmdType, detectedCmd)
 	end)
 end
 
+local function addHelpRequest(player)
+	if not player or typeof(player) ~= "Instance" or not player:IsA("Player") then return end
+	for i, req in ipairs(RecentHelpRequests) do
+		if req.Player == player then
+			table.remove(RecentHelpRequests, i)
+			break
+		end
+	end
+	table.insert(RecentHelpRequests, 1, {Player = player, Time = os.date("%H:%M:%S")})
+	if #RecentHelpRequests > 20 then
+		table.remove(RecentHelpRequests, 21)
+	end
+	if refreshHelpRequestsUI then
+		pcall(refreshHelpRequestsUI)
+	end
+end
+
 local function checkHelpMessage(player, text)
 	if player == Players.LocalPlayer then return end
 	if string.find(text:lower(), "!help") then
+		addHelpRequest(player)
 		pcall(function() createHelpRequestNotification(player) end)
 	end
 end
@@ -12451,12 +12490,135 @@ addcmd('unbubblechat',{'nobubblechat'},function(args, speaker)
 	end
 end)
 
+-- chatwindow proximity-outline state
+local chatWindowActive = false
+local chatWindowConn = nil
+local chatWindowOutlines = {} -- {player = SelectionBox, thread = thread}
+
+local function clearChatWindowOutlines()
+	for player, data in pairs(chatWindowOutlines) do
+		pcall(function()
+			if data.box and data.box.Parent then data.box:Destroy() end
+			if data.folder and data.folder.Parent then data.folder:Destroy() end
+		end)
+	end
+	chatWindowOutlines = {}
+end
+
+local function outlineNearbyPlayers(staffPlayer)
+	if not chatWindowActive then return end
+	local staffChar = staffPlayer and staffPlayer.Character
+	local staffRoot = staffChar and getRoot(staffChar)
+	if not staffRoot then return end
+	
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= staffPlayer and p.Character then
+			local pRoot = getRoot(p.Character)
+			if pRoot then
+				local dist = (staffRoot.Position - pRoot.Position).Magnitude
+				if dist <= 30 then
+					-- Clear any existing outline for this player first
+					if chatWindowOutlines[p] then
+						pcall(function()
+							if chatWindowOutlines[p].box and chatWindowOutlines[p].box.Parent then
+								chatWindowOutlines[p].box:Destroy()
+							end
+							if chatWindowOutlines[p].folder and chatWindowOutlines[p].folder.Parent then
+								chatWindowOutlines[p].folder:Destroy()
+							end
+						end)
+					end
+					
+					-- Create a folder in CoreGui to hold the SelectionBox
+					local folder = Instance.new("Folder")
+					folder.Name = "CWOutline_" .. p.Name
+					local ok, err = pcall(function() folder.Parent = COREGUI end)
+					if not ok then folder.Parent = workspace end
+					
+					local box = Instance.new("SelectionBox")
+					box.Adornee = p.Character
+					box.Color3 = Color3.fromRGB(255, 150, 0)   -- orange = near-staff highlight
+					box.LineThickness = 0.06
+					box.SurfaceTransparency = 0.85
+					box.SurfaceColor3 = Color3.fromRGB(255, 150, 0)
+					box.Parent = folder
+					
+					chatWindowOutlines[p] = {box = box, folder = folder}
+					
+					-- Auto-remove after 6 seconds
+					task.delay(6, function()
+						if chatWindowOutlines[p] and chatWindowOutlines[p].box == box then
+							pcall(function()
+								if box and box.Parent then box:Destroy() end
+								if folder and folder.Parent then folder:Destroy() end
+							end)
+							chatWindowOutlines[p] = nil
+						end
+					end)
+				end
+			end
+		end
+	end
+end
+
 addcmd("chatwindow", {}, function(args, speaker)
 	TextChatService.ChatWindowConfiguration.Enabled = true
+	chatWindowActive = true
+	
+	-- Disconnect any existing listener to avoid duplicates
+	if chatWindowConn then
+		pcall(function() chatWindowConn:Disconnect() end)
+		chatWindowConn = nil
+	end
+	
+	-- Hook: when any player chats, if they are staff → outline nearby players
+	-- Also works via MessageReceived (modern chat) and Chatted (legacy)
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		chatWindowConn = TextChatService.MessageReceived:Connect(function(msg)
+			if not chatWindowActive then return end
+			if not msg.TextSource then return end
+			local sender = Players:GetPlayerByUserId(msg.TextSource.UserId)
+			if not sender then return end
+			local isStaff, _ = getCachedStaffRole(sender)
+			if isStaff then
+				task.spawn(function() outlineNearbyPlayers(sender) end)
+			end
+		end)
+	else
+		-- Legacy chat fallback: hook every player's Chatted event
+		local conns = {}
+		for _, p in pairs(Players:GetPlayers()) do
+			conns[p] = p.Chatted:Connect(function()
+				if not chatWindowActive then return end
+				local isStaff, _ = getCachedStaffRole(p)
+				if isStaff then
+					task.spawn(function() outlineNearbyPlayers(p) end)
+				end
+			end)
+		end
+		Players.PlayerAdded:Connect(function(p)
+			if not chatWindowActive then return end
+			conns[p] = p.Chatted:Connect(function()
+				local isStaff, _ = getCachedStaffRole(p)
+				if isStaff then
+					task.spawn(function() outlineNearbyPlayers(p) end)
+				end
+			end)
+		end)
+	end
+	
+	notify("Chat Window", "Chat Window enabled\n• Staff badges shown in chat\n• Players within 30 studs of a staff member will be outlined in orange when they chat")
 end)
 
 addcmd("unchatwindow", {"nochatwindow"}, function(args, speaker)
 	TextChatService.ChatWindowConfiguration.Enabled = false
+	chatWindowActive = false
+	if chatWindowConn then
+		pcall(function() chatWindowConn:Disconnect() end)
+		chatWindowConn = nil
+	end
+	clearChatWindowOutlines()
+	notify("Chat Window", "Chat Window disabled — outlines cleared")
 end)
 
 addcmd("darkchat", {}, function(args, speaker)
@@ -14332,6 +14494,7 @@ local function layoutActiveStaffCards()
 end
 
 IY_Connections.IYStaffCardRemovingConn = Players.PlayerRemoving:Connect(function(player)
+	if not getCachedStaffRole then return end
 	local isStaff, role = getCachedStaffRole(player)
 	if isStaff then
 		local rColor = getRoleColor(role or "Staff")
@@ -17504,7 +17667,7 @@ local function createAdminPortal()
 					local isCurrent = (srv.id == JobId)
 					
 					local card = Instance.new("Frame")
-					card.Size = UDim2.new(1, -10, 0, 50)
+					card.Size = UDim2.new(1, -10, 0, 65) -- expanded height to fit server ID row
 					card.BackgroundColor3 = isCurrent and Color3.fromRGB(30, 25, 45) or Color3.fromRGB(20, 20, 25)
 					card.BorderSizePixel = 0
 					
@@ -17518,8 +17681,8 @@ local function createAdminPortal()
 					stroke.Parent = card
 					
 					local titleLabel = Instance.new("TextLabel")
-					titleLabel.Size = UDim2.new(0.6, 0, 0, 25)
-					titleLabel.Position = UDim2.new(0, 15, 0, 5)
+					titleLabel.Size = UDim2.new(0.6, 0, 0, 22)
+					titleLabel.Position = UDim2.new(0, 15, 0, 4)
 					titleLabel.BackgroundTransparency = 1
 					titleLabel.RichText = true
 					
@@ -17546,8 +17709,8 @@ local function createAdminPortal()
 					end
 					
 					local subLabel = Instance.new("TextLabel")
-					subLabel.Size = UDim2.new(0.6, 0, 0, 20)
-					subLabel.Position = UDim2.new(0, 15, 0, 25)
+					subLabel.Size = UDim2.new(0.6, 0, 0, 18)
+					subLabel.Position = UDim2.new(0, 15, 0, 24)
 					subLabel.BackgroundTransparency = 1
 					subLabel.RichText = true
 					subLabel.Text = "<font color=\"" .. pingColor .. "\">" .. pingText .. "</font>"
@@ -17556,6 +17719,32 @@ local function createAdminPortal()
 					subLabel.TextSize = 11
 					subLabel.TextXAlignment = Enum.TextXAlignment.Left
 					subLabel.Parent = card
+					
+					-- Server ID row
+					local shortId = tostring(srv.id):sub(1, 20) .. (tostring(srv.id):len() > 20 and "..." or "")
+					local idLabel = Instance.new("TextLabel")
+					idLabel.Size = UDim2.new(0.85, 0, 0, 16)
+					idLabel.Position = UDim2.new(0, 15, 0, 43)
+					idLabel.BackgroundTransparency = 1
+					idLabel.RichText = true
+					idLabel.Text = "<font color=\"rgb(100, 100, 120)\">🔑 ID: </font><font color=\"rgb(160, 130, 255)\">"
+						.. shortId .. "</font>"
+					idLabel.TextColor3 = Color3.fromRGB(130, 130, 150)
+					idLabel.Font = Enum.Font.Gotham
+					idLabel.TextSize = 10
+					idLabel.TextXAlignment = Enum.TextXAlignment.Left
+					idLabel.Parent = card
+					-- Click the ID label to copy the full server ID to clipboard
+					local idBtn = Instance.new("TextButton")
+					idBtn.Size = UDim2.new(0.85, 0, 0, 16)
+					idBtn.Position = UDim2.new(0, 15, 0, 43)
+					idBtn.BackgroundTransparency = 1
+					idBtn.Text = ""
+					idBtn.Parent = card
+					idBtn.MouseButton1Click:Connect(function()
+						toClipboard(tostring(srv.id))
+						notify("Server ID Copied", tostring(srv.id))
+					end)
 					
 					if not isCurrent then
 						local joinBtn = Instance.new("TextButton")
@@ -17591,7 +17780,7 @@ local function createAdminPortal()
 					card.Parent = serversScroll
 				end
 			end
-			serversScroll.CanvasSize = UDim2.new(0, 0, 0, (srvCount + 1) * 58)
+			serversScroll.CanvasSize = UDim2.new(0, 0, 0, (srvCount + 1) * 73) -- updated for taller cards
 		end)
 	end
 	
@@ -17791,6 +17980,98 @@ local function createAdminPortal()
 		updateLogsUI()
 	end)
 	
+	local helpTitle = Instance.new("TextLabel")
+	helpTitle.Size = UDim2.new(1, 0, 0, 20)
+	helpTitle.Position = UDim2.new(0, 0, 0, 135)
+	helpTitle.BackgroundTransparency = 1
+	helpTitle.Text = "HELP REQUESTS"
+	helpTitle.TextColor3 = Color3.fromRGB(255, 200, 0)
+	helpTitle.Font = Enum.Font.GothamBold
+	helpTitle.TextSize = 11
+	helpTitle.Parent = logsConfig
+	
+	local helpRequestsScroll = Instance.new("ScrollingFrame")
+	helpRequestsScroll.Name = "HelpRequestsScroll"
+	helpRequestsScroll.Size = UDim2.new(1, -20, 1, -170)
+	helpRequestsScroll.Position = UDim2.new(0, 10, 0, 160)
+	helpRequestsScroll.BackgroundTransparency = 1
+	helpRequestsScroll.BorderSizePixel = 0
+	helpRequestsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	helpRequestsScroll.ScrollBarThickness = 3
+	helpRequestsScroll.Parent = logsConfig
+	
+	local helpLayout = Instance.new("UIListLayout")
+	helpLayout.Padding = UDim.new(0, 4)
+	helpLayout.Parent = helpRequestsScroll
+	
+	local function updateHelpRequestsUI()
+		for _, child in pairs(helpRequestsScroll:GetChildren()) do
+			if child:IsA("TextButton") then child:Destroy() end
+		end
+		
+		helpRequestsScroll.CanvasSize = UDim2.new(0, 0, 0, #RecentHelpRequests * 32)
+		
+		for _, req in ipairs(RecentHelpRequests) do
+			if req.Player and req.Player.Parent then
+				local row = Instance.new("TextButton")
+				row.Size = UDim2.new(1, -6, 0, 28)
+				row.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+				row.BackgroundTransparency = 0.4
+				row.Text = ""
+				row.AutoButtonColor = true
+				row.BorderSizePixel = 0
+				
+				local rCorner = Instance.new("UICorner")
+				rCorner.CornerRadius = UDim.new(0, 4)
+				rCorner.Parent = row
+				
+				local rStroke = Instance.new("UIStroke")
+				rStroke.Color = Color3.fromRGB(45, 45, 55)
+				rStroke.Thickness = 1
+				rStroke.Parent = row
+				
+				local label = Instance.new("TextLabel")
+				label.Size = UDim2.new(1, -32, 1, 0)
+				label.Position = UDim2.new(0, 6, 0, 0)
+				label.BackgroundTransparency = 1
+				label.RichText = true
+				label.Text = "<b><font color=\"rgb(150, 150, 160)\">[" .. req.Time .. "]</font></b> " .. req.Player.DisplayName
+				label.TextColor3 = Color3.fromRGB(220, 220, 230)
+				label.Font = Enum.Font.GothamMedium
+				label.TextSize = 10
+				label.TextXAlignment = Enum.TextXAlignment.Left
+				label.Parent = row
+				
+				local caution = Instance.new("TextLabel")
+				caution.Size = UDim2.new(0, 20, 0, 20)
+				caution.Position = UDim2.new(1, -24, 0, 4)
+				caution.BackgroundTransparency = 1
+				caution.Text = "⚠️"
+				caution.TextColor3 = Color3.fromRGB(255, 75, 75)
+				caution.Font = Enum.Font.GothamBold
+				caution.TextSize = 12
+				caution.Parent = row
+				
+				row.MouseEnter:Connect(function()
+					row.BackgroundTransparency = 0.2
+					rStroke.Color = Color3.fromRGB(120, 80, 255)
+				end)
+				row.MouseLeave:Connect(function()
+					row.BackgroundTransparency = 0.4
+					rStroke.Color = Color3.fromRGB(45, 45, 55)
+				end)
+				
+				row.MouseButton1Click:Connect(function()
+					pcall(function() createHelpRequestNotification(req.Player) end)
+				end)
+				
+				row.Parent = helpRequestsScroll
+			end
+		end
+	end
+	
+	refreshHelpRequestsUI = updateHelpRequestsUI
+	
 	local function updateLogsUI()
 		for _, child in pairs(logsScroll:GetChildren()) do
 			if child:IsA("TextLabel") then child:Destroy() end
@@ -17852,6 +18133,7 @@ local function createAdminPortal()
 		
 		if tabName == "Logs" then
 			updateLogsUI()
+			if updateHelpRequestsUI then pcall(updateHelpRequestsUI) end
 		elseif tabName == "Servers" then
 			updateServersUI()
 		end
