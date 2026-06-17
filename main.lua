@@ -385,7 +385,7 @@ Title.BorderSizePixel = 0
 Title.Size = UDim2.new(0, 250, 0, 22)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 11
-Title.Text = "Bloxstrap Menu"
+Title.Text = "Infinite Yield FE"
 
 Title.TextColor3 = Color3.fromRGB(240, 240, 245)
 Title.ZIndex = 10
@@ -4878,8 +4878,8 @@ CMDs[#CMDs + 1] = {NAME = 'rolewatchleave', DESC = 'Toggle if you should leave t
 CMDs[#CMDs + 1] = {NAME = 'tmp', DESC = 'Notify if someone from group 17180419 with staff roles joins the server'}
 CMDs[#CMDs + 1] = {NAME = 'untmp', DESC = 'Disable staff rolewatch'}
 CMDs[#CMDs + 1] = {NAME = 'tmpleave', DESC = 'Toggle if you should leave the game if a watched staff member joins'}
-CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the graphical Sentinel Admin Panel'}
-CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes/hides the Sentinel Admin Panel'}
+CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the graphical Admin Panel'}
+CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes/hides the Admin Panel'}
 CMDs[#CMDs + 1] = {NAME = 'staffwatch', DESC = 'Notify if a staff member of the game joins the server'}
 CMDs[#CMDs + 1] = {NAME = 'unstaffwatch', DESC = 'Disable Staffwatch'}
 CMDs[#CMDs + 1] = {NAME = 'findfriendgroups', DESC = 'Notifies you if any players are friends with each other'}
@@ -5037,9 +5037,9 @@ CMDs[#CMDs + 1] = {NAME = 'removeplugin / deleteplugin [name]', DESC = 'Remove a
 CMDs[#CMDs + 1] = {NAME = 'reloadplugin [name]', DESC = 'Reloads a plugin'}
 CMDs[#CMDs + 1] = {NAME = 'addallplugins / loadallplugins', DESC = 'Adds all available plugins from the workspace folder'}
 CMDs[#CMDs + 1] = {NAME = '', DESC = ''}
-CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the Sentinel Admin Panel'}
-CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes the Sentinel Admin Panel'}
-CMDs[#CMDs + 1] = {NAME = 'stafflog / stafflogs', DESC = 'Opens the Sentinel Admin Panel focused on the Staff Logs tab'}
+CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the Admin Panel'}
+CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes the Admin Panel'}
+CMDs[#CMDs + 1] = {NAME = 'stafflog / stafflogs', DESC = 'Opens the Admin Panel focused on the Staff Logs tab'}
 CMDs[#CMDs + 1] = {NAME = 'tmp', DESC = 'Enables the custom staff watch (Group 17180419) with warnings and lists'}
 CMDs[#CMDs + 1] = {NAME = 'untmp', DESC = 'Disables the staff watch'}
 CMDs[#CMDs + 1] = {NAME = 'tmpleave', DESC = 'Toggles auto-kick/leave when watched staff members join'}
@@ -14434,7 +14434,7 @@ local function createStaffWatchNotification(player, roleName)
 	title.Size = UDim2.new(1, -110, 0, 25)
 	title.Position = UDim2.new(0, 72, 0, 8)
 	title.BackgroundTransparency = 1
-	title.Text = "BLOXSTRAP MENU"
+	title.Text = "STAFF DETECTED"
 	title.TextColor3 = Color3.fromRGB(255, 75, 75)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Font = Enum.Font.GothamBold
@@ -16065,7 +16065,7 @@ local function createAdminPortal()
 	title.Size = UDim2.new(1, -500, 1, 0)
 	title.Position = UDim2.new(0, 15, 0, 0)
 	title.BackgroundTransparency = 1
-	title.Text = "SENTINEL ADMIN PANEL"
+	title.Text = "ADMIN PANEL"
 	title.TextColor3 = Color3.fromRGB(160, 130, 255)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Font = Enum.Font.GothamBold
@@ -17978,13 +17978,13 @@ end
 
 
 addcmd("portal", {"panel"}, function(args, speaker)
-	notify("Sentinel Panel", "Opening Sentinel Panel...")
+	notify("Admin Panel", "Opening Admin Panel...")
 	local success, err = pcall(createAdminPortal)
 	if success then
-		notify("Sentinel Panel", "Sentinel Panel opened")
+		notify("Admin Panel", "Admin Panel opened")
 	else
-		notify("Sentinel Error", tostring(err), 15)
-		warn("Sentinel Error: " .. tostring(err))
+		notify("Admin Panel Error", tostring(err), 15)
+		warn("Admin Panel Error: " .. tostring(err))
 	end
 end)
 
@@ -17995,7 +17995,7 @@ addcmd("unportal", {"unpanel"}, function(args, speaker)
 	end
 	refreshLogsUI = nil
 	portalLogsActive = false
-	notify("Sentinel Panel", "Sentinel Panel closed")
+	notify("Admin Panel", "Admin Panel closed")
 end)
 
 
