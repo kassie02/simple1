@@ -385,7 +385,7 @@ Title.BorderSizePixel = 0
 Title.Size = UDim2.new(0, 250, 0, 22)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 11
-Title.Text = "Infinite Yield FE"
+Title.Text = "Bloxstrap Menu"
 
 Title.TextColor3 = Color3.fromRGB(240, 240, 245)
 Title.ZIndex = 10
@@ -1754,7 +1754,7 @@ logs.Parent = ScaledHolder
 logs.Active = true
 logs.BackgroundTransparency = 1
 logs.Position = UDim2.new(0, 0, 1, 10)
-logs.Size = UDim2.new(0, 550, 0, 20)
+logs.Size = UDim2.new(0, 600, 0, 20)
 logs.ZIndex = 10
 
 shadow.Name = "shadow"
@@ -1762,7 +1762,7 @@ shadow.Parent = logs
 shadow.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 shadow.BorderSizePixel = 0
 shadow.Position = UDim2.new(0, 0, 0.00999999978, 0)
-shadow.Size = UDim2.new(0, 550, 0, 20)
+shadow.Size = UDim2.new(0, 600, 0, 20)
 shadow.ZIndex = 10
 table.insert(shade2,shadow)
 
@@ -1817,7 +1817,7 @@ background.BackgroundColor3 = Color3.new(0.141176, 0.141176, 0.145098)
 background.BorderSizePixel = 0
 background.ClipsDescendants = true
 background.Position = UDim2.new(0, 0, 1, 0)
-background.Size = UDim2.new(0, 550, 0, 450)
+background.Size = UDim2.new(0, 600, 0, 360)
 background.ZIndex = 10
 
 chat.Name = "chat"
@@ -1826,7 +1826,7 @@ chat.Active = true
 chat.BackgroundColor3 = Color3.new(0.141176, 0.141176, 0.145098)
 chat.BorderSizePixel = 0
 chat.ClipsDescendants = true
-chat.Size = UDim2.new(0, 550, 0, 450)
+chat.Size = UDim2.new(0, 600, 0, 360)
 chat.ZIndex = 10
 table.insert(shade1,chat)
 
@@ -1834,7 +1834,7 @@ Clear.Name = "Clear"
 Clear.Parent = chat
 Clear.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 Clear.BorderSizePixel = 0
-Clear.Position = UDim2.new(0, 5, 0, 425)
+Clear.Position = UDim2.new(0, 5, 0, 335)
 Clear.Size = UDim2.new(0, 50, 0, 20)
 Clear.ZIndex = 10
 Clear.Font = Enum.Font.SourceSans
@@ -1848,7 +1848,7 @@ SaveChatlogs.Name = "SaveChatlogs"
 SaveChatlogs.Parent = chat
 SaveChatlogs.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 SaveChatlogs.BorderSizePixel = 0
-SaveChatlogs.Position = UDim2.new(0, 470, 0, 425)
+SaveChatlogs.Position = UDim2.new(0, 520, 0, 335)
 SaveChatlogs.Size = UDim2.new(0, 75, 0, 20)
 SaveChatlogs.ZIndex = 10
 SaveChatlogs.Font = Enum.Font.SourceSans
@@ -1862,7 +1862,7 @@ Toggle.Name = "Toggle"
 Toggle.Parent = chat
 Toggle.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 Toggle.BorderSizePixel = 0
-Toggle.Position = UDim2.new(0, 60, 0, 425)
+Toggle.Position = UDim2.new(0, 60, 0, 335)
 Toggle.Size = UDim2.new(0, 66, 0, 20)
 Toggle.ZIndex = 10
 Toggle.Font = Enum.Font.SourceSans
@@ -1877,7 +1877,7 @@ scroll_2.Parent = chat
 scroll_2.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 scroll_2.BorderSizePixel = 0
 scroll_2.Position = UDim2.new(0, 5, 0, 25)
-scroll_2.Size = UDim2.new(0, 540, 0, 395)
+scroll_2.Size = UDim2.new(0, 590, 0, 305)
 scroll_2.ZIndex = 10
 scroll_2.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 scroll_2.CanvasSize = UDim2.new(0, 0, 0, 10)
@@ -1892,7 +1892,7 @@ join.Active = true
 join.BackgroundColor3 = Color3.new(0.141176, 0.141176, 0.145098)
 join.BorderSizePixel = 0
 join.ClipsDescendants = true
-join.Size = UDim2.new(0, 550, 0, 450)
+join.Size = UDim2.new(0, 600, 0, 360)
 join.Visible = false
 join.ZIndex = 10
 table.insert(shade1,join)
@@ -1901,7 +1901,7 @@ Toggle_2.Name = "Toggle"
 Toggle_2.Parent = join
 Toggle_2.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 Toggle_2.BorderSizePixel = 0
-Toggle_2.Position = UDim2.new(0, 60, 0, 425)
+Toggle_2.Position = UDim2.new(0, 60, 0, 335)
 Toggle_2.Size = UDim2.new(0, 66, 0, 20)
 Toggle_2.ZIndex = 10
 Toggle_2.Font = Enum.Font.SourceSans
@@ -1915,7 +1915,7 @@ Clear_2.Name = "Clear"
 Clear_2.Parent = join
 Clear_2.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 Clear_2.BorderSizePixel = 0
-Clear_2.Position = UDim2.new(0, 5, 0, 425)
+Clear_2.Position = UDim2.new(0, 5, 0, 335)
 Clear_2.Size = UDim2.new(0, 50, 0, 20)
 Clear_2.ZIndex = 10
 Clear_2.Font = Enum.Font.SourceSans
@@ -1930,7 +1930,7 @@ scroll_3.Parent = join
 scroll_3.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 scroll_3.BorderSizePixel = 0
 scroll_3.Position = UDim2.new(0, 5, 0, 25)
-scroll_3.Size = UDim2.new(0, 540, 0, 395)
+scroll_3.Size = UDim2.new(0, 590, 0, 305)
 scroll_3.ZIndex = 10
 scroll_3.BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
 scroll_3.CanvasSize = UDim2.new(0, 0, 0, 10)
@@ -1944,7 +1944,7 @@ selectChat.Parent = background
 selectChat.BackgroundColor3 = Color3.new(0.180392, 0.180392, 0.184314)
 selectChat.BorderSizePixel = 0
 selectChat.Position = UDim2.new(0, 5, 0, 5)
-selectChat.Size = UDim2.new(0, 267, 0, 20)
+selectChat.Size = UDim2.new(0, 295, 0, 20)
 selectChat.ZIndex = 10
 selectChat.Font = Enum.Font.SourceSans
 selectChat.FontSize = Enum.FontSize.Size14
@@ -1957,8 +1957,8 @@ selectJoin.Name = "selectJoin"
 selectJoin.Parent = background
 selectJoin.BackgroundColor3 = Color3.new(0.305882, 0.305882, 0.309804)
 selectJoin.BorderSizePixel = 0
-selectJoin.Position = UDim2.new(0, 278, 0, 5)
-selectJoin.Size = UDim2.new(0, 267, 0, 20)
+selectJoin.Position = UDim2.new(0, 300, 0, 5)
+selectJoin.Size = UDim2.new(0, 295, 0, 20)
 selectJoin.ZIndex = 10
 selectJoin.Font = Enum.Font.SourceSans
 selectJoin.FontSize = Enum.FontSize.Size14
@@ -3339,20 +3339,17 @@ function CreateLabel(Name, Text, channelName)
 
 	local channelPrefix = ""
 	if channelName then
-		local isWhisper = string.find(channelName:lower(), "whisper") or string.sub(channelName, 1, 3) == "To " or string.sub(channelName, 1, 5) == "From "
-		local isTeam = string.find(channelName:lower(), "team")
-		if isWhisper then
+		local lowerChan = channelName:lower()
+		if lowerChan:find("team") then
+			channelPrefix = "<b><font color=\"rgb(100, 200, 255)\">[TEAM]</font></b> "
+		elseif lowerChan:find("whisper") or lowerChan:find("private") then
 			channelPrefix = "<b><font color=\"rgb(255, 100, 255)\">[WHISPER]</font></b> "
-		elseif isTeam then
-			channelPrefix = "<b><font color=\"rgb(100, 255, 100)\">[TEAM]</font></b> "
 		end
 	end
 
-	local nameFormatted = "<b><font size=\"19\">" .. Name .. "</font></b>"
-
-	if lastMessage == Name..Text..(channelName or "") then
+	if lastMessage == Name..Text then
 		dupeCount = dupeCount+1
-		lastLabel.Text = Time()..' - '..prefix..channelPrefix..'['..nameFormatted..']: '..Text..' (x'..dupeCount..')'
+		lastLabel.Text = Time()..' - '..prefix..channelPrefix..'<b><font size="19">['..Name..']</font></b>: '..Text..' (x'..dupeCount..')'
 	else
 		if dupeCount > 1 then dupeCount = 1 end
 		if #scroll_2:GetChildren() >= 2546 then
@@ -3368,14 +3365,14 @@ function CreateLabel(Name, Text, channelName)
 			end
 		end
 		local tl = Instance.new('TextLabel')
-		lastMessage = Name..Text..(channelName or "")
+		lastMessage = Name..Text
 		lastLabel = tl
 		tl.Name = Name
 		tl.Parent = scroll_2
 		tl.ZIndex = 10
 		tl.RichText = true
-		tl.Text = Time().." - " .. prefix .. channelPrefix .. "["..nameFormatted.."]: "..Text
-		tl.Size = UDim2.new(0,534,0,84)
+		tl.Text = Time().." - " .. prefix .. channelPrefix .. "<b><font size=\"19\">["..Name.."]</font></b>: "..Text
+		tl.Size = UDim2.new(0,584,0,84)
 		tl.BackgroundTransparency = 1
 		tl.BorderSizePixel = 0
 		tl.Font = "SourceSans"
@@ -3426,7 +3423,7 @@ function CreateLabel(Name, Text, channelName)
 			extraHeight = 6
 		end
 		
-		tl.Size = UDim2.new(0,534,0,tl.TextBounds.Y + extraHeight)
+		tl.Size = UDim2.new(0,584,0,tl.TextBounds.Y + extraHeight)
 		table.insert(text1,tl)
 		scroll_2.CanvasSize = UDim2.new(0,0,0,alls+tl.TextBounds.Y + extraHeight)
 		scroll_2.CanvasPosition = Vector2.new(0,scroll_2.CanvasPosition.Y+tl.TextBounds.Y + extraHeight)
@@ -3454,10 +3451,10 @@ function CreateJoinLabel(plr,ID)
 	info1.BackgroundTransparency = 1
 	info1.BorderSizePixel = 0
 	info1.Position = UDim2.new(0, 45, 0, 0)
-	info1.Size = UDim2.new(0, 135, 1, 0)
+	info1.Size = UDim2.new(0.5, -45, 1, 0)
 	info1.ZIndex = 10
 	info1.Font = Enum.Font.SourceSans
-	info1.TextSize = 16
+	info1.FontSize = Enum.FontSize.Size14
 	info1.Text = "Username: "..plr.Name.."\nJoined Server: "..Time()
 	info1.TextColor3 = Color3.new(1, 1, 1)
 	info1.TextWrapped = true
@@ -3466,11 +3463,11 @@ function CreateJoinLabel(plr,ID)
 	info2.Parent = infoFrame
 	info2.BackgroundTransparency = 1
 	info2.BorderSizePixel = 0
-	info2.Position = UDim2.new(0, 185, 0, 0)
-	info2.Size = UDim2.new(1, -195, 1, -5)
+	info2.Position = UDim2.new(0.5, 5, 0, 0)
+	info2.Size = UDim2.new(0.5, -15, 1, -5)
 	info2.ZIndex = 10
 	info2.Font = Enum.Font.SourceSans
-	info2.TextSize = 16
+	info2.FontSize = Enum.FontSize.Size14
 	info2.Text = "User ID: "..ID.."\nAccount Age: "..plr.AccountAge.."\nJoined Roblox: Loading..."
 	info2.TextColor3 = Color3.new(1, 1, 1)
 	info2.TextWrapped = true
@@ -4100,25 +4097,34 @@ function sendChatWebhook(player, message)
 	end
 end
 
+local legacyChatEventsHooked = false
+pcall(function()
+	if isLegacyChat then
+		local chatEvents = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+		if chatEvents then
+			local onMsg = chatEvents:FindFirstChild("OnMessageDoneFiltering")
+			if onMsg and onMsg:IsA("RemoteEvent") then
+				onMsg.OnClientEvent:Connect(function(messageData)
+					if messageData and messageData.FromSpeaker and messageData.Message then
+						local player = Players:FindFirstChild(messageData.FromSpeaker)
+						if player then
+							legacyChatEventsHooked = true
+							if logsEnabled == true then
+								CreateLabel(player.Name, messageData.Message, messageData.OriginalChannel or "All")
+								sendChatWebhook(player, messageData.Message)
+							end
+						end
+					end
+				end)
+			end
+		end
+	end
+end)
+
 ChatLog = function(player)
 	player.Chatted:Connect(function(message)
-		if logsEnabled == true then
-			local cleanMessage = message
-			local channel = nil
-			if string.sub(message, 1, 6):lower() == "/team " then
-				channel = "Team"
-				cleanMessage = string.sub(message, 7)
-			elseif string.sub(message, 1, 3):lower() == "/t " then
-				channel = "Team"
-				cleanMessage = string.sub(message, 4)
-			elseif string.sub(message, 1, 9):lower() == "/whisper " then
-				channel = "Whisper"
-				cleanMessage = string.sub(message, 10)
-			elseif string.sub(message, 1, 3):lower() == "/w " then
-				channel = "Whisper"
-				cleanMessage = string.sub(message, 4)
-			end
-			CreateLabel(player.Name, cleanMessage, channel)
+		if logsEnabled == true and not legacyChatEventsHooked then
+			CreateLabel(player.Name, message)
 			sendChatWebhook(player, message)
 		end
 	end)
@@ -4214,7 +4220,7 @@ Hide.MouseButton1Down:Connect(function()
 	if logs.Position ~= UDim2.new(0, 0, 1, -20) then
 		logs:TweenPosition(UDim2.new(0, 0, 1, -20), "InOut", "Quart", 0.3, true, nil)
 	else
-		logs:TweenPosition(UDim2.new(0, 0, 1, -470), "InOut", "Quart", 0.3, true, nil)
+		logs:TweenPosition(UDim2.new(0, 0, 1, -380), "InOut", "Quart", 0.3, true, nil)
 	end
 end)
 
@@ -5039,7 +5045,7 @@ CMDs[#CMDs + 1] = {NAME = 'addallplugins / loadallplugins', DESC = 'Adds all ava
 CMDs[#CMDs + 1] = {NAME = '', DESC = ''}
 CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the Tebx Panel'}
 CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes the Tebx Panel'}
-CMDs[#CMDs + 1] = {NAME = 'stafflog / stafflogs', DESC = 'Opens the Tebx Panel focused on the Staff Logs tab'}
+CMDs[#CMDs + 1] = {NAME = 'stafflog / stafflogs', DESC = 'Opens the Admin Portal focused on the Staff Logs tab'}
 CMDs[#CMDs + 1] = {NAME = 'tmp', DESC = 'Enables the custom staff watch (Group 17180419) with warnings and lists'}
 CMDs[#CMDs + 1] = {NAME = 'untmp', DESC = 'Disables the staff watch'}
 CMDs[#CMDs + 1] = {NAME = 'tmpleave', DESC = 'Toggles auto-kick/leave when watched staff members join'}
@@ -13326,7 +13332,7 @@ addcmd("logs", {}, function(args, speaker)
 	jLogsEnabled = true
 	Toggle.Text = "Enabled"
 	Toggle_2.Text = "Enabled"
-	logs:TweenPosition(UDim2.new(0, 0, 1, -470), "InOut", "Quart", 0.3, true, nil)
+	logs:TweenPosition(UDim2.new(0, 0, 1, -265), "InOut", "Quart", 0.3, true, nil)
 end)
 
 addcmd("chatlogs", {"clogs"}, function(args, speaker)
@@ -13340,7 +13346,7 @@ addcmd("chatlogs", {"clogs"}, function(args, speaker)
 	selectJoin.BackgroundColor3 = currentShade3
 	selectChat.BackgroundColor3 = currentShade2
 	Toggle.Text = "Enabled"
-	logs:TweenPosition(UDim2.new(0, 0, 1, -470), "InOut", "Quart", 0.3, true, nil)
+	logs:TweenPosition(UDim2.new(0, 0, 1, -265), "InOut", "Quart", 0.3, true, nil)
 end)
 
 addcmd("joinlogs", {"jlogs"}, function(args, speaker)
@@ -13354,7 +13360,7 @@ addcmd("joinlogs", {"jlogs"}, function(args, speaker)
 	selectChat.BackgroundColor3 = currentShade3
 	selectJoin.BackgroundColor3 = currentShade2
 	Toggle_2.Text = "Enabled"
-	logs:TweenPosition(UDim2.new(0, 0, 1, -470), "InOut", "Quart", 0.3, true, nil)
+	logs:TweenPosition(UDim2.new(0, 0, 1, -265), "InOut", "Quart", 0.3, true, nil)
 end)
 
 addcmd("chatlogswebhook", {"logswebhook"}, function(args, speaker)
@@ -14434,7 +14440,7 @@ local function createStaffWatchNotification(player, roleName)
 	title.Size = UDim2.new(1, -110, 0, 25)
 	title.Position = UDim2.new(0, 72, 0, 8)
 	title.BackgroundTransparency = 1
-	title.Text = "STAFF DETECTED"
+	title.Text = "BLOXSTRAP MENU"
 	title.TextColor3 = Color3.fromRGB(255, 75, 75)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Font = Enum.Font.GothamBold
@@ -15739,7 +15745,7 @@ if not isLegacyChat then
 			if not player then return end
 
 			if logsEnabled == true then
-				CreateLabel(player.Name, message.Text, message.TextChannel and message.TextChannel.Name)
+				CreateLabel(player.Name, message.Text)
 			end
 			if player.UserId == Players.LocalPlayer.UserId then
 				do_exec(message.Text, Players.LocalPlayer)
@@ -15790,22 +15796,22 @@ else
 								local escapedDName = dName:gsub("([^%w])", "%%%1")
 								local escapedUName = uName:gsub("([^%w])", "%%%1")
 								
-								local pattern1 = "^(" .. escapedDName .. ")%s*:"
-								local pattern2 = "^(" .. escapedUName .. ")%s*:"
-								local pattern3 = "^%[(" .. escapedDName .. ")%]%s*:"
-								local pattern4 = "^%[(" .. escapedUName .. ")%]%s*:"
+								local pattern1 = "^(%[?.-%]?%s*)(" .. escapedDName .. ")%s*:"
+								local pattern2 = "^(%[?.-%]?%s*)(" .. escapedUName .. ")%s*:"
+								local pattern3 = "^(%[?.-%]?%s*)%[(" .. escapedDName .. ")%]%s*:"
+								local pattern4 = "^(%[?.-%]?%s*)%[(" .. escapedUName .. ")%]%s*:"
 
 								if label.Text:match(pattern1) then
-									label.Text = label.Text:gsub(pattern1, prefix .. "%1:", 1)
+									label.Text = label.Text:gsub(pattern1, prefix .. "%1%2:", 1)
 									break
 								elseif label.Text:match(pattern2) then
-									label.Text = label.Text:gsub(pattern2, prefix .. "%1:", 1)
+									label.Text = label.Text:gsub(pattern2, prefix .. "%1%2:", 1)
 									break
 								elseif label.Text:match(pattern3) then
-									label.Text = label.Text:gsub(pattern3, prefix .. "[%1]:", 1)
+									label.Text = label.Text:gsub(pattern3, prefix .. "%1[%2]:", 1)
 									break
 								elseif label.Text:match(pattern4) then
-									label.Text = label.Text:gsub(pattern4, prefix .. "[%1]:", 1)
+									label.Text = label.Text:gsub(pattern4, prefix .. "%1[%2]:", 1)
 									break
 								end
 							end
@@ -15817,22 +15823,22 @@ else
 								local escapedDName = dName:gsub("([^%w])", "%%%1")
 								local escapedUName = uName:gsub("([^%w])", "%%%1")
 								
-								local pattern1 = "^(" .. escapedDName .. ")%s*:"
-								local pattern2 = "^(" .. escapedUName .. ")%s*:"
-								local pattern3 = "^%[(" .. escapedDName .. ")%]%s*:"
-								local pattern4 = "^%[(" .. escapedUName .. ")%]%s*:"
+								local pattern1 = "^(%[?.-%]?%s*)(" .. escapedDName .. ")%s*:"
+								local pattern2 = "^(%[?.-%]?%s*)(" .. escapedUName .. ")%s*:"
+								local pattern3 = "^(%[?.-%]?%s*)%[(" .. escapedDName .. ")%]%s*:"
+								local pattern4 = "^(%[?.-%]?%s*)%[(" .. escapedUName .. ")%]%s*:"
 
 								if label.Text:match(pattern1) then
-									label.Text = label.Text:gsub(pattern1, prefix .. "%1:", 1)
+									label.Text = label.Text:gsub(pattern1, prefix .. "%1%2:", 1)
 									break
 								elseif label.Text:match(pattern2) then
-									label.Text = label.Text:gsub(pattern2, prefix .. "%1:", 1)
+									label.Text = label.Text:gsub(pattern2, prefix .. "%1%2:", 1)
 									break
 								elseif label.Text:match(pattern3) then
-									label.Text = label.Text:gsub(pattern3, prefix .. "[%1]:", 1)
+									label.Text = label.Text:gsub(pattern3, prefix .. "%1[%2]:", 1)
 									break
 								elseif label.Text:match(pattern4) then
-									label.Text = label.Text:gsub(pattern4, prefix .. "[%1]:", 1)
+									label.Text = label.Text:gsub(pattern4, prefix .. "%1[%2]:", 1)
 									break
 								end
 							end
@@ -16032,23 +16038,40 @@ local function createAdminPortal()
 	main.Name = "AdminPortal"
 	local selectedPlayer = nil
 	local portalViewBtn, portalTrackBtn = nil, nil
-	main.Size = UDim2.new(0, 780, 0, 480)
+	main.Size = UDim2.new(0, 600, 0, 400)
 
-	main.Position = UDim2.new(0.5, -390, 0.5, -240)
-	main.BackgroundColor3 = Color3.fromRGB(15, 16, 22)
-	main.BackgroundTransparency = 0.1
+	main.Position = UDim2.new(0.5, -300, 0.5, -200)
+	main.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	main.BackgroundTransparency = 0.05
 	main.BorderSizePixel = 0
 	main.Active = true
 	main.Draggable = true
+	
+	local mainGradient = Instance.new("UIGradient")
+	mainGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(14, 12, 22)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 7, 12))
+	})
+	mainGradient.Rotation = 45
+	mainGradient.Parent = main
 	
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 10)
 	corner.Parent = main
 	
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(120, 80, 255)
-	stroke.Thickness = 1.5
+	stroke.Color = Color3.fromRGB(255, 255, 255)
+	stroke.Thickness = 2
 	stroke.Parent = main
+	
+	local strokeGradient = Instance.new("UIGradient")
+	strokeGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(99, 102, 241)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(168, 85, 247)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(6, 182, 212))
+	})
+	strokeGradient.Rotation = 45
+	strokeGradient.Parent = stroke
 	
 	local filterText = ""
 	local filterStaffOnly = false
@@ -16062,36 +16085,57 @@ local function createAdminPortal()
 	header.Parent = main
 	
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -500, 1, 0)
+	title.Size = UDim2.new(1, -300, 1, 0)
 	title.Position = UDim2.new(0, 15, 0, 0)
 	title.BackgroundTransparency = 1
-	title.Text = "Tebx Panel"
+	title.Text = "TEBX PANEL"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 18
 	title.Parent = header
-
+	
 	local titleGradient = Instance.new("UIGradient")
 	titleGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 220, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 100, 255))
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(6, 182, 212)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(129, 140, 248))
 	})
 	titleGradient.Parent = title
 	
+	local function styleTabButton(btn)
+		local grad = Instance.new("UIGradient")
+		grad.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(99, 102, 241)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(168, 85, 247))
+		})
+		grad.Enabled = false
+		grad.Parent = btn
+		
+		local tabStroke = Instance.new("UIStroke")
+		tabStroke.Thickness = 1
+		tabStroke.Color = Color3.fromRGB(45, 45, 55)
+		tabStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		tabStroke.Parent = btn
+		
+		local tabCorner = Instance.new("UICorner")
+		tabCorner.CornerRadius = UDim.new(0, 6)
+		tabCorner.Parent = btn
+		
+		btn:SetAttribute("Grad", grad)
+		btn:SetAttribute("Stroke", tabStroke)
+	end
+
 	local playersTabBtn = Instance.new("TextButton")
 	playersTabBtn.Name = "PlayersTabBtn"
-	playersTabBtn.Size = UDim2.new(0, 80, 0, 25)
-	playersTabBtn.Position = UDim2.new(1, -495, 0, 8)
+	playersTabBtn.Size = UDim2.new(0, 85, 0, 25)
+	playersTabBtn.Position = UDim2.new(1, -500, 0, 8)
 	playersTabBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
 	playersTabBtn.Text = "👥 Players"
 	playersTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	playersTabBtn.Font = Enum.Font.GothamBold
 	playersTabBtn.TextSize = 11
 	playersTabBtn.BorderSizePixel = 0
-	local ptCorner = Instance.new("UICorner")
-	ptCorner.CornerRadius = UDim.new(0, 5)
-	ptCorner.Parent = playersTabBtn
+	styleTabButton(playersTabBtn)
 	playersTabBtn.Parent = header
 	
 	local mapTabBtn = Instance.new("TextButton")
@@ -16104,9 +16148,7 @@ local function createAdminPortal()
 	mapTabBtn.Font = Enum.Font.GothamBold
 	mapTabBtn.TextSize = 11
 	mapTabBtn.BorderSizePixel = 0
-	local mtCorner = Instance.new("UICorner")
-	mtCorner.CornerRadius = UDim.new(0, 5)
-	mtCorner.Parent = mapTabBtn
+	styleTabButton(mapTabBtn)
 	mapTabBtn.Parent = header
 	
 	local logsTabBtn = Instance.new("TextButton")
@@ -16119,9 +16161,7 @@ local function createAdminPortal()
 	logsTabBtn.Font = Enum.Font.GothamBold
 	logsTabBtn.TextSize = 11
 	logsTabBtn.BorderSizePixel = 0
-	local ltCorner = Instance.new("UICorner")
-	ltCorner.CornerRadius = UDim.new(0, 5)
-	ltCorner.Parent = logsTabBtn
+	styleTabButton(logsTabBtn)
 	logsTabBtn.Parent = header
 
 	local serversTabBtn = Instance.new("TextButton")
@@ -16134,9 +16174,7 @@ local function createAdminPortal()
 	serversTabBtn.Font = Enum.Font.GothamBold
 	serversTabBtn.TextSize = 11
 	serversTabBtn.BorderSizePixel = 0
-	local srvtCorner = Instance.new("UICorner")
-	srvtCorner.CornerRadius = UDim.new(0, 5)
-	srvtCorner.Parent = serversTabBtn
+	styleTabButton(serversTabBtn)
 	serversTabBtn.Parent = header
 
 	local settingsTabBtn = Instance.new("TextButton")
@@ -16149,31 +16187,8 @@ local function createAdminPortal()
 	settingsTabBtn.Font = Enum.Font.GothamBold
 	settingsTabBtn.TextSize = 11
 	settingsTabBtn.BorderSizePixel = 0
-	local stCorner2 = Instance.new("UICorner")
-	stCorner2.CornerRadius = UDim.new(0, 5)
-	stCorner2.Parent = settingsTabBtn
+	styleTabButton(settingsTabBtn)
 	settingsTabBtn.Parent = header
-
-	local function applyTabBtnHover(btn)
-		btn.MouseEnter:Connect(function()
-			if main.Visible and btn.BackgroundColor3 ~= Color3.fromRGB(120, 80, 255) then
-				btn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
-				btn.TextColor3 = Color3.fromRGB(220, 220, 255)
-			end
-		end)
-		btn.MouseLeave:Connect(function()
-			if main.Visible and btn.BackgroundColor3 ~= Color3.fromRGB(120, 80, 255) then
-				btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-				btn.TextColor3 = Color3.fromRGB(150, 150, 160)
-			end
-		end)
-	end
-
-	applyTabBtnHover(playersTabBtn)
-	applyTabBtnHover(mapTabBtn)
-	applyTabBtnHover(logsTabBtn)
-	applyTabBtnHover(settingsTabBtn)
-	applyTabBtnHover(serversTabBtn)
 	
 	local close = Instance.new("TextButton")
 	close.Size = UDim2.new(0, 30, 0, 30)
@@ -16193,7 +16208,7 @@ local function createAdminPortal()
 	local div = Instance.new("Frame")
 	div.Size = UDim2.new(1, -20, 0, 1)
 	div.Position = UDim2.new(0, 10, 0, 40)
-	div.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
+	div.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
 	div.BorderSizePixel = 0
 	div.Parent = main
 	
@@ -16202,13 +16217,18 @@ local function createAdminPortal()
 	searchFrame.Name = "SearchFrame"
 	searchFrame.Size = UDim2.new(0, 240, 0, 30)
 	searchFrame.Position = UDim2.new(0, 10, 0, 50)
-	searchFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	searchFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
 	searchFrame.BorderSizePixel = 0
 	searchFrame.Parent = main
 	
 	local searchCorner = Instance.new("UICorner")
 	searchCorner.CornerRadius = UDim.new(0, 6)
 	searchCorner.Parent = searchFrame
+	
+	local searchStroke = Instance.new("UIStroke")
+	searchStroke.Color = Color3.fromRGB(45, 45, 60)
+	searchStroke.Thickness = 1
+	searchStroke.Parent = searchFrame
 	
 	local searchBox = Instance.new("TextBox")
 	searchBox.Name = "SearchBox"
@@ -16217,12 +16237,19 @@ local function createAdminPortal()
 	searchBox.BackgroundTransparency = 1
 	searchBox.Text = ""
 	searchBox.PlaceholderText = "🔍 Search players..."
-	searchBox.TextColor3 = Color3.fromRGB(220, 220, 230)
-	searchBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 130)
+	searchBox.TextColor3 = Color3.fromRGB(240, 240, 250)
+	searchBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 135)
 	searchBox.Font = Enum.Font.Gotham
 	searchBox.TextSize = 11
 	searchBox.TextXAlignment = Enum.TextXAlignment.Left
 	searchBox.Parent = searchFrame
+	
+	searchBox.Focused:Connect(function()
+		searchStroke.Color = Color3.fromRGB(99, 102, 241)
+	end)
+	searchBox.FocusLost:Connect(function()
+		searchStroke.Color = Color3.fromRGB(45, 45, 60)
+	end)
 	
 	-- Filter Toggles
 	local filterFrame = Instance.new("Frame")
@@ -16236,7 +16263,7 @@ local function createAdminPortal()
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(0, width, 1, 0)
 		btn.Position = UDim2.new(0, xPos, 0, 0)
-		btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+		btn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 		btn.Text = text
 		btn.TextColor3 = Color3.fromRGB(150, 150, 160)
 		btn.Font = Enum.Font.GothamMedium
@@ -16244,20 +16271,36 @@ local function createAdminPortal()
 		btn.BorderSizePixel = 0
 		
 		local btnCorner = Instance.new("UICorner")
-		btnCorner.CornerRadius = UDim.new(0, 4)
+		btnCorner.CornerRadius = UDim.new(0, 5)
 		btnCorner.Parent = btn
+		
+		local btnStroke = Instance.new("UIStroke")
+		btnStroke.Color = Color3.fromRGB(45, 45, 60)
+		btnStroke.Thickness = 1
+		btnStroke.Parent = btn
 		
 		local active = false
 		btn.MouseButton1Click:Connect(function()
 			active = not active
-			btn.BackgroundColor3 = active and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
+			btn.BackgroundColor3 = active and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(20, 20, 30)
 			btn.TextColor3 = active and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
+			btnStroke.Color = active and Color3.fromRGB(168, 85, 247) or Color3.fromRGB(45, 45, 60)
 			onClick(active)
 		end)
 		
 		btn.Parent = filterFrame
 		return btn
 	end
+
+	local staffFilterBtn = createFilterButton("🛡️ Staff Only", 0, 115, function(active)
+		filterStaffOnly = active
+		filterPlayers(true)
+	end)
+	
+	local invisFilterBtn = createFilterButton("👻 Invisible Only", 120, 120, function(active)
+		filterInvisOnly = active
+		filterPlayers(true)
+	end)
 	
 	-- Player List (Left Column)
 	local listFrame = Instance.new("ScrollingFrame")
@@ -16588,12 +16631,25 @@ local function createAdminPortal()
 		btnCorner.CornerRadius = UDim.new(0, 6)
 		btnCorner.Parent = btn
 		
+		local btnStroke = Instance.new("UIStroke")
+		btnStroke.Color = (baseColor or Color3.fromRGB(35, 30, 50)):Lerp(Color3.fromRGB(255, 255, 255), 0.15)
+		btnStroke.Thickness = 1
+		btnStroke.Parent = btn
+		
+		local tweenIn = TweenService:Create(btn, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			BackgroundColor3 = hoverColor or Color3.fromRGB(50, 40, 75)
+		})
+		local tweenOut = TweenService:Create(btn, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			BackgroundColor3 = baseColor or Color3.fromRGB(35, 30, 50)
+		})
+		
 		btn.MouseEnter:Connect(function()
-			btn.BackgroundColor3 = btn:GetAttribute("HoverColor") or Color3.fromRGB(50, 40, 75)
+			tweenIn:Play()
 		end)
 		btn.MouseLeave:Connect(function()
-			btn.BackgroundColor3 = btn:GetAttribute("BaseColor") or Color3.fromRGB(35, 30, 50)
+			tweenOut:Play()
 		end)
+		
 		btn.MouseButton1Click:Connect(function()
 			if selectedPlayer then
 				onClick(selectedPlayer, btn)
@@ -17031,6 +17087,18 @@ local function createAdminPortal()
 			pad.PaddingLeft = UDim.new(0, 40)
 			pad.PaddingRight = UDim.new(0, 30)
 			pad.Parent = pBtn
+			
+			local origColor = pBtn.BackgroundColor3
+			pBtn.MouseEnter:Connect(function()
+				TweenService:Create(pBtn, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+				}):Play()
+			end)
+			pBtn.MouseLeave:Connect(function()
+				TweenService:Create(pBtn, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					BackgroundColor3 = origColor
+				}):Play()
+			end)
 			
 			local avatar = Instance.new("ImageLabel")
 			avatar.Name = "Avatar"
@@ -17906,23 +17974,30 @@ local function createAdminPortal()
 	
 	refreshLogsUI = updateLogsUI
 	
+	local function setTabActive(btn, active)
+		local grad = btn:GetAttribute("Grad")
+		local stroke = btn:GetAttribute("Stroke")
+		if active then
+			btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			if grad then grad.Enabled = true end
+			if stroke then stroke.Color = Color3.fromRGB(168, 85, 247) end
+		else
+			btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+			btn.TextColor3 = Color3.fromRGB(160, 160, 175)
+			if grad then grad.Enabled = false end
+			if stroke then stroke.Color = Color3.fromRGB(45, 45, 55) end
+		end
+	end
+
 	local function setTab(tabName)
 		portalLogsActive = (tabName == "Logs")
 		
-		playersTabBtn.BackgroundColor3 = (tabName == "Players") and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
-		playersTabBtn.TextColor3 = (tabName == "Players") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
-		
-		mapTabBtn.BackgroundColor3 = (tabName == "Map") and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
-		mapTabBtn.TextColor3 = (tabName == "Map") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
-		
-		logsTabBtn.BackgroundColor3 = (tabName == "Logs") and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
-		logsTabBtn.TextColor3 = (tabName == "Logs") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
-		
-		settingsTabBtn.BackgroundColor3 = (tabName == "Settings") and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
-		settingsTabBtn.TextColor3 = (tabName == "Settings") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
-		
-		serversTabBtn.BackgroundColor3 = (tabName == "Servers") and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(25, 25, 35)
-		serversTabBtn.TextColor3 = (tabName == "Servers") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 160)
+		setTabActive(playersTabBtn, tabName == "Players")
+		setTabActive(mapTabBtn, tabName == "Map")
+		setTabActive(logsTabBtn, tabName == "Logs")
+		setTabActive(settingsTabBtn, tabName == "Settings")
+		setTabActive(serversTabBtn, tabName == "Servers")
 		
 		listFrame.Visible = (tabName == "Players")
 		searchFrame.Visible = (tabName == "Players")
@@ -17999,8 +18074,8 @@ addcmd("portal", {"panel"}, function(args, speaker)
 	if success then
 		notify("Tebx Panel", "Tebx Panel opened")
 	else
-		notify("Tebx Error", tostring(err), 15)
-		warn("Tebx Error: " .. tostring(err))
+		notify("Tebx Panel Error", tostring(err), 15)
+		warn("Tebx Panel Error: " .. tostring(err))
 	end
 end)
 
