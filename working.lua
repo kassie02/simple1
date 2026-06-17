@@ -46,6 +46,108 @@ setthreadidentity = missing("function", setthreadidentity or (syn and syn.set_th
 replicatesignal = missing("function", replicatesignal)
 getconnections = missing("function", getconnections or get_signal_cons)
 
+-- Shutdown Handler to prevent "Not running script because past shutdown deadline" errors
+local isShuttingDown = false
+pcall(function()
+	game:BindToClose(function()
+		isShuttingDown = true
+	end)
+end)
+pcall(function()
+	game.Close:Connect(function()
+		isShuttingDown = true
+	end)
+end)
+
+local oldWait = wait
+local function wait(...)
+	if isShuttingDown then return coroutine.yield() end
+	local args = {oldWait(...)}
+	if isShuttingDown then return coroutine.yield() end
+	return unpack(args)
+end
+
+local oldDelay = delay
+local function delay(n, f, ...)
+	if isShuttingDown then return end
+	if type(f) == "function" then
+		return oldDelay(n, function(...)
+			if isShuttingDown then return coroutine.yield() end
+			return f(...)
+		end, ...)
+	end
+	return oldDelay(n, f, ...)
+end
+
+local oldSpawn = spawn
+local function spawn(f, ...)
+	if isShuttingDown then return end
+	if type(f) == "function" then
+		return oldSpawn(function(...)
+			if isShuttingDown then return coroutine.yield() end
+			return f(...)
+		end, ...)
+	end
+	return oldSpawn(f, ...)
+end
+
+local _task = {}
+for k, v in pairs(task or {}) do _task[k] = v end
+
+if _task.wait then
+	local oldTaskWait = _task.wait
+	_task.wait = function(...)
+		if isShuttingDown then return coroutine.yield() end
+		local args = {oldTaskWait(...)}
+		if isShuttingDown then return coroutine.yield() end
+		return unpack(args)
+	end
+end
+
+if _task.spawn then
+	local oldTaskSpawn = _task.spawn
+	_task.spawn = function(f, ...)
+		if isShuttingDown then return end
+		if type(f) == "function" then
+			return oldTaskSpawn(function(...)
+				if isShuttingDown then return coroutine.yield() end
+				return f(...)
+			end, ...)
+		end
+		return oldTaskSpawn(f, ...)
+	end
+end
+
+if _task.delay then
+	local oldTaskDelay = _task.delay
+	_task.delay = function(n, f, ...)
+		if isShuttingDown then return end
+		if type(f) == "function" then
+			return oldTaskDelay(n, function(...)
+				if isShuttingDown then return coroutine.yield() end
+				return f(...)
+			end, ...)
+		end
+		return oldTaskDelay(n, f, ...)
+	end
+end
+
+if _task.defer then
+	local oldTaskDefer = _task.defer
+	_task.defer = function(f, ...)
+		if isShuttingDown then return end
+		if type(f) == "function" then
+			return oldTaskDefer(function(...)
+				if isShuttingDown then return coroutine.yield() end
+				return f(...)
+			end, ...)
+		end
+		return oldTaskDefer(f, ...)
+	end
+end
+
+local task = _task
+
 local playerStaffRolesCache = {}
 local getCachedStaffRole
 local getRoleColor
@@ -6053,11 +6155,7 @@ function TESP(plr)
 			TESPConnections[plr.UserId] = nil
 		end
 		
-		for _, v in pairs(COREGUI:GetChildren()) do
-			if v.Name == plr.Name..'_TESP' then
-				pcall(function() v:Destroy() end)
-			end
-		end
+		-- Unconditional destroy removed to prevent flickering/loss during 60s auto-refresh
 		
 		local isStaff = false
 		if getCachedStaffRole then
@@ -6093,12 +6191,36 @@ function TESP(plr)
 			pcall(function() removingConn:Disconnect() end)
 		end)
 		
-		if plr.Character then
-			repeat task.wait(0.1) until plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
-			local root = getRoot(plr.Character)
+		local char = plr.Character
+		if not char then
+			for i = 1, 50 do
+				task.wait(0.1)
+				if plr.Character then
+					char = plr.Character
+					break
+				end
+			end
+		end
+
+		if char then
+			local timeout = 0
+			repeat
+				task.wait(0.1)
+				timeout = timeout + 0.1
+			until (getRoot(char) and char:FindFirstChildOfClass("Humanoid")) or not char.Parent or timeout > 10
+			
+			local root = getRoot(char)
 			if not root then return end
 			
-			if COREGUI:FindFirstChild(plr.Name..'_TESP') then return end
+			local existingFolder = COREGUI:FindFirstChild(plr.Name..'_TESP')
+			if existingFolder then
+				local bbg = existingFolder:FindFirstChild(plr.Name)
+				if bbg and bbg.Adornee == root then
+					return
+				else
+					pcall(function() existingFolder:Destroy() end)
+				end
+			end
 			
 			local ESPholder = Instance.new("Folder")
 			ESPholder.Name = plr.Name..'_TESP'
@@ -6186,7 +6308,7 @@ function TESP(plr)
 			end
 			
 			local tracer
-			if TESPmode >= 3 and Drawing then
+			if (TESPmode >= 3 or (isStaff and StaffRolewatchData and StaffRolewatchData.Active)) and Drawing then
 				pcall(function()
 					tracer = Drawing.new("Line")
 					tracer.Thickness = 1
@@ -6251,13 +6373,15 @@ end
 task.spawn(function()
 	while true do
 		task.wait(60)
-		if TESPenabled then
-			for _, v in ipairs(Players:GetPlayers()) do
-				if v ~= Players.LocalPlayer then
-					pcall(function() TESP(v) end)
+		pcall(function()
+			if TESPenabled then
+				for _, v in ipairs(Players:GetPlayers()) do
+					if v ~= Players.LocalPlayer then
+						pcall(function() TESP(v) end)
+					end
 				end
 			end
-		end
+		end)
 	end
 end)
 
