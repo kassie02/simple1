@@ -17863,8 +17863,8 @@ local function createAdminPortal()
 	
 	main.Parent = ScaledHolder
 	
-	-- local playerAddedConn, playerRemovingConn
-	playerAddedConn = IY_Connections.playerAddedConn = Players.PlayerAdded:Connect(function(plr)
+	local playerAddedConn, playerRemovingConn
+	playerAddedConn = Players.PlayerAdded:Connect(function(plr)
 		local success, hasParent = pcall(function() return main and main.Parent end)
 		if not success or not hasParent then
 			if playerAddedConn then playerAddedConn:Disconnect() playerAddedConn = nil end
@@ -17873,8 +17873,9 @@ local function createAdminPortal()
 		end
 		updateList()
 	end)
+	IY_Connections.playerAddedConn = playerAddedConn
 	
-	playerRemovingConn = IY_Connections.playerRemovingConn = Players.PlayerRemoving:Connect(function(plr)
+	playerRemovingConn = Players.PlayerRemoving:Connect(function(plr)
 		local success, hasParent = pcall(function() return main and main.Parent end)
 		if not success or not hasParent then
 			if playerAddedConn then playerAddedConn:Disconnect() playerAddedConn = nil end
@@ -17891,6 +17892,7 @@ local function createAdminPortal()
 		end
 		updateList()
 	end)
+	IY_Connections.playerRemovingConn = playerRemovingConn
 	
 	updateList()
 	
