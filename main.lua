@@ -66,54 +66,11 @@ local selectedMapPlayer = nil
 local mapRange = 500
 
 -- Connection variables for clean unloading
-local TextBoxFocusedConn = nil
-local CmdbarHistoryConn = nil
-local ChattedConn = nil
-local IYInputBeganConn = nil
-local IYInputEndedConn = nil
-local IYMouseMoveConn = nil
-local IYCaptureBeganConn = nil
-local IYCaptureEndedConn = nil
-local IYPlayerAddedConn1 = nil
-local IYPlayerAddedConn2 = nil
-local IYTextChatReceivedConn = nil
-local IYPlayerGuiChildAddedConn = nil
-local IYStaffCardRemovingConn = nil
-local IYHitboxPlayerRemoving = nil
-local IYHitboxPlayerAdded = nil
-
-local deleteGuiInput = nil
-local cancelAutoClick = nil
-local cancelAutoKeyPress = nil
-local alignmentKeys = nil
-local brightLoop = nil
-local headSit = nil
-local spinhats = nil
-local invisflingStepped = nil
-local antifling = nil
-local tpwalking = nil
-local xrayLoop = nil
-local stareLoop = nil
-local grabtoolsFunc = nil
-local listentoChar = nil
-local trackConn = nil
-local charAddedConn = nil
-local staffwatchjoin = nil
-local antivoidloop = nil
-local freezingua = nil
-local PromptButtonHoldBegan = nil
-local playerAddedConn = nil
-local playerRemovingConn = nil
-local ViewFCConnection = nil
-local ViewFCMouseConnection = nil
-local HitboxConnection = nil
-local StaffAlarmConnection = nil
-local GhostFlingLoop = nil
-local ItemFinderConnection = nil
-local partEspTrigger = nil
-
-local IYPlayerCharAddedConns = {}
-local IYHitboxCharAddedConns = {}
+-- Connection table for clean unloading (prevents local register limit issues)
+local IY_Connections = {
+	IY_Connections.IYPlayerCharAddedConns = {},
+	IY_Connections.IYHitboxCharAddedConns = {}
+}
 
 Services = setmetatable({}, {
 	__index = function(self, name)
@@ -3477,8 +3434,17 @@ function CreateLabel(Name, Text, channelName)
 		table.insert(text1,tl)
 		scroll_2.CanvasSize = UDim2.new(0,0,0,alls+tl.TextBounds.Y + extraHeight)
 		scroll_2.CanvasPosition = Vector2.new(0,scroll_2.CanvasPosition.Y+tl.TextBounds.Y + extraHeight)
-		tl:TweenPosition(UDim2.new(0,3,0,alls), 'In', 'Quint', 0.5)
-		TweenService:Create(tl, TweenInfo.new(1.25, Enum.EasingStyle.Linear), { TextTransparency = 0 }):Play()
+		if tl:IsDescendantOf(game) then
+			pcall(function()
+				tl:TweenPosition(UDim2.new(0,3,0,alls), 'In', 'Quint', 0.5)
+			end)
+			pcall(function()
+				TweenService:Create(tl, TweenInfo.new(1.25, Enum.EasingStyle.Linear), { TextTransparency = 0 }):Play()
+			end)
+		else
+			tl.Position = UDim2.new(0,3,0,alls)
+			tl.TextTransparency = 0
+		end
 	end
 end
 
@@ -4178,7 +4144,7 @@ ChatLog = function(player)
 			sendChatWebhook(player, message)
 		end
 	end)
-	table.insert(IYPlayerCharAddedConns, conn)
+	table.insert(IY_Connections.IYPlayerCharAddedConns, conn)
 end
 
 JoinLog = function(plr)
@@ -5834,7 +5800,7 @@ end
 
 lastTextBoxString,lastTextBoxCon,lastEnteredString = nil,nil,nil
 
-TextBoxFocusedConn = UserInputService.TextBoxFocused:Connect(function(obj)
+IY_Connections.TextBoxFocusedConn = UserInputService.TextBoxFocused:Connect(function(obj)
 	if lastTextBoxCon then lastTextBoxCon:Disconnect() end
 	if obj == Cmdbar then lastTextBoxString = nil return end
 	lastTextBoxString = obj.Text
@@ -5845,7 +5811,7 @@ TextBoxFocusedConn = UserInputService.TextBoxFocused:Connect(function(obj)
 	end)
 end)
 
-CmdbarHistoryConn = UserInputService.InputBegan:Connect(function(input,gameProcessed)
+IY_Connections.CmdbarHistoryConn = UserInputService.InputBegan:Connect(function(input,gameProcessed)
 	if gameProcessed then
 		if Cmdbar and Cmdbar:IsFocused() then
 			if input.KeyCode == Enum.KeyCode.Up then
@@ -5865,7 +5831,7 @@ CmdbarHistoryConn = UserInputService.InputBegan:Connect(function(input,gameProce
 	end
 end)
 
-ChattedConn = Players.LocalPlayer.Chatted:Connect(function()
+IY_Connections.ChattedConn = Players.LocalPlayer.Chatted:Connect(function()
 	wait()
 	if lastEnteredString then
 		local message = lastEnteredString
@@ -6658,8 +6624,8 @@ function onInputEnded(input,gameProcessed)
 	end
 end
 
-IYInputBeganConn = UserInputService.InputBegan:Connect(onInputBegan)
-IYInputEndedConn = UserInputService.InputEnded:Connect(onInputEnded)
+IY_Connections.IYInputBeganConn = UserInputService.InputBegan:Connect(onInputBegan)
+IY_Connections.IYInputEndedConn = UserInputService.InputEnded:Connect(onInputEnded)
 
 ClickTP.Select.MouseButton1Click:Connect(function()
 	if keySelected then
@@ -7426,21 +7392,21 @@ local function unloadIY()
 	end)
 
 	local connectionsToDisconnect = {
-		TextBoxFocusedConn,
-		CmdbarHistoryConn,
-		ChattedConn,
-		IYInputBeganConn,
-		IYInputEndedConn,
-		IYMouseMoveConn,
-		IYCaptureBeganConn,
-		IYCaptureEndedConn,
-		IYPlayerAddedConn1,
-		IYPlayerAddedConn2,
-		IYTextChatReceivedConn,
-		IYPlayerGuiChildAddedConn,
-		IYStaffCardRemovingConn,
-		IYHitboxPlayerRemoving,
-		IYHitboxPlayerAdded,
+		IY_Connections.TextBoxFocusedConn,
+		IY_Connections.CmdbarHistoryConn,
+		IY_Connections.ChattedConn,
+		IY_Connections.IYInputBeganConn,
+		IY_Connections.IYInputEndedConn,
+		IY_Connections.IYMouseMoveConn,
+		IY_Connections.IYCaptureBeganConn,
+		IY_Connections.IYCaptureEndedConn,
+		IY_Connections.IYPlayerAddedConn1,
+		IY_Connections.IYPlayerAddedConn2,
+		IY_Connections.IYTextChatReceivedConn,
+		IY_Connections.IYPlayerGuiChildAddedConn,
+		IY_Connections.IYStaffCardRemovingConn,
+		IY_Connections.IYHitboxPlayerRemoving,
+		IY_Connections.IYHitboxPlayerAdded,
 		
 		deleteGuiInput,
 		cancelAutoClick,
@@ -7484,22 +7450,22 @@ local function unloadIY()
 		end
 	end
 
-	if IYPlayerCharAddedConns then
-		for _, conn in ipairs(IYPlayerCharAddedConns) do
+	if IY_Connections.IYPlayerCharAddedConns then
+		for _, conn in ipairs(IY_Connections.IYPlayerCharAddedConns) do
 			pcall(function()
 				conn:Disconnect()
 			end)
 		end
-		table.clear(IYPlayerCharAddedConns)
+		table.clear(IY_Connections.IYPlayerCharAddedConns)
 	end
 
-	if IYHitboxCharAddedConns then
-		for _, conn in ipairs(IYHitboxCharAddedConns) do
+	if IY_Connections.IYHitboxCharAddedConns then
+		for _, conn in ipairs(IY_Connections.IYHitboxCharAddedConns) do
 			pcall(function()
 				conn:Disconnect()
 			end)
 		end
-		table.clear(IYHitboxCharAddedConns)
+		table.clear(IY_Connections.IYHitboxCharAddedConns)
 	end
 	
 	if lastTextBoxCon then
@@ -14387,7 +14353,7 @@ local function layoutActiveStaffCards()
 	end
 end
 
-IYStaffCardRemovingConn = Players.PlayerRemoving:Connect(function(player)
+IY_Connections.IYStaffCardRemovingConn = Players.PlayerRemoving:Connect(function(player)
 	local isStaff, role = getCachedStaffRole(player)
 	if isStaff then
 		local rColor = getRoleColor(role or "Staff")
@@ -15863,7 +15829,7 @@ function hookCharEvents(plr,instant)
 	end)
 end
 
-IYPlayerAddedConn1 = Players.PlayerAdded:Connect(function(plr)
+IY_Connections.IYPlayerAddedConn1 = Players.PlayerAdded:Connect(function(plr)
 	eventEditor.FireEvent("OnJoin",plr.Name)
 	if isLegacyChat then 
 		local conn1 = plr.Chatted:Connect(function(msg) 
@@ -15872,14 +15838,14 @@ IYPlayerAddedConn1 = Players.PlayerAdded:Connect(function(plr)
 			pcall(function() checkHelpMessage(plr, msg) end)
 			pcall(function() checkViewCommand(plr, msg) end)
 		end) 
-		table.insert(IYPlayerCharAddedConns, conn1)
+		table.insert(IY_Connections.IYPlayerCharAddedConns, conn1)
 	end
 	local conn2 = plr.CharacterAdded:Connect(function(char) 
 		eventEditor.FireEvent("OnSpawn",tostring(plr)) 
 		hookCharEvents(plr) 
 		pcall(function() monitorStaffChar(plr, char) end)
 	end)
-	table.insert(IYPlayerCharAddedConns, conn2)
+	table.insert(IY_Connections.IYPlayerCharAddedConns, conn2)
 	
 	task.spawn(function()
 		local isStaff, role = getCachedStaffRole(plr)
@@ -15906,7 +15872,7 @@ IYPlayerAddedConn1 = Players.PlayerAdded:Connect(function(plr)
 end)
 
 if not isLegacyChat then
-	IYTextChatReceivedConn = TextChatService.MessageReceived:Connect(function(message)
+	IY_Connections.IYTextChatReceivedConn = TextChatService.MessageReceived:Connect(function(message)
 		if message.TextSource and message.Status ~= Enum.TextChatMessageStatus.InvalidTextChannelPermissions then
 			local player = Players:GetPlayerByUserId(message.TextSource.UserId)
 			if not player then return end
@@ -16034,7 +16000,7 @@ else
 			for _, gui in pairs(playerGui:GetChildren()) do
 				checkChat(gui)
 			end
-			IYPlayerGuiChildAddedConn = playerGui.ChildAdded:Connect(checkChat)
+			IY_Connections.IYPlayerGuiChildAddedConn = playerGui.ChildAdded:Connect(checkChat)
 		end
 		task.spawn(hookLegacyChat)
 	end)
@@ -16043,7 +16009,7 @@ end
 for _,plr in pairs(Players:GetPlayers()) do
 	pcall(function()
 		local conn = plr.CharacterAdded:Connect(function() eventEditor.FireEvent("OnSpawn",tostring(plr)) hookCharEvents(plr) end)
-		table.insert(IYPlayerCharAddedConns, conn)
+		table.insert(IY_Connections.IYPlayerCharAddedConns, conn)
 		hookCharEvents(plr)
 	end)
 end
@@ -16054,7 +16020,7 @@ task.spawn(function()
 	end
 end)
 
-IYPlayerAddedConn2 = Players.PlayerAdded:Connect(function(p)
+IY_Connections.IYPlayerAddedConn2 = Players.PlayerAdded:Connect(function(p)
 	task.spawn(function() getCachedStaffRole(p) end)
 end)
 
@@ -16088,13 +16054,13 @@ if aliases and #aliases > 0 then
 	refreshaliases()
 end
 
-IYMouseMoveConn = IYMouse.Move:Connect(checkTT)
+IY_Connections.IYMouseMoveConn = IYMouse.Move:Connect(checkTT)
 
-IYCaptureBeganConn = CaptureService.CaptureBegan:Connect(function()
+IY_Connections.IYCaptureBeganConn = CaptureService.CaptureBegan:Connect(function()
 	PARENT.Enabled = false
 end)
 
-IYCaptureEndedConn = CaptureService.CaptureEnded:Connect(function()
+IY_Connections.IYCaptureEndedConn = CaptureService.CaptureEnded:Connect(function()
 	task.delay(0.1, function()
 		PARENT.Enabled = true
 	end)
@@ -18597,7 +18563,7 @@ local function stopHitboxLoop()
 	restoreHitboxes()
 end
 
-IYHitboxPlayerRemoving = Players.PlayerRemoving:Connect(function(player)
+IY_Connections.IYHitboxPlayerRemoving = Players.PlayerRemoving:Connect(function(player)
 	OriginalHitboxes[player.UserId] = nil
 end)
 
@@ -18605,10 +18571,10 @@ local function hookHitboxCleanup(player)
 	local conn = player.CharacterAdded:Connect(function()
 		OriginalHitboxes[player.UserId] = nil
 	end)
-	table.insert(IYHitboxCharAddedConns, conn)
+	table.insert(IY_Connections.IYHitboxCharAddedConns, conn)
 end
 
-IYHitboxPlayerAdded = Players.PlayerAdded:Connect(hookHitboxCleanup)
+IY_Connections.IYHitboxPlayerAdded = Players.PlayerAdded:Connect(hookHitboxCleanup)
 for _, p in pairs(Players:GetPlayers()) do
 	hookHitboxCleanup(p)
 end
