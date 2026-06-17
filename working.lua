@@ -70,6 +70,7 @@ local IY_Connections = {
 	IYPlayerCharAddedConns = {},
 	IYHitboxCharAddedConns = {}
 }
+local updateStaffListUI
 
 Services = setmetatable({}, {
 	__index = function(self, name)
@@ -4185,7 +4186,7 @@ Players.PlayerRemoving:Connect(function(player)
 		end
 		notify('Spectate','View turned off (player left)')
 	end
-	if StaffRolewatchData and StaffRolewatchData.Active then
+	if StaffRolewatchData and StaffRolewatchData.Active and updateStaffListUI then
 		task.spawn(function() updateStaffListUI(player) end)
 	end
 	task.spawn(function()
@@ -7462,7 +7463,7 @@ local function unloadIY()
 			pcall(function() v:Destroy() end)
 		end
 	end
-end
+ end
 
 addcmd("exit", {}, function(args, speaker)
 	game:Shutdown()
@@ -9082,6 +9083,7 @@ local function createHelpRequestNotification(player)
 		else
 			execCmd("view " .. player.Name)
 		end
+		task.wait()
 		updateButtonsState()
 	end)
 
@@ -9108,6 +9110,7 @@ local function createHelpRequestNotification(player)
 			trackBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
 			trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
 		end
+		updateButtonsState()
 
 		if trackConn then
 			trackConn:Disconnect()
@@ -9136,7 +9139,7 @@ local function createHelpRequestNotification(player)
 		tracking = true
 		if trackBtn and trackBtn.Parent then
 			trackBtn.Text = "UNTRACK"
-			trackBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+			trackBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
 			trackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 		end
 
@@ -9534,6 +9537,7 @@ local function createViewWarningNotification(player, cmdType, detectedCmd)
 		else
 			execCmd("view " .. player.Name)
 		end
+		task.wait()
 		updateButtonsState()
 	end)
 
@@ -14178,7 +14182,7 @@ StaffRolewatchData = {
 	Leave = false
 }
 
-local function updateStaffListUI(excludingPlayer)
+updateStaffListUI = function(excludingPlayer)
 	task.wait()
 	local frame = PARENT:FindFirstChild("StaffListFrame")
 	if not StaffRolewatchData.Active then
