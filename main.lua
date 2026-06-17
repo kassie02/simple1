@@ -4878,8 +4878,8 @@ CMDs[#CMDs + 1] = {NAME = 'rolewatchleave', DESC = 'Toggle if you should leave t
 CMDs[#CMDs + 1] = {NAME = 'tmp', DESC = 'Notify if someone from group 17180419 with staff roles joins the server'}
 CMDs[#CMDs + 1] = {NAME = 'untmp', DESC = 'Disable staff rolewatch'}
 CMDs[#CMDs + 1] = {NAME = 'tmpleave', DESC = 'Toggle if you should leave the game if a watched staff member joins'}
-CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the graphical Admin Panel'}
-CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes/hides the Admin Panel'}
+CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the graphical Tebx Panel'}
+CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes/hides the Tebx Panel'}
 CMDs[#CMDs + 1] = {NAME = 'staffwatch', DESC = 'Notify if a staff member of the game joins the server'}
 CMDs[#CMDs + 1] = {NAME = 'unstaffwatch', DESC = 'Disable Staffwatch'}
 CMDs[#CMDs + 1] = {NAME = 'findfriendgroups', DESC = 'Notifies you if any players are friends with each other'}
@@ -5037,9 +5037,9 @@ CMDs[#CMDs + 1] = {NAME = 'removeplugin / deleteplugin [name]', DESC = 'Remove a
 CMDs[#CMDs + 1] = {NAME = 'reloadplugin [name]', DESC = 'Reloads a plugin'}
 CMDs[#CMDs + 1] = {NAME = 'addallplugins / loadallplugins', DESC = 'Adds all available plugins from the workspace folder'}
 CMDs[#CMDs + 1] = {NAME = '', DESC = ''}
-CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the Admin Panel'}
-CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes the Admin Panel'}
-CMDs[#CMDs + 1] = {NAME = 'stafflog / stafflogs', DESC = 'Opens the Admin Panel focused on the Staff Logs tab'}
+CMDs[#CMDs + 1] = {NAME = 'portal / panel', DESC = 'Opens the Tebx Panel'}
+CMDs[#CMDs + 1] = {NAME = 'unportal / unpanel', DESC = 'Closes the Tebx Panel'}
+CMDs[#CMDs + 1] = {NAME = 'stafflog / stafflogs', DESC = 'Opens the Tebx Panel focused on the Staff Logs tab'}
 CMDs[#CMDs + 1] = {NAME = 'tmp', DESC = 'Enables the custom staff watch (Group 17180419) with warnings and lists'}
 CMDs[#CMDs + 1] = {NAME = 'untmp', DESC = 'Disables the staff watch'}
 CMDs[#CMDs + 1] = {NAME = 'tmpleave', DESC = 'Toggles auto-kick/leave when watched staff members join'}
@@ -16035,7 +16035,7 @@ local function createAdminPortal()
 	main.Size = UDim2.new(0, 780, 0, 480)
 
 	main.Position = UDim2.new(0.5, -390, 0.5, -240)
-	main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+	main.BackgroundColor3 = Color3.fromRGB(15, 16, 22)
 	main.BackgroundTransparency = 0.1
 	main.BorderSizePixel = 0
 	main.Active = true
@@ -16065,12 +16065,19 @@ local function createAdminPortal()
 	title.Size = UDim2.new(1, -500, 1, 0)
 	title.Position = UDim2.new(0, 15, 0, 0)
 	title.BackgroundTransparency = 1
-	title.Text = "ADMIN PANEL"
-	title.TextColor3 = Color3.fromRGB(160, 130, 255)
+	title.Text = "Tebx Panel"
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Font = Enum.Font.GothamBold
-	title.TextSize = 16
+	title.TextSize = 18
 	title.Parent = header
+
+	local titleGradient = Instance.new("UIGradient")
+	titleGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 220, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 100, 255))
+	})
+	titleGradient.Parent = title
 	
 	local playersTabBtn = Instance.new("TextButton")
 	playersTabBtn.Name = "PlayersTabBtn"
@@ -16146,6 +16153,27 @@ local function createAdminPortal()
 	stCorner2.CornerRadius = UDim.new(0, 5)
 	stCorner2.Parent = settingsTabBtn
 	settingsTabBtn.Parent = header
+
+	local function applyTabBtnHover(btn)
+		btn.MouseEnter:Connect(function()
+			if main.Visible and btn.BackgroundColor3 ~= Color3.fromRGB(120, 80, 255) then
+				btn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+				btn.TextColor3 = Color3.fromRGB(220, 220, 255)
+			end
+		end)
+		btn.MouseLeave:Connect(function()
+			if main.Visible and btn.BackgroundColor3 ~= Color3.fromRGB(120, 80, 255) then
+				btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+				btn.TextColor3 = Color3.fromRGB(150, 150, 160)
+			end
+		end)
+	end
+
+	applyTabBtnHover(playersTabBtn)
+	applyTabBtnHover(mapTabBtn)
+	applyTabBtnHover(logsTabBtn)
+	applyTabBtnHover(settingsTabBtn)
+	applyTabBtnHover(serversTabBtn)
 	
 	local close = Instance.new("TextButton")
 	close.Size = UDim2.new(0, 30, 0, 30)
@@ -16172,8 +16200,8 @@ local function createAdminPortal()
 	-- Search Bar
 	local searchFrame = Instance.new("Frame")
 	searchFrame.Name = "SearchFrame"
-	searchFrame.Size = UDim2.new(0, 280, 0, 30)
-	searchFrame.Position = UDim2.new(0, 15, 0, 50)
+	searchFrame.Size = UDim2.new(0, 240, 0, 30)
+	searchFrame.Position = UDim2.new(0, 10, 0, 50)
 	searchFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	searchFrame.BorderSizePixel = 0
 	searchFrame.Parent = main
@@ -16199,8 +16227,8 @@ local function createAdminPortal()
 	-- Filter Toggles
 	local filterFrame = Instance.new("Frame")
 	filterFrame.Name = "FilterFrame"
-	filterFrame.Size = UDim2.new(0, 280, 0, 25)
-	filterFrame.Position = UDim2.new(0, 15, 0, 85)
+	filterFrame.Size = UDim2.new(0, 240, 0, 25)
+	filterFrame.Position = UDim2.new(0, 10, 0, 85)
 	filterFrame.BackgroundTransparency = 1
 	filterFrame.Parent = main
 	
@@ -16231,21 +16259,11 @@ local function createAdminPortal()
 		return btn
 	end
 	
-	createFilterButton("🛡️ Staff Only", 0, 135, function(active)
-		filterStaffOnly = active
-		filterPlayers(true)
-	end)
-	
-	createFilterButton("👻 Invisible Only", 145, 135, function(active)
-		filterInvisOnly = active
-		filterPlayers(true)
-	end)
-	
 	-- Player List (Left Column)
 	local listFrame = Instance.new("ScrollingFrame")
 	listFrame.Name = "PlayerList"
-	listFrame.Size = UDim2.new(0, 280, 1, -135)
-	listFrame.Position = UDim2.new(0, 15, 0, 125)
+	listFrame.Size = UDim2.new(0, 240, 1, -125)
+	listFrame.Position = UDim2.new(0, 10, 0, 115)
 	listFrame.BackgroundTransparency = 1
 	listFrame.BorderSizePixel = 0
 	listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -16260,17 +16278,15 @@ local function createAdminPortal()
 	-- Details Panel (Right Column)
 	local detailFrame = Instance.new("Frame")
 	detailFrame.Name = "Details"
-	detailFrame.Size = UDim2.new(1, -325, 1, -60)
-	detailFrame.Position = UDim2.new(0, 310, 0, 50)
-	detailFrame.BackgroundTransparency = 1
-	detailFrame.Parent = main
+	detailFrame.Size = UDim2.new(1, -270, 1, -60)
+	detailFrame.Position = UDim2.new(0, 260, 0, 50)
 	detailFrame.BackgroundTransparency = 1
 	detailFrame.Parent = main
 	
 	local profileImage = Instance.new("ImageLabel")
 	profileImage.Name = "Avatar"
-	profileImage.Size = UDim2.new(0, 100, 0, 100)
-	profileImage.Position = UDim2.new(0, 15, 0, 15)
+	profileImage.Size = UDim2.new(0, 80, 0, 80)
+	profileImage.Position = UDim2.new(0, 10, 0, 10)
 	profileImage.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	profileImage.BorderSizePixel = 0
 	local imgCorner = Instance.new("UICorner")
@@ -16281,32 +16297,32 @@ local function createAdminPortal()
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "DisplayName"
 	nameLabel.Size = UDim2.new(1, -150, 0, 25)
-	nameLabel.Position = UDim2.new(0, 130, 0, 25)
+	nameLabel.Position = UDim2.new(0, 100, 0, 15)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = "Select a player"
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.TextSize = 18
+	nameLabel.TextSize = 16
 	nameLabel.Parent = detailFrame
 	
 	local userLabel = Instance.new("TextLabel")
 	userLabel.Name = "Username"
 	userLabel.Size = UDim2.new(1, -150, 0, 20)
-	userLabel.Position = UDim2.new(0, 130, 0, 55)
+	userLabel.Position = UDim2.new(0, 100, 0, 40)
 	userLabel.BackgroundTransparency = 1
 	userLabel.Text = ""
 	userLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
 	userLabel.TextXAlignment = Enum.TextXAlignment.Left
 	userLabel.Font = Enum.Font.Gotham
-	userLabel.TextSize = 14
+	userLabel.TextSize = 13
 	userLabel.RichText = true
 	userLabel.Parent = detailFrame
 	
 	local infoLabel = Instance.new("TextLabel")
 	infoLabel.Name = "Info"
-	infoLabel.Size = UDim2.new(1, -30, 0, 140)
-	infoLabel.Position = UDim2.new(0, 15, 0, 130)
+	infoLabel.Size = UDim2.new(1, -20, 0, 110)
+	infoLabel.Position = UDim2.new(0, 10, 0, 100)
 	infoLabel.BackgroundTransparency = 1
 	infoLabel.Text = ""
 	infoLabel.TextColor3 = Color3.fromRGB(180, 180, 190)
@@ -16320,7 +16336,7 @@ local function createAdminPortal()
 	local alertBellBtn = Instance.new("TextButton")
 	alertBellBtn.Name = "AlertBell"
 	alertBellBtn.Size = UDim2.new(0, 30, 0, 30)
-	alertBellBtn.Position = UDim2.new(1, -45, 0, 15)
+	alertBellBtn.Position = UDim2.new(1, -40, 0, 15)
 	alertBellBtn.BackgroundColor3 = Color3.fromRGB(45, 20, 25)
 	alertBellBtn.Text = "⚠️"
 	alertBellBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
@@ -16359,13 +16375,13 @@ local function createAdminPortal()
 	-- Action buttons container
 	local btnGrid = Instance.new("Frame")
 	btnGrid.Name = "Buttons"
-	btnGrid.Size = UDim2.new(1, -30, 0, 120)
-	btnGrid.Position = UDim2.new(0, 15, 0, 285)
+	btnGrid.Size = UDim2.new(1, -20, 0, 110)
+	btnGrid.Position = UDim2.new(0, 10, 0, 220)
 	btnGrid.BackgroundTransparency = 1
 	btnGrid.Parent = detailFrame
 	
 	local gridLayout = Instance.new("UIGridLayout")
-	gridLayout.CellSize = UDim2.new(0, 140, 0, 32)
+	gridLayout.CellSize = UDim2.new(0, 145, 0, 30)
 	gridLayout.CellPadding = UDim2.new(0, 10, 0, 8)
 	gridLayout.Parent = btnGrid
 	
@@ -17147,8 +17163,8 @@ local function createAdminPortal()
 	
 	local mapContainer = Instance.new("Frame")
 	mapContainer.Name = "MapContainer"
-	mapContainer.Size = UDim2.new(0, 360, 0, 360)
-	mapContainer.Position = UDim2.new(0, 15, 0.5, -180)
+	mapContainer.Size = UDim2.new(0, 320, 0, 320)
+	mapContainer.Position = UDim2.new(0, 10, 0.5, -160)
 	mapContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
 	mapContainer.BorderSizePixel = 0
 	mapContainer.Parent = mapViewFrame
@@ -17184,8 +17200,8 @@ local function createAdminPortal()
 	-- Right side controls container
 	local mapControls = Instance.new("Frame")
 	mapControls.Name = "Controls"
-	mapControls.Size = UDim2.new(1, -405, 1, -20)
-	mapControls.Position = UDim2.new(0, 390, 0, 10)
+	mapControls.Size = UDim2.new(1, -350, 1, -20)
+	mapControls.Position = UDim2.new(0, 345, 0, 10)
 	mapControls.BackgroundTransparency = 1
 	mapControls.Parent = mapViewFrame
 	
@@ -17978,13 +17994,13 @@ end
 
 
 addcmd("portal", {"panel"}, function(args, speaker)
-	notify("Admin Panel", "Opening Admin Panel...")
+	notify("Tebx Panel", "Opening Tebx Panel...")
 	local success, err = pcall(createAdminPortal)
 	if success then
-		notify("Admin Panel", "Admin Panel opened")
+		notify("Tebx Panel", "Tebx Panel opened")
 	else
-		notify("Admin Panel Error", tostring(err), 15)
-		warn("Admin Panel Error: " .. tostring(err))
+		notify("Tebx Error", tostring(err), 15)
+		warn("Tebx Error: " .. tostring(err))
 	end
 end)
 
@@ -17995,7 +18011,7 @@ addcmd("unportal", {"unpanel"}, function(args, speaker)
 	end
 	refreshLogsUI = nil
 	portalLogsActive = false
-	notify("Admin Panel", "Admin Panel closed")
+	notify("Tebx Panel", "Tebx Panel closed")
 end)
 
 
