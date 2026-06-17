@@ -65,6 +65,56 @@ local showMapNames = false
 local selectedMapPlayer = nil
 local mapRange = 500
 
+-- Connection variables for clean unloading
+local TextBoxFocusedConn = nil
+local CmdbarHistoryConn = nil
+local ChattedConn = nil
+local IYInputBeganConn = nil
+local IYInputEndedConn = nil
+local IYMouseMoveConn = nil
+local IYCaptureBeganConn = nil
+local IYCaptureEndedConn = nil
+local IYPlayerAddedConn1 = nil
+local IYPlayerAddedConn2 = nil
+local IYTextChatReceivedConn = nil
+local IYPlayerGuiChildAddedConn = nil
+local IYStaffCardRemovingConn = nil
+local IYHitboxPlayerRemoving = nil
+local IYHitboxPlayerAdded = nil
+
+local deleteGuiInput = nil
+local cancelAutoClick = nil
+local cancelAutoKeyPress = nil
+local alignmentKeys = nil
+local brightLoop = nil
+local headSit = nil
+local spinhats = nil
+local invisflingStepped = nil
+local antifling = nil
+local tpwalking = nil
+local xrayLoop = nil
+local stareLoop = nil
+local grabtoolsFunc = nil
+local listentoChar = nil
+local trackConn = nil
+local charAddedConn = nil
+local staffwatchjoin = nil
+local antivoidloop = nil
+local freezingua = nil
+local PromptButtonHoldBegan = nil
+local playerAddedConn = nil
+local playerRemovingConn = nil
+local ViewFCConnection = nil
+local ViewFCMouseConnection = nil
+local HitboxConnection = nil
+local StaffAlarmConnection = nil
+local GhostFlingLoop = nil
+local ItemFinderConnection = nil
+local partEspTrigger = nil
+
+local IYPlayerCharAddedConns = {}
+local IYHitboxCharAddedConns = {}
+
 Services = setmetatable({}, {
 	__index = function(self, name)
 		local success, cache = pcall(function()
@@ -363,52 +413,41 @@ Holder.BorderSizePixel = 0
 Holder.Position = UDim2.new(1, -250, 1, -220)
 Holder.Size = UDim2.new(0, 250, 0, 220)
 Holder.ZIndex = 10
+Holder.ClipsDescendants = true
 table.insert(shade2,Holder)
+
+local HolderCorner = Instance.new("UICorner")
+HolderCorner.CornerRadius = UDim.new(0, 8)
+HolderCorner.Parent = Holder
+
+local HolderStroke = Instance.new("UIStroke")
+HolderStroke.Color = Color3.fromRGB(55, 55, 60)
+HolderStroke.Thickness = 1
+HolderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+HolderStroke.Transparency = 0.2
+HolderStroke.Parent = Holder
 
 Title.Name = "Title"
 Title.Parent = Holder
 Title.Active = true
-Title.BackgroundColor3 = Color3.fromRGB(36,36,37)
+Title.BackgroundColor3 = Color3.fromRGB(25, 26, 32)
 Title.BorderSizePixel = 0
-Title.Size = UDim2.new(0, 250, 0, 20)
-Title.Font = Enum.Font.SourceSans
-Title.TextSize = 18
-Title.Text = "Infinite Yield FE v" .. currentVersion
+Title.Size = UDim2.new(0, 250, 0, 22)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 11
+Title.Text = "Bloxstrap Menu"
 
-do
-	local emoji = ({
-		["01 01"] = "🎆",
-		["02 14"] = "💝",
-		["03 17"] = "☘️",
-		[(function(Year)
-			local A = math.floor(Year/100)
-			local B = math.floor((13+8*A)/25)
-			local C = (15-B+A-math.floor(A/4))%30
-			local D = (4+A-math.floor(A/4))%7
-			local E = (19*(Year%19)+C)%30
-			local F = (2*(Year%4)+4*(Year%7)+6*E+D)%7
-			local G = (22+E+F)
-			if E == 29 and F == 6 then
-				return "04 19"
-			elseif E == 28 and F == 6 then
-				return "04 18"
-			elseif 31 < G then
-				return ("04 %02d"):format(G-31)
-			end
-			return ("03 %02d"):format(G)
-		end)(tonumber(os.date"%Y"))] = "🥚",
-		["10 31"] = "🎃",
-		["12 25"] = "🎄"
-	})[os.date("%m %d")]
-	if emoji then
-		Title.Text = ("%s %s %s"):format(emoji, Title.Text, emoji)
-	end
-end
-
-Title.TextColor3 = Color3.new(1, 1, 1)
+Title.TextColor3 = Color3.fromRGB(240, 240, 245)
 Title.ZIndex = 10
 table.insert(shade1,Title)
 table.insert(text1,Title)
+
+local TitleGradient = Instance.new("UIGradient")
+TitleGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 180, 185))
+})
+TitleGradient.Parent = Title
 
 Dark.Name = "Dark"
 Dark.Parent = Holder
@@ -455,18 +494,20 @@ cmdListLayout.Parent = CMDsF
 SettingsButton.Name = "SettingsButton"
 SettingsButton.Parent = Holder
 SettingsButton.BackgroundTransparency = 1
-SettingsButton.Position = UDim2.new(0, 230, 0, 0)
-SettingsButton.Size = UDim2.new(0, 20, 0, 20)
-SettingsButton.Image = getcustomasset("infiniteyield/assets/settings.png")
+SettingsButton.Position = UDim2.new(0, 230, 0, 4)
+SettingsButton.Size = UDim2.new(0, 14, 0, 14)
+SettingsButton.Image = "rbxassetid://10734950309"
+SettingsButton.ImageColor3 = Color3.fromRGB(220, 220, 225)
 SettingsButton.ZIndex = 10
 
 ReferenceButton = Instance.new("ImageButton")
 ReferenceButton.Name = "ReferenceButton"
 ReferenceButton.Parent = Holder
 ReferenceButton.BackgroundTransparency = 1
-ReferenceButton.Position = UDim2.new(0, 212, 0, 2)
-ReferenceButton.Size = UDim2.new(0, 16, 0, 16)
-ReferenceButton.Image = getcustomasset("infiniteyield/assets/reference.png")
+ReferenceButton.Position = UDim2.new(0, 212, 0, 4)
+ReferenceButton.Size = UDim2.new(0, 14, 0, 14)
+ReferenceButton.Image = "rbxassetid://10734923549"
+ReferenceButton.ImageColor3 = Color3.fromRGB(220, 220, 225)
 ReferenceButton.ZIndex = 10
 
 Settings.Name = "Settings"
@@ -3238,7 +3279,7 @@ function maximizeHolder()
 	end
 end
 
-minimizeNum = -20
+minimizeNum = -22
 function minimizeHolder()
 	if StayOpen == false then
 		Holder:TweenPosition(UDim2.new(1, Holder.Position.X.Offset, 1, minimizeNum), "InOut", "Quart", 0.5, true, nil)
@@ -4131,12 +4172,13 @@ pcall(function()
 end)
 
 ChatLog = function(player)
-	player.Chatted:Connect(function(message)
+	local conn = player.Chatted:Connect(function(message)
 		if logsEnabled == true and not legacyChatEventsHooked then
 			CreateLabel(player.Name, message)
 			sendChatWebhook(player, message)
 		end
 	end)
+	table.insert(IYPlayerCharAddedConns, conn)
 end
 
 JoinLog = function(plr)
@@ -5792,7 +5834,7 @@ end
 
 lastTextBoxString,lastTextBoxCon,lastEnteredString = nil,nil,nil
 
-UserInputService.TextBoxFocused:Connect(function(obj)
+TextBoxFocusedConn = UserInputService.TextBoxFocused:Connect(function(obj)
 	if lastTextBoxCon then lastTextBoxCon:Disconnect() end
 	if obj == Cmdbar then lastTextBoxString = nil return end
 	lastTextBoxString = obj.Text
@@ -5803,7 +5845,7 @@ UserInputService.TextBoxFocused:Connect(function(obj)
 	end)
 end)
 
-UserInputService.InputBegan:Connect(function(input,gameProcessed)
+CmdbarHistoryConn = UserInputService.InputBegan:Connect(function(input,gameProcessed)
 	if gameProcessed then
 		if Cmdbar and Cmdbar:IsFocused() then
 			if input.KeyCode == Enum.KeyCode.Up then
@@ -5823,7 +5865,7 @@ UserInputService.InputBegan:Connect(function(input,gameProcessed)
 	end
 end)
 
-Players.LocalPlayer.Chatted:Connect(function()
+ChattedConn = Players.LocalPlayer.Chatted:Connect(function()
 	wait()
 	if lastEnteredString then
 		local message = lastEnteredString
@@ -6616,8 +6658,8 @@ function onInputEnded(input,gameProcessed)
 	end
 end
 
-UserInputService.InputBegan:Connect(onInputBegan)
-UserInputService.InputEnded:Connect(onInputEnded)
+IYInputBeganConn = UserInputService.InputBegan:Connect(onInputBegan)
+IYInputEndedConn = UserInputService.InputEnded:Connect(onInputEnded)
 
 ClickTP.Select.MouseButton1Click:Connect(function()
 	if keySelected then
@@ -7372,11 +7414,121 @@ addcmd("serverhop", {"shop"}, function(args, speaker)
 	end
 end)
 
+local function unloadIY()
+	pcall(function()
+		if Noclipping then Noclipping:Disconnect() end
+		if StaffRolewatchConnection then StaffRolewatchConnection:Disconnect() end
+		if RolewatchConnection then RolewatchConnection:Disconnect() end
+		local portal = ScaledHolder:FindFirstChild("AdminPortal")
+		if portal then portal:Destroy() end
+		PARENT:Destroy()
+		getgenv().IY_LOADED = nil
+	end)
+
+	local connectionsToDisconnect = {
+		TextBoxFocusedConn,
+		CmdbarHistoryConn,
+		ChattedConn,
+		IYInputBeganConn,
+		IYInputEndedConn,
+		IYMouseMoveConn,
+		IYCaptureBeganConn,
+		IYCaptureEndedConn,
+		IYPlayerAddedConn1,
+		IYPlayerAddedConn2,
+		IYTextChatReceivedConn,
+		IYPlayerGuiChildAddedConn,
+		IYStaffCardRemovingConn,
+		IYHitboxPlayerRemoving,
+		IYHitboxPlayerAdded,
+		
+		deleteGuiInput,
+		cancelAutoClick,
+		cancelAutoKeyPress,
+		alignmentKeys,
+		brightLoop,
+		headSit,
+		spinhats,
+		invisflingStepped,
+		antifling,
+		tpwalking,
+		xrayLoop,
+		stareLoop,
+		grabtoolsFunc,
+		listentoChar,
+		trackConn,
+		charAddedConn,
+		staffwatchjoin,
+		antivoidloop,
+		freezingua,
+		PromptButtonHoldBegan,
+		playerAddedConn,
+		playerRemovingConn,
+		ViewFCConnection,
+		ViewFCMouseConnection,
+		HitboxConnection,
+		StaffAlarmConnection,
+		GhostFlingLoop,
+		ItemFinderConnection,
+		pflyKeysConn1,
+		pflyKeysConn2,
+		pflyConn,
+		partEspTrigger,
+	}
+
+	for _, conn in ipairs(connectionsToDisconnect) do
+		if conn then
+			pcall(function()
+				conn:Disconnect()
+			end)
+		end
+	end
+
+	if IYPlayerCharAddedConns then
+		for _, conn in ipairs(IYPlayerCharAddedConns) do
+			pcall(function()
+				conn:Disconnect()
+			end)
+		end
+		table.clear(IYPlayerCharAddedConns)
+	end
+
+	if IYHitboxCharAddedConns then
+		for _, conn in ipairs(IYHitboxCharAddedConns) do
+			pcall(function()
+				conn:Disconnect()
+			end)
+		end
+		table.clear(IYHitboxCharAddedConns)
+	end
+	
+	if lastTextBoxCon then
+		pcall(function()
+			lastTextBoxCon:Disconnect()
+		end)
+		lastTextBoxCon = nil
+	end
+
+	ESPenabled = false
+	CHMSenabled = false
+	TESPenabled = false
+	for _, c in pairs(COREGUI:GetChildren()) do
+		if string.sub(c.Name, -4) == '_ESP' or string.sub(c.Name, -5) == '_TESP' or string.sub(c.Name, -5) == '_CHMS' then
+			pcall(function() c:Destroy() end)
+		end
+	end
+	for _, v in pairs(workspace:GetDescendants()) do
+		if v:IsA("BoxHandleAdornment") and v.Name:sub(-5) == '_PESP' then
+			pcall(function() v:Destroy() end)
+		end
+	end
+end
+
 addcmd("exit", {}, function(args, speaker)
 	game:Shutdown()
 end)
 
-addcmd("unload", {"exitgui"}, function(args, speaker)
+addcmd("panic", {"panick"}, function(args, speaker)
 	if Noclipping then Noclipping:Disconnect() end
 	if StaffRolewatchConnection then StaffRolewatchConnection:Disconnect() end
 	if RolewatchConnection then RolewatchConnection:Disconnect() end
@@ -7384,6 +7536,10 @@ addcmd("unload", {"exitgui"}, function(args, speaker)
 	if portal then portal:Destroy() end
 	PARENT:Destroy()
 	pcall(function() getgenv().IY_LOADED = nil end)
+end)
+
+addcmd("unload", {"exitgui", "unexec"}, function(args, speaker)
+	unloadIY()
 end)
 
 local Noclipping = nil
@@ -8197,7 +8353,7 @@ function deleteGuisAtPos()
 	end)
 end
 
-local deleteGuiInput
+-- local deleteGuiInput
 addcmd('guidelete',{},function(args, speaker)
 	deleteGuiInput = UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
 		if not gameProcessedEvent then
@@ -8229,7 +8385,7 @@ end)
 
 addcmd('showiy',{'unhideiy'},function(args, speaker)
 	isHidden = false
-	minimizeNum = -20
+	minimizeNum = -22
 	if wasStayOpen then
 		maximizeHolder()
 		StayOpen = true
@@ -8520,7 +8676,7 @@ addcmd("esptransparency", {}, function(args, speaker)
 end)
 
 local espParts = {}
-local partEspTrigger = nil
+-- local partEspTrigger = nil
 function partAdded(part)
 	if #espParts > 0 then
 		if FindInTable(espParts,part.Name:lower()) then
@@ -12684,7 +12840,7 @@ addcmd('fireproximityprompts',{'firepp'},function(args, speaker)
 	end
 end)
 
-local PromptButtonHoldBegan = nil
+-- local PromptButtonHoldBegan = nil
 addcmd('instantproximityprompts',{'instantpp'},function(args, speaker)
 	if fireproximityprompt then
 		execCmd("uninstantproximityprompts")
@@ -13341,7 +13497,7 @@ addcmd("logs", {}, function(args, speaker)
 	jLogsEnabled = true
 	Toggle.Text = "Enabled"
 	Toggle_2.Text = "Enabled"
-	logs:TweenPosition(UDim2.new(0, 0, 1, -380), "InOut", "Quart", 0.3, true, nil)
+	logs:TweenPosition(UDim2.new(0, 0, 1, -265), "InOut", "Quart", 0.3, true, nil)
 end)
 
 addcmd("chatlogs", {"clogs"}, function(args, speaker)
@@ -13355,7 +13511,7 @@ addcmd("chatlogs", {"clogs"}, function(args, speaker)
 	selectJoin.BackgroundColor3 = currentShade3
 	selectChat.BackgroundColor3 = currentShade2
 	Toggle.Text = "Enabled"
-	logs:TweenPosition(UDim2.new(0, 0, 1, -380), "InOut", "Quart", 0.3, true, nil)
+	logs:TweenPosition(UDim2.new(0, 0, 1, -265), "InOut", "Quart", 0.3, true, nil)
 end)
 
 addcmd("joinlogs", {"jlogs"}, function(args, speaker)
@@ -13369,7 +13525,7 @@ addcmd("joinlogs", {"jlogs"}, function(args, speaker)
 	selectChat.BackgroundColor3 = currentShade3
 	selectJoin.BackgroundColor3 = currentShade2
 	Toggle_2.Text = "Enabled"
-	logs:TweenPosition(UDim2.new(0, 0, 1, -380), "InOut", "Quart", 0.3, true, nil)
+	logs:TweenPosition(UDim2.new(0, 0, 1, -265), "InOut", "Quart", 0.3, true, nil)
 end)
 
 addcmd("chatlogswebhook", {"logswebhook"}, function(args, speaker)
@@ -13542,7 +13698,7 @@ addcmd('invisfling',{},function(args, speaker)
 	end
 	root.Transparency = 0
 	root.Color = Color3.new(1, 1, 1)
-	local invisflingStepped
+	-- local invisflingStepped
 	invisflingStepped = RunService.Stepped:Connect(function()
 		if speaker.Character and getRoot(speaker.Character) then
 			getRoot(speaker.Character).CanCollide = false
@@ -14231,7 +14387,7 @@ local function layoutActiveStaffCards()
 	end
 end
 
-Players.PlayerRemoving:Connect(function(player)
+IYStaffCardRemovingConn = Players.PlayerRemoving:Connect(function(player)
 	local isStaff, role = getCachedStaffRole(player)
 	if isStaff then
 		local rColor = getRoleColor(role or "Staff")
@@ -14399,6 +14555,12 @@ local function createStaffWatchNotification(player, roleName)
 	local playerName = typeof(player) == "Instance" and player.Name or tostring(player)
 	local userId = typeof(player) == "Instance" and player.UserId or 0
 	
+	local tracking = false
+	local tracer = nil
+	local trackConn = nil
+	local charAddedConn = nil
+	local stopTracking
+	
 	-- Clean out old card for this user if it exists
 	for i, c in ipairs(ActiveStaffCards) do
 		if c.Name == playerName then
@@ -14410,7 +14572,7 @@ local function createStaffWatchNotification(player, roleName)
 	
 	local card = Instance.new("Frame")
 	card.Name = playerName
-	card.Size = UDim2.new(0, 240, 0, 90)
+	card.Size = UDim2.new(0, 240, 0, 115)
 	card.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 	card.BackgroundTransparency = 0.15
 	card.BorderSizePixel = 0
@@ -14429,7 +14591,7 @@ local function createStaffWatchNotification(player, roleName)
 	local avatar = Instance.new("ImageLabel")
 	avatar.Name = "Avatar"
 	avatar.Size = UDim2.new(0, 60, 0, 60)
-	avatar.Position = UDim2.new(0, 10, 0, 15)
+	avatar.Position = UDim2.new(0, 10, 0, 27.5)
 	avatar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 	avatar.BorderSizePixel = 0
 	avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. userId .. "&w=150&h=150"
@@ -14443,7 +14605,7 @@ local function createStaffWatchNotification(player, roleName)
 	title.Size = UDim2.new(1, -110, 0, 25)
 	title.Position = UDim2.new(0, 72, 0, 8)
 	title.BackgroundTransparency = 1
-	title.Text = "⚠️ STAFF DETECTED"
+	title.Text = "BLOXSTRAP MENU"
 	title.TextColor3 = Color3.fromRGB(255, 75, 75)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Font = Enum.Font.GothamBold
@@ -14466,9 +14628,153 @@ local function createStaffWatchNotification(player, roleName)
 	info.TextWrapped = true
 	info.Parent = card
 	
+	local viewBtn = Instance.new("TextButton")
+	viewBtn.Size = UDim2.new(0, 75, 0, 22)
+	viewBtn.Position = UDim2.new(0, 72, 0, 85)
+	viewBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+	viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
+	viewBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+	viewBtn.Font = Enum.Font.GothamBold
+	viewBtn.TextSize = 10
+	viewBtn.BorderSizePixel = 0
+	
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 4)
+	btnCorner.Parent = viewBtn
+	viewBtn.Parent = card
+	
+	local trackBtn = Instance.new("TextButton")
+	trackBtn.Size = UDim2.new(0, 75, 0, 22)
+	trackBtn.Position = UDim2.new(0, 152, 0, 85)
+	trackBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+	trackBtn.Text = "TRACK"
+	trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+	trackBtn.Font = Enum.Font.GothamBold
+	trackBtn.TextSize = 10
+	trackBtn.BorderSizePixel = 0
+	
+	local btnCorner2 = Instance.new("UICorner")
+	btnCorner2.CornerRadius = UDim.new(0, 4)
+	btnCorner2.Parent = trackBtn
+	trackBtn.Parent = card
+	
+	local function updateButtonsState()
+		if not card or not card.Parent or not viewBtn or not viewBtn.Parent or not trackBtn or not trackBtn.Parent then return end
+		viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
+		viewBtn.BackgroundColor3 = (viewing == player) and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(255, 75, 75)
+		viewBtn.TextColor3 = (viewing == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
+		
+		trackBtn.Text = tracking and "UNTRACK" or "TRACK"
+		trackBtn.BackgroundColor3 = tracking and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(255, 75, 75)
+		trackBtn.TextColor3 = tracking and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
+	end
+	
+	viewBtn.MouseButton1Click:Connect(function()
+		if viewing == player then
+			execCmd("unview")
+		else
+			execCmd("view " .. player.Name)
+		end
+		updateButtonsState()
+	end)
+	
+	stopTracking = function()
+		if not tracking then return end
+		tracking = false
+		if trackBtn and trackBtn.Parent then
+			trackBtn.Text = "TRACK"
+			trackBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+			trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
+		end
+
+		if trackConn then
+			trackConn:Disconnect()
+			trackConn = nil
+		end
+		if charAddedConn then
+			charAddedConn:Disconnect()
+			charAddedConn = nil
+		end
+		if tracer then
+			pcall(function() tracer:Destroy() end)
+			tracer = nil
+		end
+
+		local folder = COREGUI:FindFirstChild(player.Name..'_TESP')
+		if folder then
+			pcall(function() folder:Destroy() end)
+		end
+		if TESPConnections[player.UserId] then
+			pcall(function() TESPConnections[player.UserId]:Disconnect() end)
+			TESPConnections[player.UserId] = nil
+		end
+	end
+
+	local function startTracking()
+		tracking = true
+		if trackBtn and trackBtn.Parent then
+			trackBtn.Text = "UNTRACK"
+			trackBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+			trackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		end
+
+		TESP(player)
+		charAddedConn = player.CharacterAdded:Connect(function()
+			task.wait(0.5)
+			if tracking then
+				TESP(player)
+			end
+		end)
+
+		if Drawing then
+			pcall(function()
+				tracer = Drawing.new("Line")
+				tracer.Thickness = 1.5
+				tracer.Color = Color3.fromRGB(255, 75, 75)
+				tracer.Visible = false
+			end)
+		end
+
+		trackConn = RunService.RenderStepped:Connect(function()
+			if not tracking or not card.Parent or not player.Parent then
+				stopTracking()
+				return
+			end
+
+			local char = player.Character
+			local root = char and getRoot(char)
+			if tracer and root then
+				local camera = workspace.CurrentCamera
+				if camera then
+					local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
+					if onScreen then
+						tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+						tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+						tracer.Visible = true
+					else
+						tracer.Visible = false
+					end
+				else
+					tracer.Visible = false
+				end
+			elseif tracer then
+				tracer.Visible = false
+			end
+		end)
+	end
+	
+	trackBtn.MouseButton1Click:Connect(function()
+		if tracking then
+			stopTracking()
+		else
+			startTracking()
+		end
+		updateButtonsState()
+	end)
+	
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Size = UDim2.new(0, 24, 0, 24)
-	closeBtn.Position = UDim2.new(1, -30, 0, 8)
+	closeBtn.Position = UDim2.new(1, -22, 0, 8)
 	closeBtn.BackgroundTransparency = 1
 	closeBtn.Text = "✕"
 	closeBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -14484,6 +14790,7 @@ local function createStaffWatchNotification(player, roleName)
 	end)
 	
 	closeBtn.MouseButton1Click:Connect(function()
+		pcall(stopTracking)
 		card:Destroy()
 		for i, c in ipairs(ActiveStaffCards) do
 			if c == card then
@@ -14507,14 +14814,13 @@ local function createStaffWatchNotification(player, roleName)
 	layoutActiveStaffCards()
 	
 	task.spawn(function()
-		while card and card.Parent do
-			local p = Players:FindFirstChild(playerName)
-			if not p then break end
+		while card and card.Parent and player.Parent do
+			updateButtonsState()
 			
 			local distText = "<b><font color=\"rgb(255, 75, 75)\">Too far</font></b>"
 			local localChar = Players.LocalPlayer.Character
 			local localRoot = localChar and getRoot(localChar)
-			local targetChar = p.Character
+			local targetChar = player.Character
 			local targetRoot = targetChar and getRoot(targetChar)
 			
 			if localRoot and localRoot:IsDescendantOf(workspace) and targetRoot and targetRoot:IsDescendantOf(workspace) then
@@ -14525,6 +14831,18 @@ local function createStaffWatchNotification(player, roleName)
 			info.Text = "User: <b><font size=\"13\" color=\"rgb(255, 255, 255)\">" .. playerName .. "</font></b>\nRole: <b><font color=\"" .. rColor .. "\">" .. roleName .. "</font></b>\nDistance: " .. distText
 			
 			task.wait(0.2)
+		end
+		
+		pcall(function() stopTracking() end)
+		if card and card.Parent then
+			pcall(function() card:Destroy() end)
+			for i, c in ipairs(ActiveStaffCards) do
+				if c == card then
+					table.remove(ActiveStaffCards, i)
+					break
+				end
+			end
+			layoutActiveStaffCards()
 		end
 	end)
 	
@@ -15185,7 +15503,7 @@ addcmd("phonebook", {"call"}, function(args, speaker)
 	end
 end)
 
-local freezingua = nil
+-- local freezingua = nil
 frozenParts = {}
 addcmd('freezeunanchored',{'freezeua'},function(args, speaker)
 	local badnames = {
@@ -15545,21 +15863,23 @@ function hookCharEvents(plr,instant)
 	end)
 end
 
-Players.PlayerAdded:Connect(function(plr)
+IYPlayerAddedConn1 = Players.PlayerAdded:Connect(function(plr)
 	eventEditor.FireEvent("OnJoin",plr.Name)
 	if isLegacyChat then 
-		plr.Chatted:Connect(function(msg) 
+		local conn1 = plr.Chatted:Connect(function(msg) 
 			eventEditor.FireEvent("OnChatted",tostring(plr),msg) 
 			pcall(function() checkStaffMessage(plr, msg) end)
 			pcall(function() checkHelpMessage(plr, msg) end)
 			pcall(function() checkViewCommand(plr, msg) end)
 		end) 
+		table.insert(IYPlayerCharAddedConns, conn1)
 	end
-	plr.CharacterAdded:Connect(function(char) 
+	local conn2 = plr.CharacterAdded:Connect(function(char) 
 		eventEditor.FireEvent("OnSpawn",tostring(plr)) 
 		hookCharEvents(plr) 
 		pcall(function() monitorStaffChar(plr, char) end)
 	end)
+	table.insert(IYPlayerCharAddedConns, conn2)
 	
 	task.spawn(function()
 		local isStaff, role = getCachedStaffRole(plr)
@@ -15586,7 +15906,7 @@ Players.PlayerAdded:Connect(function(plr)
 end)
 
 if not isLegacyChat then
-	TextChatService.MessageReceived:Connect(function(message)
+	IYTextChatReceivedConn = TextChatService.MessageReceived:Connect(function(message)
 		if message.TextSource and message.Status ~= Enum.TextChatMessageStatus.InvalidTextChannelPermissions then
 			local player = Players:GetPlayerByUserId(message.TextSource.UserId)
 			if not player then return end
@@ -15643,10 +15963,10 @@ else
 								local escapedDName = dName:gsub("([^%w])", "%%%1")
 								local escapedUName = uName:gsub("([^%w])", "%%%1")
 								
-								local pattern1 = "^(%[%?.-%]?%s*)(" .. escapedDName .. ")%s*:"
-								local pattern2 = "^(%[%?.-%]?%s*)(" .. escapedUName .. ")%s*:"
-								local pattern3 = "^(%[%?.-%]?%s*)%[(" .. escapedDName .. ")%]%s*:"
-								local pattern4 = "^(%[%?.-%]?%s*)%[(" .. escapedUName .. ")%]%s*:"
+								local pattern1 = "^(%[?.-%]?%s*)(" .. escapedDName .. ")%s*:"
+								local pattern2 = "^(%[?.-%]?%s*)(" .. escapedUName .. ")%s*:"
+								local pattern3 = "^(%[?.-%]?%s*)%[(" .. escapedDName .. ")%]%s*:"
+								local pattern4 = "^(%[?.-%]?%s*)%[(" .. escapedUName .. ")%]%s*:"
 
 								if label.Text:match(pattern1) then
 									label.Text = label.Text:gsub(pattern1, prefix .. "%1%2:", 1)
@@ -15670,10 +15990,10 @@ else
 								local escapedDName = dName:gsub("([^%w])", "%%%1")
 								local escapedUName = uName:gsub("([^%w])", "%%%1")
 								
-								local pattern1 = "^(%[%?.-%]?%s*)(" .. escapedDName .. ")%s*:"
-								local pattern2 = "^(%[%?.-%]?%s*)(" .. escapedUName .. ")%s*:"
-								local pattern3 = "^(%[%?.-%]?%s*)%[(" .. escapedDName .. ")%]%s*:"
-								local pattern4 = "^(%[%?.-%]?%s*)%[(" .. escapedUName .. ")%]%s*:"
+								local pattern1 = "^(%[?.-%]?%s*)(" .. escapedDName .. ")%s*:"
+								local pattern2 = "^(%[?.-%]?%s*)(" .. escapedUName .. ")%s*:"
+								local pattern3 = "^(%[?.-%]?%s*)%[(" .. escapedDName .. ")%]%s*:"
+								local pattern4 = "^(%[?.-%]?%s*)%[(" .. escapedUName .. ")%]%s*:"
 
 								if label.Text:match(pattern1) then
 									label.Text = label.Text:gsub(pattern1, prefix .. "%1%2:", 1)
@@ -15714,7 +16034,7 @@ else
 			for _, gui in pairs(playerGui:GetChildren()) do
 				checkChat(gui)
 			end
-			playerGui.ChildAdded:Connect(checkChat)
+			IYPlayerGuiChildAddedConn = playerGui.ChildAdded:Connect(checkChat)
 		end
 		task.spawn(hookLegacyChat)
 	end)
@@ -15722,7 +16042,8 @@ end
 
 for _,plr in pairs(Players:GetPlayers()) do
 	pcall(function()
-		plr.CharacterAdded:Connect(function() eventEditor.FireEvent("OnSpawn",tostring(plr)) hookCharEvents(plr) end)
+		local conn = plr.CharacterAdded:Connect(function() eventEditor.FireEvent("OnSpawn",tostring(plr)) hookCharEvents(plr) end)
+		table.insert(IYPlayerCharAddedConns, conn)
 		hookCharEvents(plr)
 	end)
 end
@@ -15733,7 +16054,7 @@ task.spawn(function()
 	end
 end)
 
-Players.PlayerAdded:Connect(function(p)
+IYPlayerAddedConn2 = Players.PlayerAdded:Connect(function(p)
 	task.spawn(function() getCachedStaffRole(p) end)
 end)
 
@@ -15767,13 +16088,13 @@ if aliases and #aliases > 0 then
 	refreshaliases()
 end
 
-IYMouse.Move:Connect(checkTT)
+IYMouseMoveConn = IYMouse.Move:Connect(checkTT)
 
-CaptureService.CaptureBegan:Connect(function()
+IYCaptureBeganConn = CaptureService.CaptureBegan:Connect(function()
 	PARENT.Enabled = false
 end)
 
-CaptureService.CaptureEnded:Connect(function()
+IYCaptureEndedConn = CaptureService.CaptureEnded:Connect(function()
 	task.delay(0.1, function()
 		PARENT.Enabled = true
 	end)
@@ -15932,7 +16253,7 @@ local function createAdminPortal()
 	header.Parent = main
 	
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -300, 1, 0)
+	title.Size = UDim2.new(0, 130, 1, 0)
 	title.Position = UDim2.new(0, 15, 0, 0)
 	title.BackgroundTransparency = 1
 	title.Text = "TEBX PANEL"
@@ -15949,6 +16270,9 @@ local function createAdminPortal()
 	})
 	titleGradient.Parent = title
 	
+	local tabGradients = setmetatable({}, {__mode = "k"})
+	local tabStrokes = setmetatable({}, {__mode = "k"})
+
 	local function styleTabButton(btn)
 		local grad = Instance.new("UIGradient")
 		grad.Color = ColorSequence.new({
@@ -15968,14 +16292,14 @@ local function createAdminPortal()
 		tabCorner.CornerRadius = UDim.new(0, 6)
 		tabCorner.Parent = btn
 		
-		btn:SetAttribute("Grad", grad)
-		btn:SetAttribute("Stroke", tabStroke)
+		tabGradients[btn] = grad
+		tabStrokes[btn] = tabStroke
 	end
 
 	local playersTabBtn = Instance.new("TextButton")
 	playersTabBtn.Name = "PlayersTabBtn"
-	playersTabBtn.Size = UDim2.new(0, 85, 0, 25)
-	playersTabBtn.Position = UDim2.new(1, -500, 0, 8)
+	playersTabBtn.Size = UDim2.new(0, 80, 0, 25)
+	playersTabBtn.Position = UDim2.new(1, -450, 0, 8)
 	playersTabBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
 	playersTabBtn.Text = "👥 Players"
 	playersTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -15987,8 +16311,8 @@ local function createAdminPortal()
 	
 	local mapTabBtn = Instance.new("TextButton")
 	mapTabBtn.Name = "MapTabBtn"
-	mapTabBtn.Size = UDim2.new(0, 75, 0, 25)
-	mapTabBtn.Position = UDim2.new(1, -410, 0, 8)
+	mapTabBtn.Size = UDim2.new(0, 70, 0, 25)
+	mapTabBtn.Position = UDim2.new(1, -365, 0, 8)
 	mapTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	mapTabBtn.Text = "🗺️ Map"
 	mapTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -16000,8 +16324,8 @@ local function createAdminPortal()
 	
 	local logsTabBtn = Instance.new("TextButton")
 	logsTabBtn.Name = "LogsTabBtn"
-	logsTabBtn.Size = UDim2.new(0, 80, 0, 25)
-	logsTabBtn.Position = UDim2.new(1, -330, 0, 8)
+	logsTabBtn.Size = UDim2.new(0, 70, 0, 25)
+	logsTabBtn.Position = UDim2.new(1, -290, 0, 8)
 	logsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	logsTabBtn.Text = "📜 Logs"
 	logsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -16013,8 +16337,8 @@ local function createAdminPortal()
 
 	local serversTabBtn = Instance.new("TextButton")
 	serversTabBtn.Name = "ServersTabBtn"
-	serversTabBtn.Size = UDim2.new(0, 85, 0, 25)
-	serversTabBtn.Position = UDim2.new(1, -245, 0, 8)
+	serversTabBtn.Size = UDim2.new(0, 80, 0, 25)
+	serversTabBtn.Position = UDim2.new(1, -215, 0, 8)
 	serversTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	serversTabBtn.Text = "🌐 Servers"
 	serversTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -16026,8 +16350,8 @@ local function createAdminPortal()
 
 	local settingsTabBtn = Instance.new("TextButton")
 	settingsTabBtn.Name = "SettingsTabBtn"
-	settingsTabBtn.Size = UDim2.new(0, 90, 0, 25)
-	settingsTabBtn.Position = UDim2.new(1, -150, 0, 8)
+	settingsTabBtn.Size = UDim2.new(0, 85, 0, 25)
+	settingsTabBtn.Position = UDim2.new(1, -130, 0, 8)
 	settingsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	settingsTabBtn.Text = "⚙️ Settings"
 	settingsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -17822,8 +18146,8 @@ local function createAdminPortal()
 	refreshLogsUI = updateLogsUI
 	
 	local function setTabActive(btn, active)
-		local grad = btn:GetAttribute("Grad")
-		local stroke = btn:GetAttribute("Stroke")
+		local grad = tabGradients[btn]
+		local stroke = tabStrokes[btn]
 		if active then
 			btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -17873,7 +18197,7 @@ local function createAdminPortal()
 	
 	main.Parent = ScaledHolder
 	
-	local playerAddedConn, playerRemovingConn
+	-- local playerAddedConn, playerRemovingConn
 	playerAddedConn = Players.PlayerAdded:Connect(function(plr)
 		local success, hasParent = pcall(function() return main and main.Parent end)
 		if not success or not hasParent then
@@ -17916,13 +18240,13 @@ end
 
 
 addcmd("portal", {"panel"}, function(args, speaker)
-	notify("Admin Portal", "Opening Admin Control Portal...")
+	notify("Tebx Panel", "Opening Tebx Panel...")
 	local success, err = pcall(createAdminPortal)
 	if success then
-		notify("Admin Portal", "Admin Control Portal opened")
+		notify("Tebx Panel", "Tebx Panel opened")
 	else
-		notify("Portal Error", tostring(err), 15)
-		warn("Portal Error: " .. tostring(err))
+		notify("Tebx Panel Error", tostring(err), 15)
+		warn("Tebx Panel Error: " .. tostring(err))
 	end
 end)
 
@@ -17933,7 +18257,7 @@ addcmd("unportal", {"unpanel"}, function(args, speaker)
 	end
 	refreshLogsUI = nil
 	portalLogsActive = false
-	notify("Admin Portal", "Admin Control Portal closed")
+	notify("Tebx Panel", "Tebx Panel closed")
 end)
 
 
@@ -18027,9 +18351,9 @@ end)
 -- ==========================================
 
 -- ViewFC (Freecam View) variables
-local ViewFCConnection = nil
+ViewFCConnection = nil
 local ViewFCTarget = nil
-local ViewFCMouseConnection = nil
+ViewFCMouseConnection = nil
 local viewFCSavedType = nil
 local viewFCSavedCFrame = nil
 local viewFCSavedFocus = nil
@@ -18216,7 +18540,7 @@ end
 
 -- Hitbox Expander variables
 local HitboxSize = 2
-local HitboxConnection = nil
+HitboxConnection = nil
 local OriginalHitboxes = {}
 
 local function expandHitboxes()
@@ -18273,26 +18597,26 @@ local function stopHitboxLoop()
 	restoreHitboxes()
 end
 
-Players.PlayerRemoving:Connect(function(player)
+IYHitboxPlayerRemoving = Players.PlayerRemoving:Connect(function(player)
 	OriginalHitboxes[player.UserId] = nil
 end)
 
 local function hookHitboxCleanup(player)
-	player.CharacterAdded:Connect(function()
+	local conn = player.CharacterAdded:Connect(function()
 		OriginalHitboxes[player.UserId] = nil
 	end)
+	table.insert(IYHitboxCharAddedConns, conn)
 end
 
-Players.PlayerAdded:Connect(hookHitboxCleanup)
+IYHitboxPlayerAdded = Players.PlayerAdded:Connect(hookHitboxCleanup)
 for _, p in pairs(Players:GetPlayers()) do
 	hookHitboxCleanup(p)
 end
 
 -- Staff Proximity Radar Alarm variables
-local StaffAlarmConnection = nil
+StaffAlarmConnection = nil
 local AlarmFlasher = nil
 local StaffProximityState = {}
-local isAlarmFlashing = false
 local isAlarmFlashing = false
 
 local function triggerStaffAlarmEffect()
@@ -18374,7 +18698,7 @@ local function checkStaffProximity()
 	-- Trigger alarm once if any new staff member entered the radius
 	if anyNewNear and nearestNewPlayer then
 		triggerStaffAlarmEffect()
-		notify("STAFF ALARM", "Staff member " .. nearestNewPlayer.DisplayName .. " (" .. nearestNewRole .. ") is near! (" .. math.floor(nearestNewDist) .. " studs)", 5)
+		createStaffWatchNotification(nearestNewPlayer, nearestNewRole)
 	end
 end
 
@@ -18472,7 +18796,7 @@ end)
 
 -- Ghost Fling variables
 local GhostFlingEnabled = false
-local GhostFlingLoop = nil
+GhostFlingLoop = nil
 local GhostOriginalCFrame = nil
 local GhostPlatform = nil
 
@@ -18684,7 +19008,7 @@ end
 
 -- Item Finder & Auto Grabber helpers
 local ItemFinderFrame = nil
-local ItemFinderConnection = nil
+ItemFinderConnection = nil
 
 local function destroyItemFinderUI()
 	if ItemFinderFrame then ItemFinderFrame:Destroy() ItemFinderFrame = nil end
