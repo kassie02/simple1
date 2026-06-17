@@ -363,41 +363,52 @@ Holder.BorderSizePixel = 0
 Holder.Position = UDim2.new(1, -250, 1, -220)
 Holder.Size = UDim2.new(0, 250, 0, 220)
 Holder.ZIndex = 10
-Holder.ClipsDescendants = true
 table.insert(shade2,Holder)
-
-local HolderCorner = Instance.new("UICorner")
-HolderCorner.CornerRadius = UDim.new(0, 8)
-HolderCorner.Parent = Holder
-
-local HolderStroke = Instance.new("UIStroke")
-HolderStroke.Color = Color3.fromRGB(55, 55, 60)
-HolderStroke.Thickness = 1
-HolderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-HolderStroke.Transparency = 0.2
-HolderStroke.Parent = Holder
 
 Title.Name = "Title"
 Title.Parent = Holder
 Title.Active = true
-Title.BackgroundColor3 = Color3.fromRGB(25, 26, 32)
+Title.BackgroundColor3 = Color3.fromRGB(36,36,37)
 Title.BorderSizePixel = 0
-Title.Size = UDim2.new(0, 250, 0, 22)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 11
-Title.Text = "Bloxstrap Menu"
+Title.Size = UDim2.new(0, 250, 0, 20)
+Title.Font = Enum.Font.SourceSans
+Title.TextSize = 18
+Title.Text = "Infinite Yield FE v" .. currentVersion
 
-Title.TextColor3 = Color3.fromRGB(240, 240, 245)
+do
+	local emoji = ({
+		["01 01"] = "🎆",
+		["02 14"] = "💝",
+		["03 17"] = "☘️",
+		[(function(Year)
+			local A = math.floor(Year/100)
+			local B = math.floor((13+8*A)/25)
+			local C = (15-B+A-math.floor(A/4))%30
+			local D = (4+A-math.floor(A/4))%7
+			local E = (19*(Year%19)+C)%30
+			local F = (2*(Year%4)+4*(Year%7)+6*E+D)%7
+			local G = (22+E+F)
+			if E == 29 and F == 6 then
+				return "04 19"
+			elseif E == 28 and F == 6 then
+				return "04 18"
+			elseif 31 < G then
+				return ("04 %02d"):format(G-31)
+			end
+			return ("03 %02d"):format(G)
+		end)(tonumber(os.date"%Y"))] = "🥚",
+		["10 31"] = "🎃",
+		["12 25"] = "🎄"
+	})[os.date("%m %d")]
+	if emoji then
+		Title.Text = ("%s %s %s"):format(emoji, Title.Text, emoji)
+	end
+end
+
+Title.TextColor3 = Color3.new(1, 1, 1)
 Title.ZIndex = 10
 table.insert(shade1,Title)
 table.insert(text1,Title)
-
-local TitleGradient = Instance.new("UIGradient")
-TitleGradient.Color = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 180, 185))
-})
-TitleGradient.Parent = Title
 
 Dark.Name = "Dark"
 Dark.Parent = Holder
@@ -444,20 +455,18 @@ cmdListLayout.Parent = CMDsF
 SettingsButton.Name = "SettingsButton"
 SettingsButton.Parent = Holder
 SettingsButton.BackgroundTransparency = 1
-SettingsButton.Position = UDim2.new(0, 230, 0, 4)
-SettingsButton.Size = UDim2.new(0, 14, 0, 14)
-SettingsButton.Image = "rbxassetid://10734950309"
-SettingsButton.ImageColor3 = Color3.fromRGB(220, 220, 225)
+SettingsButton.Position = UDim2.new(0, 230, 0, 0)
+SettingsButton.Size = UDim2.new(0, 20, 0, 20)
+SettingsButton.Image = getcustomasset("infiniteyield/assets/settings.png")
 SettingsButton.ZIndex = 10
 
 ReferenceButton = Instance.new("ImageButton")
 ReferenceButton.Name = "ReferenceButton"
 ReferenceButton.Parent = Holder
 ReferenceButton.BackgroundTransparency = 1
-ReferenceButton.Position = UDim2.new(0, 212, 0, 4)
-ReferenceButton.Size = UDim2.new(0, 14, 0, 14)
-ReferenceButton.Image = "rbxassetid://10734923549"
-ReferenceButton.ImageColor3 = Color3.fromRGB(220, 220, 225)
+ReferenceButton.Position = UDim2.new(0, 212, 0, 2)
+ReferenceButton.Size = UDim2.new(0, 16, 0, 16)
+ReferenceButton.Image = getcustomasset("infiniteyield/assets/reference.png")
 ReferenceButton.ZIndex = 10
 
 Settings.Name = "Settings"
@@ -3229,7 +3238,7 @@ function maximizeHolder()
 	end
 end
 
-minimizeNum = -22
+minimizeNum = -20
 function minimizeHolder()
 	if StayOpen == false then
 		Holder:TweenPosition(UDim2.new(1, Holder.Position.X.Offset, 1, minimizeNum), "InOut", "Quart", 0.5, true, nil)
@@ -8220,7 +8229,7 @@ end)
 
 addcmd('showiy',{'unhideiy'},function(args, speaker)
 	isHidden = false
-	minimizeNum = -22
+	minimizeNum = -20
 	if wasStayOpen then
 		maximizeHolder()
 		StayOpen = true
@@ -13332,7 +13341,7 @@ addcmd("logs", {}, function(args, speaker)
 	jLogsEnabled = true
 	Toggle.Text = "Enabled"
 	Toggle_2.Text = "Enabled"
-	logs:TweenPosition(UDim2.new(0, 0, 1, -265), "InOut", "Quart", 0.3, true, nil)
+	logs:TweenPosition(UDim2.new(0, 0, 1, -380), "InOut", "Quart", 0.3, true, nil)
 end)
 
 addcmd("chatlogs", {"clogs"}, function(args, speaker)
@@ -13346,7 +13355,7 @@ addcmd("chatlogs", {"clogs"}, function(args, speaker)
 	selectJoin.BackgroundColor3 = currentShade3
 	selectChat.BackgroundColor3 = currentShade2
 	Toggle.Text = "Enabled"
-	logs:TweenPosition(UDim2.new(0, 0, 1, -265), "InOut", "Quart", 0.3, true, nil)
+	logs:TweenPosition(UDim2.new(0, 0, 1, -380), "InOut", "Quart", 0.3, true, nil)
 end)
 
 addcmd("joinlogs", {"jlogs"}, function(args, speaker)
@@ -13360,7 +13369,7 @@ addcmd("joinlogs", {"jlogs"}, function(args, speaker)
 	selectChat.BackgroundColor3 = currentShade3
 	selectJoin.BackgroundColor3 = currentShade2
 	Toggle_2.Text = "Enabled"
-	logs:TweenPosition(UDim2.new(0, 0, 1, -265), "InOut", "Quart", 0.3, true, nil)
+	logs:TweenPosition(UDim2.new(0, 0, 1, -380), "InOut", "Quart", 0.3, true, nil)
 end)
 
 addcmd("chatlogswebhook", {"logswebhook"}, function(args, speaker)
@@ -14390,12 +14399,6 @@ local function createStaffWatchNotification(player, roleName)
 	local playerName = typeof(player) == "Instance" and player.Name or tostring(player)
 	local userId = typeof(player) == "Instance" and player.UserId or 0
 	
-	local tracking = false
-	local tracer = nil
-	local trackConn = nil
-	local charAddedConn = nil
-	local stopTracking
-	
 	-- Clean out old card for this user if it exists
 	for i, c in ipairs(ActiveStaffCards) do
 		if c.Name == playerName then
@@ -14407,7 +14410,7 @@ local function createStaffWatchNotification(player, roleName)
 	
 	local card = Instance.new("Frame")
 	card.Name = playerName
-	card.Size = UDim2.new(0, 240, 0, 115)
+	card.Size = UDim2.new(0, 240, 0, 90)
 	card.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 	card.BackgroundTransparency = 0.15
 	card.BorderSizePixel = 0
@@ -14426,7 +14429,7 @@ local function createStaffWatchNotification(player, roleName)
 	local avatar = Instance.new("ImageLabel")
 	avatar.Name = "Avatar"
 	avatar.Size = UDim2.new(0, 60, 0, 60)
-	avatar.Position = UDim2.new(0, 10, 0, 27.5)
+	avatar.Position = UDim2.new(0, 10, 0, 15)
 	avatar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 	avatar.BorderSizePixel = 0
 	avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. userId .. "&w=150&h=150"
@@ -14440,7 +14443,7 @@ local function createStaffWatchNotification(player, roleName)
 	title.Size = UDim2.new(1, -110, 0, 25)
 	title.Position = UDim2.new(0, 72, 0, 8)
 	title.BackgroundTransparency = 1
-	title.Text = "BLOXSTRAP MENU"
+	title.Text = "⚠️ STAFF DETECTED"
 	title.TextColor3 = Color3.fromRGB(255, 75, 75)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Font = Enum.Font.GothamBold
@@ -14463,153 +14466,9 @@ local function createStaffWatchNotification(player, roleName)
 	info.TextWrapped = true
 	info.Parent = card
 	
-	local viewBtn = Instance.new("TextButton")
-	viewBtn.Size = UDim2.new(0, 75, 0, 22)
-	viewBtn.Position = UDim2.new(0, 72, 0, 85)
-	viewBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
-	viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
-	viewBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
-	viewBtn.Font = Enum.Font.GothamBold
-	viewBtn.TextSize = 10
-	viewBtn.BorderSizePixel = 0
-	
-	local btnCorner = Instance.new("UICorner")
-	btnCorner.CornerRadius = UDim.new(0, 4)
-	btnCorner.Parent = viewBtn
-	viewBtn.Parent = card
-	
-	local trackBtn = Instance.new("TextButton")
-	trackBtn.Size = UDim2.new(0, 75, 0, 22)
-	trackBtn.Position = UDim2.new(0, 152, 0, 85)
-	trackBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
-	trackBtn.Text = "TRACK"
-	trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
-	trackBtn.Font = Enum.Font.GothamBold
-	trackBtn.TextSize = 10
-	trackBtn.BorderSizePixel = 0
-	
-	local btnCorner2 = Instance.new("UICorner")
-	btnCorner2.CornerRadius = UDim.new(0, 4)
-	btnCorner2.Parent = trackBtn
-	trackBtn.Parent = card
-	
-	local function updateButtonsState()
-		if not card or not card.Parent or not viewBtn or not viewBtn.Parent or not trackBtn or not trackBtn.Parent then return end
-		viewBtn.Text = (viewing == player) and "UNVIEW" or "VIEW"
-		viewBtn.BackgroundColor3 = (viewing == player) and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(255, 75, 75)
-		viewBtn.TextColor3 = (viewing == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
-		
-		trackBtn.Text = tracking and "UNTRACK" or "TRACK"
-		trackBtn.BackgroundColor3 = tracking and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(255, 75, 75)
-		trackBtn.TextColor3 = tracking and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(15, 20, 25)
-	end
-	
-	viewBtn.MouseButton1Click:Connect(function()
-		if viewing == player then
-			execCmd("unview")
-		else
-			execCmd("view " .. player.Name)
-		end
-		updateButtonsState()
-	end)
-	
-	stopTracking = function()
-		if not tracking then return end
-		tracking = false
-		if trackBtn and trackBtn.Parent then
-			trackBtn.Text = "TRACK"
-			trackBtn.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
-			trackBtn.TextColor3 = Color3.fromRGB(15, 20, 25)
-		end
-
-		if trackConn then
-			trackConn:Disconnect()
-			trackConn = nil
-		end
-		if charAddedConn then
-			charAddedConn:Disconnect()
-			charAddedConn = nil
-		end
-		if tracer then
-			pcall(function() tracer:Destroy() end)
-			tracer = nil
-		end
-
-		local folder = COREGUI:FindFirstChild(player.Name..'_TESP')
-		if folder then
-			pcall(function() folder:Destroy() end)
-		end
-		if TESPConnections[player.UserId] then
-			pcall(function() TESPConnections[player.UserId]:Disconnect() end)
-			TESPConnections[player.UserId] = nil
-		end
-	end
-
-	local function startTracking()
-		tracking = true
-		if trackBtn and trackBtn.Parent then
-			trackBtn.Text = "UNTRACK"
-			trackBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-			trackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		end
-
-		TESP(player)
-		charAddedConn = player.CharacterAdded:Connect(function()
-			task.wait(0.5)
-			if tracking then
-				TESP(player)
-			end
-		end)
-
-		if Drawing then
-			pcall(function()
-				tracer = Drawing.new("Line")
-				tracer.Thickness = 1.5
-				tracer.Color = Color3.fromRGB(255, 75, 75)
-				tracer.Visible = false
-			end)
-		end
-
-		trackConn = RunService.RenderStepped:Connect(function()
-			if not tracking or not card.Parent or not player.Parent then
-				stopTracking()
-				return
-			end
-
-			local char = player.Character
-			local root = char and getRoot(char)
-			if tracer and root then
-				local camera = workspace.CurrentCamera
-				if camera then
-					local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
-					if onScreen then
-						tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-						tracer.To = Vector2.new(screenPos.X, screenPos.Y)
-						tracer.Visible = true
-					else
-						tracer.Visible = false
-					end
-				else
-					tracer.Visible = false
-				end
-			elseif tracer then
-				tracer.Visible = false
-			end
-		end)
-	end
-	
-	trackBtn.MouseButton1Click:Connect(function()
-		if tracking then
-			stopTracking()
-		else
-			startTracking()
-		end
-		updateButtonsState()
-	end)
-	
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Size = UDim2.new(0, 24, 0, 24)
-	closeBtn.Position = UDim2.new(1, -22, 0, 8)
+	closeBtn.Position = UDim2.new(1, -30, 0, 8)
 	closeBtn.BackgroundTransparency = 1
 	closeBtn.Text = "✕"
 	closeBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -14625,7 +14484,6 @@ local function createStaffWatchNotification(player, roleName)
 	end)
 	
 	closeBtn.MouseButton1Click:Connect(function()
-		pcall(stopTracking)
 		card:Destroy()
 		for i, c in ipairs(ActiveStaffCards) do
 			if c == card then
@@ -14649,13 +14507,14 @@ local function createStaffWatchNotification(player, roleName)
 	layoutActiveStaffCards()
 	
 	task.spawn(function()
-		while card and card.Parent and player.Parent do
-			updateButtonsState()
+		while card and card.Parent do
+			local p = Players:FindFirstChild(playerName)
+			if not p then break end
 			
 			local distText = "<b><font color=\"rgb(255, 75, 75)\">Too far</font></b>"
 			local localChar = Players.LocalPlayer.Character
 			local localRoot = localChar and getRoot(localChar)
-			local targetChar = player.Character
+			local targetChar = p.Character
 			local targetRoot = targetChar and getRoot(targetChar)
 			
 			if localRoot and localRoot:IsDescendantOf(workspace) and targetRoot and targetRoot:IsDescendantOf(workspace) then
@@ -14666,18 +14525,6 @@ local function createStaffWatchNotification(player, roleName)
 			info.Text = "User: <b><font size=\"13\" color=\"rgb(255, 255, 255)\">" .. playerName .. "</font></b>\nRole: <b><font color=\"" .. rColor .. "\">" .. roleName .. "</font></b>\nDistance: " .. distText
 			
 			task.wait(0.2)
-		end
-		
-		pcall(function() stopTracking() end)
-		if card and card.Parent then
-			pcall(function() card:Destroy() end)
-			for i, c in ipairs(ActiveStaffCards) do
-				if c == card then
-					table.remove(ActiveStaffCards, i)
-					break
-				end
-			end
-			layoutActiveStaffCards()
 		end
 	end)
 	
@@ -15796,10 +15643,10 @@ else
 								local escapedDName = dName:gsub("([^%w])", "%%%1")
 								local escapedUName = uName:gsub("([^%w])", "%%%1")
 								
-								local pattern1 = "^(%[?.-%]?%s*)(" .. escapedDName .. ")%s*:"
-								local pattern2 = "^(%[?.-%]?%s*)(" .. escapedUName .. ")%s*:"
-								local pattern3 = "^(%[?.-%]?%s*)%[(" .. escapedDName .. ")%]%s*:"
-								local pattern4 = "^(%[?.-%]?%s*)%[(" .. escapedUName .. ")%]%s*:"
+								local pattern1 = "^(%[%?.-%]?%s*)(" .. escapedDName .. ")%s*:"
+								local pattern2 = "^(%[%?.-%]?%s*)(" .. escapedUName .. ")%s*:"
+								local pattern3 = "^(%[%?.-%]?%s*)%[(" .. escapedDName .. ")%]%s*:"
+								local pattern4 = "^(%[%?.-%]?%s*)%[(" .. escapedUName .. ")%]%s*:"
 
 								if label.Text:match(pattern1) then
 									label.Text = label.Text:gsub(pattern1, prefix .. "%1%2:", 1)
@@ -15823,10 +15670,10 @@ else
 								local escapedDName = dName:gsub("([^%w])", "%%%1")
 								local escapedUName = uName:gsub("([^%w])", "%%%1")
 								
-								local pattern1 = "^(%[?.-%]?%s*)(" .. escapedDName .. ")%s*:"
-								local pattern2 = "^(%[?.-%]?%s*)(" .. escapedUName .. ")%s*:"
-								local pattern3 = "^(%[?.-%]?%s*)%[(" .. escapedDName .. ")%]%s*:"
-								local pattern4 = "^(%[?.-%]?%s*)%[(" .. escapedUName .. ")%]%s*:"
+								local pattern1 = "^(%[%?.-%]?%s*)(" .. escapedDName .. ")%s*:"
+								local pattern2 = "^(%[%?.-%]?%s*)(" .. escapedUName .. ")%s*:"
+								local pattern3 = "^(%[%?.-%]?%s*)%[(" .. escapedDName .. ")%]%s*:"
+								local pattern4 = "^(%[%?.-%]?%s*)%[(" .. escapedUName .. ")%]%s*:"
 
 								if label.Text:match(pattern1) then
 									label.Text = label.Text:gsub(pattern1, prefix .. "%1%2:", 1)
@@ -18069,13 +17916,13 @@ end
 
 
 addcmd("portal", {"panel"}, function(args, speaker)
-	notify("Tebx Panel", "Opening Tebx Panel...")
+	notify("Admin Portal", "Opening Admin Control Portal...")
 	local success, err = pcall(createAdminPortal)
 	if success then
-		notify("Tebx Panel", "Tebx Panel opened")
+		notify("Admin Portal", "Admin Control Portal opened")
 	else
-		notify("Tebx Panel Error", tostring(err), 15)
-		warn("Tebx Panel Error: " .. tostring(err))
+		notify("Portal Error", tostring(err), 15)
+		warn("Portal Error: " .. tostring(err))
 	end
 end)
 
@@ -18086,7 +17933,7 @@ addcmd("unportal", {"unpanel"}, function(args, speaker)
 	end
 	refreshLogsUI = nil
 	portalLogsActive = false
-	notify("Tebx Panel", "Tebx Panel closed")
+	notify("Admin Portal", "Admin Control Portal closed")
 end)
 
 
@@ -18446,6 +18293,7 @@ local StaffAlarmConnection = nil
 local AlarmFlasher = nil
 local StaffProximityState = {}
 local isAlarmFlashing = false
+local isAlarmFlashing = false
 
 local function triggerStaffAlarmEffect()
 	if not AlarmFlasher then
@@ -18526,7 +18374,7 @@ local function checkStaffProximity()
 	-- Trigger alarm once if any new staff member entered the radius
 	if anyNewNear and nearestNewPlayer then
 		triggerStaffAlarmEffect()
-		createStaffWatchNotification(nearestNewPlayer, nearestNewRole)
+		notify("STAFF ALARM", "Staff member " .. nearestNewPlayer.DisplayName .. " (" .. nearestNewRole .. ") is near! (" .. math.floor(nearestNewDist) .. " studs)", 5)
 	end
 end
 
