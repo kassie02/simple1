@@ -158,6 +158,10 @@ local viewDied
 local viewChanged
 local cameraChangedConn
 local stopViewingHooks
+local getCustomTeamColor
+local ActiveTrackers = {}
+local startTrackingPlayer
+local stopTrackingPlayer
 StaffChatSounds = true
 StaffChatNotifications = true
 
@@ -5162,6 +5166,8 @@ CMDs[#CMDs + 1] = {NAME = 'tmp', DESC = 'Enables the custom staff watch (Group 1
 CMDs[#CMDs + 1] = {NAME = 'untmp', DESC = 'Disables the staff watch'}
 CMDs[#CMDs + 1] = {NAME = 'tmpleave', DESC = 'Toggles auto-kick/leave when watched staff members join'}
 CMDs[#CMDs + 1] = {NAME = 'tesp / corneresp [0-3]', DESC = 'Light pink 2D corner brackets ESP (0=box, 1=names, 2=dist, 3=tracers)'}
+CMDs[#CMDs + 1] = {NAME = 'track / tracker [plr]', DESC = 'Draws a viewport line tracer to a player'}
+CMDs[#CMDs + 1] = {NAME = 'untrack / untracker [plr]', DESC = 'Removes the line tracer (untracks all if no player named)'}
 CMDs[#CMDs + 1] = {NAME = 'untesp / notesp', DESC = 'Disables the corner box ESP'}
 CMDs[#CMDs + 1] = {NAME = 'radar', DESC = 'Opens the draggable minimap radar'}
 CMDs[#CMDs + 1] = {NAME = 'unradar', DESC = 'Closes the minimap radar'}
@@ -6147,6 +6153,120 @@ function CHMS(plr)
 	end)
 end
 
+getCustomTeamColor = function(plr, isStaff)
+	local color = Color3.fromRGB(255, 192, 203) -- Default Pink
+	local orderOffset = 2500
+	
+	if isStaff then
+		color = Color3.fromRGB(255, 200, 0) -- Gold for Staff
+		orderOffset = -1000
+	elseif game.PlaceId == 98371023930528 or game.GameId == 98371023930528 then
+		local teamName = (plr.Team and plr.Team.Name or "Citizen"):lower()
+		if teamName:find("vix") then
+			color = Color3.fromRGB(255, 130, 0) -- Orange for Vix Universal Security
+			orderOffset = 1100
+		elseif teamName:find("police") or teamName:find("sheriff") or teamName:find("patrol") or teamName:find("investigation") or teamName:find("harbor") then
+			color = Color3.fromRGB(255, 75, 75) -- Red for Law Enforcement
+			orderOffset = 1000
+		elseif teamName:find("fire") or teamName:find("health") or teamName:find("medical") or teamName:find("hospital") then
+			color = Color3.fromRGB(50, 220, 120) -- Green for First Responders (Fire/Medical)
+			orderOffset = 1200
+		else
+			color = Color3.fromRGB(100, 200, 255) -- Sky Blue for Civilians & Jobs
+			orderOffset = 2000
+		end
+	elseif plr.Team and Players.LocalPlayer.Team then
+		if plr.Team == Players.LocalPlayer.Team then
+			color = Color3.fromRGB(100, 200, 255) -- Light Blue for Teammates
+			orderOffset = 2000
+		else
+			color = Color3.fromRGB(255, 100, 100) -- Light Red for Civilians
+			orderOffset = 1000
+		end
+	elseif plr.Team then
+		color = plr.TeamColor.Color
+		orderOffset = 2500
+	else
+		orderOffset = 3000
+	end
+	
+	return color, orderOffset
+end
+
+stopTrackingPlayer = function(plr)
+	if not plr then return end
+	local tracker = ActiveTrackers[plr.UserId]
+	if tracker then
+		pcall(function() tracker.Connection:Disconnect() end)
+		pcall(function() tracker.Tracer:Destroy() end)
+		if tracker.PlayerRemovingConnection then
+			pcall(function() tracker.PlayerRemovingConnection:Disconnect() end)
+		end
+		ActiveTrackers[plr.UserId] = nil
+	end
+end
+
+startTrackingPlayer = function(plr)
+	if not plr or plr == Players.LocalPlayer then return end
+	stopTrackingPlayer(plr)
+	
+	if not Drawing then return end
+	
+	local tracer
+	pcall(function()
+		tracer = Drawing.new("Line")
+		tracer.Thickness = 1.5
+		tracer.Visible = false
+	end)
+	if not tracer then return end
+	
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		if not Players:FindFirstChild(plr.Name) then
+			stopTrackingPlayer(plr)
+			return
+		end
+		local char = plr.Character
+		local root = char and getRoot(char)
+		if root then
+			local camera = workspace.CurrentCamera
+			if camera then
+				local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
+				if onScreen then
+					local isStaff = false
+					if getCachedStaffRole then
+						local staffCheck = getCachedStaffRole(plr)
+						isStaff = staffCheck
+					end
+					tracer.Color = getCustomTeamColor(plr, isStaff)
+					tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+					tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+					tracer.Visible = true
+				else
+					tracer.Visible = false
+				end
+			else
+				tracer.Visible = false
+			end
+		else
+			tracer.Visible = false
+		end
+	end)
+	
+	local plrRemovingConn
+	plrRemovingConn = Players.PlayerRemoving:Connect(function(removedPlayer)
+		if removedPlayer.UserId == plr.UserId then
+			stopTrackingPlayer(plr)
+		end
+	end)
+	
+	ActiveTrackers[plr.UserId] = {
+		Tracer = tracer,
+		Connection = conn,
+		PlayerRemovingConnection = plrRemovingConn
+	}
+end
+
 TESPmode = 0
 TESPenabled = false
 local TESPConnections = {}
@@ -6220,7 +6340,7 @@ function TESP(plr)
 			local existingFolder = COREGUI:FindFirstChild(plr.Name..'_TESP')
 			if existingFolder then
 				local bbg = existingFolder:FindFirstChild(plr.Name)
-				if bbg and bbg.Adornee == root then
+				if bbg and bbg.Adornee == root and existingFolder:GetAttribute("Mode") == TESPmode then
 					return
 				else
 					pcall(function() existingFolder:Destroy() end)
@@ -6229,6 +6349,7 @@ function TESP(plr)
 			
 			local ESPholder = Instance.new("Folder")
 			ESPholder.Name = plr.Name..'_TESP'
+			ESPholder:SetAttribute("Mode", TESPmode)
 			ESPholder.Parent = COREGUI
 			
 			local BillboardGui = Instance.new("BillboardGui")
@@ -6238,29 +6359,7 @@ function TESP(plr)
 			BillboardGui.Size = UDim2.new(4.5, 0, 6, 0)
 			BillboardGui.AlwaysOnTop = true
 			
-			local color = Color3.fromRGB(255, 192, 203) -- Default Pink
-			if isStaff then
-				color = Color3.fromRGB(255, 200, 0) -- Gold for Staff
-			elseif game.PlaceId == 98371023930528 or game.GameId == 98371023930528 then
-				local teamName = (plr.Team and plr.Team.Name or "Citizen"):lower()
-				if teamName:find("vix") then
-					color = Color3.fromRGB(255, 130, 0) -- Orange for Vix Universal Security
-				elseif teamName:find("police") or teamName:find("sheriff") or teamName:find("patrol") or teamName:find("investigation") or teamName:find("harbor") then
-					color = Color3.fromRGB(255, 75, 75) -- Red for Law Enforcement
-				elseif teamName:find("fire") or teamName:find("health") or teamName:find("medical") or teamName:find("hospital") then
-					color = Color3.fromRGB(50, 220, 120) -- Green for First Responders (Fire/Medical)
-				else
-					color = Color3.fromRGB(100, 200, 255) -- Sky Blue for Civilians & Jobs
-				end
-			elseif plr.Team and Players.LocalPlayer.Team then
-				if plr.Team == Players.LocalPlayer.Team then
-					color = Color3.fromRGB(100, 200, 255) -- Light Blue for Teammates
-				else
-					color = Color3.fromRGB(255, 100, 100) -- Light Red for Civilians
-				end
-			elseif plr.Team then
-				color = plr.TeamColor.Color
-			end
+			local color = getCustomTeamColor(plr, isStaff)
 			
 			local function createLine(pos, size)
 				local line = Instance.new("Frame")
@@ -6388,7 +6487,7 @@ end
 
 task.spawn(function()
 	while true do
-		task.wait(60)
+		task.wait(180)
 		pcall(function()
 			if TESPenabled then
 				for _, v in ipairs(Players:GetPlayers()) do
@@ -8757,6 +8856,50 @@ addcmd('untesp',{'notesp','nocorneresp'},function(args, speaker)
 			
 			if not keep then
 				c:Destroy()
+			end
+		end
+	end
+end)
+
+addcmd('track', {'tracker'}, function(args, speaker)
+	if args[1] == nil then return end
+	local players = getPlayer(args[1], speaker)
+	for i, v in pairs(players) do
+		local targetPlayer = Players:FindFirstChild(v)
+		if targetPlayer then
+			startTrackingPlayer(targetPlayer)
+		end
+	end
+end)
+
+addcmd('untrack', {'untracker'}, function(args, speaker)
+	if args[1] == nil then
+		local toUntrack = {}
+		for userId in pairs(ActiveTrackers) do
+			table.insert(toUntrack, userId)
+		end
+		for _, userId in ipairs(toUntrack) do
+			local plr = Players:GetPlayerByUserId(userId)
+			if plr then
+				stopTrackingPlayer(plr)
+			else
+				local tracker = ActiveTrackers[userId]
+				if tracker then
+					pcall(function() tracker.Connection:Disconnect() end)
+					pcall(function() tracker.Tracer:Destroy() end)
+					if tracker.PlayerRemovingConnection then
+						pcall(function() tracker.PlayerRemovingConnection:Disconnect() end)
+					end
+					ActiveTrackers[userId] = nil
+				end
+			end
+		end
+	else
+		local players = getPlayer(args[1], speaker)
+		for i, v in pairs(players) do
+			local targetPlayer = Players:FindFirstChild(v)
+			if targetPlayer then
+				stopTrackingPlayer(targetPlayer)
 			end
 		end
 	end
@@ -16885,15 +17028,10 @@ local function createAdminPortal()
 	end)
 	
 	portalTrackBtn = createButton("Track", function(p)
-		local folder = COREGUI:FindFirstChild(p.Name..'_TESP')
-		if folder then
-			pcall(function() folder:Destroy() end)
-			if TESPConnections[p.UserId] then
-				pcall(function() TESPConnections[p.UserId]:Disconnect() end)
-				TESPConnections[p.UserId] = nil
-			end
+		if ActiveTrackers[p.UserId] then
+			stopTrackingPlayer(p)
 		else
-			TESP(p)
+			startTrackingPlayer(p)
 		end
 	end)
 	
@@ -16922,7 +17060,7 @@ local function createAdminPortal()
 				portalViewBtn.TextColor3 = Color3.fromRGB(200, 180, 255)
 			end
 			
-			local isTracking = COREGUI:FindFirstChild(p.Name..'_TESP') ~= nil
+			local isTracking = (ActiveTrackers[p.UserId] ~= nil)
 			if isTracking then
 				portalTrackBtn.Text = "Untrack"
 				portalTrackBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
@@ -17207,26 +17345,11 @@ local function createAdminPortal()
 				table.insert(badges, "<b><font color=\"rgb(0, 191, 255)\">[INVIS]</font></b>")
 			end
 			
-			local layoutOrder = index
-			local textColor = Color3.fromRGB(220, 220, 230)
+			local textColor, orderOffset = getCustomTeamColor(p, isStaff)
+			local layoutOrder = orderOffset + index
 			
 			if isStaff then
-				layoutOrder = -1000 + index
-				textColor = Color3.fromRGB(255, 200, 0) -- Gold for Staff
 				table.insert(badges, 1, "<b><font color=\"rgb(255, 200, 0)\">[STAFF]</font></b>")
-			elseif p.Team and Players.LocalPlayer.Team then
-				if p.Team == Players.LocalPlayer.Team then
-					layoutOrder = 2000 + index -- Blue team (Teammates)
-					textColor = Color3.fromRGB(100, 200, 255) -- Light Blue
-				else
-					layoutOrder = 1000 + index -- Red team (Opponents/Civilians)
-					textColor = Color3.fromRGB(255, 100, 100) -- Light Red
-				end
-			elseif p.Team then
-				layoutOrder = 2500 + index -- Other teams
-				textColor = p.TeamColor.Color
-			else
-				layoutOrder = 3000 + index -- Teamless
 			end
 			
 			pBtn.LayoutOrder = layoutOrder
