@@ -6241,6 +6241,17 @@ function TESP(plr)
 			local color = Color3.fromRGB(255, 192, 203) -- Default Pink
 			if isStaff then
 				color = Color3.fromRGB(255, 200, 0) -- Gold for Staff
+			elseif game.PlaceId == 98371023930528 or game.GameId == 98371023930528 then
+				local teamName = (plr.Team and plr.Team.Name or "Citizen"):lower()
+				if teamName:find("vix") then
+					color = Color3.fromRGB(255, 130, 0) -- Orange for Vix Universal Security
+				elseif teamName:find("police") or teamName:find("sheriff") or teamName:find("patrol") or teamName:find("investigation") or teamName:find("harbor") then
+					color = Color3.fromRGB(255, 75, 75) -- Red for Law Enforcement
+				elseif teamName:find("fire") or teamName:find("health") or teamName:find("medical") or teamName:find("hospital") then
+					color = Color3.fromRGB(50, 220, 120) -- Green for First Responders (Fire/Medical)
+				else
+					color = Color3.fromRGB(100, 200, 255) -- Sky Blue for Civilians & Jobs
+				end
 			elseif plr.Team and Players.LocalPlayer.Team then
 				if plr.Team == Players.LocalPlayer.Team then
 					color = Color3.fromRGB(100, 200, 255) -- Light Blue for Teammates
