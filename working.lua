@@ -153,6 +153,11 @@ local getCachedStaffRole
 local getRoleColor
 local stopViewFC
 local startViewFC
+local viewing
+local viewDied
+local viewChanged
+local cameraChangedConn
+local stopViewingHooks
 StaffChatSounds = true
 StaffChatNotifications = true
 
@@ -173,6 +178,7 @@ local IY_Connections = {
 	IYHitboxCharAddedConns = {}
 }
 local updateStaffListUI
+local createStaffWatchNotification
 
 Services = setmetatable({}, {
 	__index = function(self, name)
@@ -4282,9 +4288,8 @@ Players.PlayerRemoving:Connect(function(player)
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		workspace.CurrentCamera.CameraSubject = humanoid or character
 		viewing = nil
-		if viewDied then
-			viewDied:Disconnect()
-			viewChanged:Disconnect()
+		if stopViewingHooks then
+			stopViewingHooks()
 		end
 		notify('Spectate','View turned off (player left)')
 	end
@@ -10107,11 +10112,11 @@ local function createViewHUD(targetPlayer)
 end
 
 viewing = nil
-local viewDied = nil
-local viewChanged = nil
-local cameraChangedConn = nil
+viewDied = nil
+viewChanged = nil
+cameraChangedConn = nil
 
-local function stopViewingHooks()
+stopViewingHooks = function()
 	if viewDied then pcall(function() viewDied:Disconnect() end) viewDied = nil end
 	if viewChanged then pcall(function() viewChanged:Disconnect() end) viewChanged = nil end
 	if cameraChangedConn then pcall(function() cameraChangedConn:Disconnect() end) cameraChangedConn = nil end
@@ -10134,59 +10139,61 @@ addcmd('view',{'spectate'},function(args, speaker)
 	StopFreecam()
 	local players = getPlayer(args[1], speaker)
 	for i,v in pairs(players) do
-		stopViewingHooks()
-		viewing = Players[v]
-		createViewHUD(viewing)
-		applyViewing(viewing)
-		notify('Spectate','Viewing ' .. Players[v].Name)
-		
-		viewDied = Players[v].CharacterAdded:Connect(function()
-			repeat task.wait(0.05) until viewing ~= Players[v] or (Players[v].Character and getRoot(Players[v].Character))
-			if viewing == Players[v] then
-				applyViewing(viewing)
+		local targetPlayer = Players:FindFirstChild(v)
+		if targetPlayer then
+			stopViewingHooks()
+			viewing = targetPlayer
+			createViewHUD(viewing)
+			applyViewing(viewing)
+			
+			viewDied = targetPlayer.CharacterAdded:Connect(function()
+				repeat task.wait(0.05) until viewing ~= targetPlayer or not targetPlayer:IsDescendantOf(Players) or (targetPlayer.Character and getRoot(targetPlayer.Character))
+				if viewing == targetPlayer and targetPlayer:IsDescendantOf(Players) then
+					applyViewing(viewing)
+				end
+			end)
+			
+			local function setupSubjectHook(camera)
+				if viewChanged then pcall(function() viewChanged:Disconnect() end) end
+				viewChanged = camera:GetPropertyChangedSignal("CameraSubject"):Connect(function()
+					if viewing ~= targetPlayer or not targetPlayer:IsDescendantOf(Players) then return end
+					local char = viewing.Character
+					local hum = char and char:FindFirstChildOfClass("Humanoid")
+					local target = hum or char
+					if target and camera.CameraSubject ~= target then
+						pcall(function()
+							camera.CameraType = Enum.CameraType.Custom
+							camera.CameraSubject = target
+						end)
+					end
+				end)
 			end
-		end)
-		
-		local function setupSubjectHook(camera)
-			if viewChanged then pcall(function() viewChanged:Disconnect() end) end
-			viewChanged = camera:GetPropertyChangedSignal("CameraSubject"):Connect(function()
-				if viewing ~= Players[v] then return end
-				local char = viewing.Character
-				local hum = char and char:FindFirstChildOfClass("Humanoid")
-				local target = hum or char
-				if target and camera.CameraSubject ~= target then
-					pcall(function()
-						camera.CameraType = Enum.CameraType.Custom
-						camera.CameraSubject = target
-					end)
+			setupSubjectHook(workspace.CurrentCamera)
+			
+			cameraChangedConn = workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+				if viewing ~= targetPlayer or not targetPlayer:IsDescendantOf(Players) then return end
+				local newCamera = workspace.CurrentCamera
+				if newCamera then
+					applyViewing(viewing)
+					setupSubjectHook(newCamera)
+				end
+			end)
+			
+			task.spawn(function()
+				while viewing == targetPlayer and targetPlayer:IsDescendantOf(Players) do
+					local char = viewing.Character
+					local hum = char and char:FindFirstChildOfClass("Humanoid")
+					local target = hum or char
+					if target and workspace.CurrentCamera.CameraSubject ~= target then
+						pcall(function()
+							workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+							workspace.CurrentCamera.CameraSubject = target
+						end)
+					end
+					task.wait(0.25)
 				end
 			end)
 		end
-		setupSubjectHook(workspace.CurrentCamera)
-		
-		cameraChangedConn = workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
-			if viewing ~= Players[v] then return end
-			local newCamera = workspace.CurrentCamera
-			if newCamera then
-				applyViewing(viewing)
-				setupSubjectHook(newCamera)
-			end
-		end)
-		
-		task.spawn(function()
-			while viewing == Players[v] do
-				local char = viewing.Character
-				local hum = char and char:FindFirstChildOfClass("Humanoid")
-				local target = hum or char
-				if target and workspace.CurrentCamera.CameraSubject ~= target then
-					pcall(function()
-						workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-						workspace.CurrentCamera.CameraSubject = target
-					end)
-				end
-				task.wait(0.25)
-			end
-		end)
 	end
 end)
 
@@ -11102,10 +11109,10 @@ addcmd('loopbring',{},function(args, speaker)
 	local players = getPlayer(args[1], speaker)
 	for i,v in pairs(players)do
 		task.spawn(function()
-			if Players[v].Name ~= speaker.Name and not FindInTable(bringT, Players[v].Name) then
-				table.insert(bringT, Players[v].Name)
-				local plrName = Players[v].Name
-				local pchar=Players[v].Character
+			local targetPlayer = Players:FindFirstChild(v)
+			if targetPlayer and targetPlayer.Name ~= speaker.Name and not FindInTable(bringT, targetPlayer.Name) then
+				table.insert(bringT, targetPlayer.Name)
+				local plrName = targetPlayer.Name
 				local distance = 3
 				if args[2] and isNumber(args[2]) then
 					distance = args[2]
@@ -11116,9 +11123,9 @@ addcmd('loopbring',{},function(args, speaker)
 				end
 				repeat
 					for i,c in pairs(players) do
-						if Players:FindFirstChild(v) then
-							pchar = Players[v].Character
-							if pchar~= nil and Players[v].Character ~= nil and getRoot(pchar) and speaker.Character ~= nil and getRoot(speaker.Character) then
+						if targetPlayer:IsDescendantOf(Players) then
+							local pchar = targetPlayer.Character
+							if pchar ~= nil and getRoot(pchar) and speaker.Character ~= nil and getRoot(speaker.Character) then
 								getRoot(pchar).CFrame = getRoot(speaker.Character).CFrame + Vector3.new(distance,1,0)
 							end
 							wait(lDelay)
@@ -11136,7 +11143,7 @@ addcmd('unloopbring',{'noloopbring'},function(args, speaker)
 	local players = getPlayer(args[1], speaker)
 	for i,v in pairs(players)do
 		task.spawn(function()
-			for a,b in pairs(bringT) do if b == Players[v].Name then table.remove(bringT, a) end end
+			for a,b in pairs(bringT) do if b == v then table.remove(bringT, a) end end
 		end)
 	end
 end)
@@ -11146,15 +11153,19 @@ local waypointwalkto = false
 addcmd('walkto',{'follow'},function(args, speaker)
 	local players = getPlayer(args[1], speaker)
 	for i,v in pairs(players)do
-		if Players[v].Character ~= nil then
+		local targetPlayer = Players:FindFirstChild(v)
+		if targetPlayer and targetPlayer.Character ~= nil then
 			if speaker.Character:FindFirstChildOfClass('Humanoid') and speaker.Character:FindFirstChildOfClass('Humanoid').SeatPart then
 				speaker.Character:FindFirstChildOfClass('Humanoid').Sit = false
 				wait(.1)
 			end
 			walkto = true
 			repeat wait()
-				speaker.Character:FindFirstChildOfClass('Humanoid'):MoveTo(getRoot(Players[v].Character).Position)
-			until Players[v].Character == nil or not getRoot(Players[v].Character) or walkto == false
+				local targetCharacter = targetPlayer.Character
+				if targetPlayer:IsDescendantOf(Players) and targetCharacter and getRoot(targetCharacter) then
+					speaker.Character:FindFirstChildOfClass('Humanoid'):MoveTo(getRoot(targetCharacter).Position)
+				end
+			until not targetPlayer:IsDescendantOf(Players) or targetPlayer.Character == nil or not getRoot(targetPlayer.Character) or walkto == false
 		end
 	end
 end)
@@ -11166,31 +11177,34 @@ addcmd('pathfindwalkto',{'pathfindfollow'},function(args, speaker)
 	local hum = Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 	local path = PathService:CreatePath()
 	for i,v in pairs(players)do
-		if Players[v].Character ~= nil then
+		local targetPlayer = Players:FindFirstChild(v)
+		if targetPlayer and targetPlayer.Character ~= nil then
 			if speaker.Character:FindFirstChildOfClass('Humanoid') and speaker.Character:FindFirstChildOfClass('Humanoid').SeatPart then
 				speaker.Character:FindFirstChildOfClass('Humanoid').Sit = false
 				wait(.1)
 			end
 			walkto = true
 			repeat wait()
+				local targetCharacter = targetPlayer.Character
 				local success, response = pcall(function()
-					path:ComputeAsync(getRoot(speaker.Character).Position, getRoot(Players[v].Character).Position)
-					local waypoints = path:GetWaypoints()
-					local distance 
-					for waypointIndex, waypoint in pairs(waypoints) do
-						local waypointPosition = waypoint.Position
-						hum:MoveTo(waypointPosition)
-						repeat 
-							distance = (waypointPosition - hum.Parent.PrimaryPart.Position).magnitude
-							wait()
-						until
-						distance <= 5
-					end	 
+					if targetPlayer:IsDescendantOf(Players) and targetCharacter and getRoot(targetCharacter) then
+						path:ComputeAsync(getRoot(speaker.Character).Position, getRoot(targetCharacter).Position)
+						local waypoints = path:GetWaypoints()
+						local distance 
+						for waypointIndex, waypoint in pairs(waypoints) do
+							local waypointPosition = waypoint.Position
+							hum:MoveTo(waypointPosition)
+							repeat 
+								distance = (waypointPosition - hum.Parent.PrimaryPart.Position).magnitude
+								wait()
+							until distance <= 5 or walkto == false or not targetPlayer:IsDescendantOf(Players)
+						end
+					end
 				end)
-				if not success then
-					speaker.Character:FindFirstChildOfClass('Humanoid'):MoveTo(getRoot(Players[v].Character).Position)
+				if not success and targetPlayer:IsDescendantOf(Players) and targetCharacter and getRoot(targetCharacter) then
+					speaker.Character:FindFirstChildOfClass('Humanoid'):MoveTo(getRoot(targetCharacter).Position)
 				end
-			until Players[v].Character == nil or not getRoot(Players[v].Character) or walkto == false
+			until not targetPlayer:IsDescendantOf(Players) or targetPlayer.Character == nil or not getRoot(targetPlayer.Character) or walkto == false
 		end
 	end
 end)
@@ -14779,7 +14793,7 @@ getRoleColor = function(role)
 	end
 end
 
-local function createStaffWatchNotification(player, roleName)
+createStaffWatchNotification = function(player, roleName)
 	if not PARENT or not PARENT.Parent then
 		repeat task.wait(0.1) until PARENT and PARENT.Parent
 	end
