@@ -5990,6 +5990,8 @@ end)
 
 ESPenabled = false
 CHMSenabled = false
+MOTmode = 0
+MOTenabled = false
 
 function round(num, numDecimalPlaces)
 	local mult = 10^(numDecimalPlaces or 0)
@@ -6358,6 +6360,8 @@ function TESP(plr)
 			BillboardGui.Parent = ESPholder
 			BillboardGui.Size = UDim2.new(4.5, 0, 6, 0)
 			BillboardGui.AlwaysOnTop = true
+			BillboardGui.DistanceAlpha = false
+			BillboardGui.MaxDistance = -1
 			
 			local color = getCustomTeamColor(plr, isStaff)
 			
@@ -6487,13 +6491,194 @@ end
 
 task.spawn(function()
 	while true do
-		task.wait(180)
+		task.wait(60)
 		pcall(function()
 			if TESPenabled then
 				for _, v in ipairs(Players:GetPlayers()) do
 					if v ~= Players.LocalPlayer then
 						pcall(function() TESP(v) end)
 					end
+				end
+			end
+		end)
+	end
+end)
+
+function MOT(plr)
+	if game.PlaceId ~= 98371023930528 and game.GameId ~= 98371023930528 then return end
+	task.spawn(function()
+		for i,v in pairs(COREGUI:GetChildren()) do
+			if v.Name == plr.Name..'_MOT' then
+				v:Destroy()
+			end
+		end
+		wait()
+		if plr.Character and not COREGUI:FindFirstChild(plr.Name..'_MOT') then
+			local MOTholder = Instance.new("Folder")
+			MOTholder.Name = plr.Name..'_MOT'
+			MOTholder.Parent = COREGUI
+			repeat wait(1) until plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
+			
+			local isStaff = false
+			if getCachedStaffRole then
+				isStaff, _ = getCachedStaffRole(plr)
+			end
+			
+			local boxColor
+			if plr == Players.LocalPlayer then
+				boxColor = Color3.fromRGB(255, 253, 208)
+			else
+				boxColor = getCustomTeamColor(plr, isStaff)
+			end
+			
+			for b,n in pairs(plr.Character:GetChildren()) do
+				if n:IsA("BasePart") then
+					local a = Instance.new("BoxHandleAdornment")
+					a.Name = plr.Name
+					a.Parent = MOTholder
+					a.Adornee = n
+					a.AlwaysOnTop = true
+					a.ZIndex = 10
+					a.Size = n.Size * 1.05
+					a.Transparency = 0.3
+					a.Color3 = boxColor
+				end
+			end
+			if plr.Character and plr.Character:FindFirstChild('Head') then
+				local BillboardGui = Instance.new("BillboardGui")
+				local TextLabel = Instance.new("TextLabel")
+				BillboardGui.Adornee = plr.Character.Head
+				BillboardGui.Name = plr.Name
+				BillboardGui.Parent = MOTholder
+				BillboardGui.Size = UDim2.new(0, 100, 0, 150)
+				BillboardGui.StudsOffset = Vector3.new(0, 1, 0)
+				BillboardGui.AlwaysOnTop = true
+				BillboardGui.DistanceAlpha = false
+				BillboardGui.MaxDistance = -1
+				TextLabel.Parent = BillboardGui
+				TextLabel.BackgroundTransparency = 1
+				TextLabel.Position = UDim2.new(0, 0, 0, -50)
+				TextLabel.Size = UDim2.new(0, 100, 0, 100)
+				TextLabel.Font = Enum.Font.SourceSansSemibold
+				TextLabel.TextSize = 20
+				TextLabel.TextColor3 = boxColor
+				TextLabel.TextStrokeTransparency = 0
+				TextLabel.TextYAlignment = Enum.TextYAlignment.Bottom
+				if plr == Players.LocalPlayer then
+					TextLabel.Text = 'You - '..plr.Name
+				else
+					local displayName = plr.DisplayName or plr.Name
+					TextLabel.Text = (isStaff and "[STAFF] " or "")..displayName.." (@"..plr.Name..")"
+				end
+				TextLabel.ZIndex = 10
+				
+				local distLabel
+				if MOTmode >= 2 then
+					distLabel = Instance.new("TextLabel")
+					distLabel.Name = "DistanceTag"
+					distLabel.BackgroundTransparency = 1
+					distLabel.Position = UDim2.new(0.5, -100, 1, 5)
+					distLabel.Size = UDim2.new(0, 200, 0, 18)
+					distLabel.Font = Enum.Font.SourceSansSemibold
+					distLabel.TextSize = 13
+					distLabel.TextColor3 = boxColor
+					distLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+					distLabel.TextStrokeTransparency = 0
+					distLabel.TextXAlignment = Enum.TextXAlignment.Center
+					distLabel.Text = ""
+					distLabel.Parent = BillboardGui
+				end
+				
+				local tracer
+				if MOTmode >= 3 and Drawing then
+					pcall(function()
+						tracer = Drawing.new("Line")
+						tracer.Thickness = 1
+						tracer.Color = boxColor
+						tracer.Visible = false
+					end)
+				end
+				
+				local motLoopFunc
+				local addedFunc
+				local teamChange
+				addedFunc = plr.CharacterAdded:Connect(function()
+					if MOTenabled then
+						if motLoopFunc then motLoopFunc:Disconnect() end
+						if teamChange then teamChange:Disconnect() end
+						MOTholder:Destroy()
+						repeat wait(1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
+						MOT(plr)
+						addedFunc:Disconnect()
+					else
+						if teamChange then teamChange:Disconnect() end
+						addedFunc:Disconnect()
+					end
+				end)
+				teamChange = plr:GetPropertyChangedSignal("TeamColor"):Connect(function()
+					if MOTenabled then
+						if motLoopFunc then motLoopFunc:Disconnect() end
+						if addedFunc then addedFunc:Disconnect() end
+						MOTholder:Destroy()
+						repeat wait(1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
+						MOT(plr)
+						teamChange:Disconnect()
+					else
+						teamChange:Disconnect()
+					end
+				end)
+				local function motLoop()
+					if COREGUI:FindFirstChild(plr.Name..'_MOT') then
+						if plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid") and Players.LocalPlayer.Character and getRoot(Players.LocalPlayer.Character) and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+							local rootPart = getRoot(plr.Character)
+							local localRoot = getRoot(Players.LocalPlayer.Character)
+							local pos = math.floor((localRoot.Position - rootPart.Position).magnitude)
+							if MOTmode >= 1 then
+								if plr == Players.LocalPlayer then
+									TextLabel.Text = 'You - '..plr.Name..' | '..pos..' studs'
+								else
+									local displayName = plr.DisplayName or plr.Name
+									TextLabel.Text = (isStaff and "[STAFF] " or "")..displayName.." (@"..plr.Name..") | HP: "..round(plr.Character:FindFirstChildOfClass('Humanoid').Health, 1).." | "..pos..' studs'
+								end
+							end
+							if MOTmode >= 2 and distLabel then
+								distLabel.Text = tostring(pos).." studs"
+							end
+							if tracer then
+								local camera = workspace.CurrentCamera
+								if camera then
+									local screenPos, onScreen = camera:WorldToViewportPoint(rootPart.Position)
+									if onScreen then
+										tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+										tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+										tracer.Visible = true
+									else
+										tracer.Visible = false
+									end
+								else
+									tracer.Visible = false
+								end
+							end
+						end
+					else
+						if teamChange then teamChange:Disconnect() end
+						if addedFunc then addedFunc:Disconnect() end
+						if motLoopFunc then motLoopFunc:Disconnect() end
+					end
+				end
+				motLoopFunc = RunService.RenderStepped:Connect(motLoop)
+			end
+		end
+	end)
+end
+
+task.spawn(function()
+	while true do
+		task.wait(60)
+		pcall(function()
+			if MOTenabled then
+				for _, v in ipairs(Players:GetPlayers()) do
+					pcall(function() MOT(v) end)
 				end
 			end
 		end)
@@ -8857,6 +9042,24 @@ addcmd('untesp',{'notesp','nocorneresp'},function(args, speaker)
 			if not keep then
 				c:Destroy()
 			end
+		end
+	end
+end)
+
+addcmd('mot',{},function(args, speaker)
+	MOTmode = tonumber(args[1]) or 0
+	MOTenabled = true
+	for i,v in pairs(Players:GetPlayers()) do
+		MOT(v)
+	end
+end)
+
+addcmd('unmot',{'nomot'},function(args, speaker)
+	MOTmode = 0
+	MOTenabled = false
+	for i,c in pairs(COREGUI:GetChildren()) do
+		if string.sub(c.Name, -4) == '_MOT' then
+			c:Destroy()
 		end
 	end
 end)
@@ -17431,11 +17634,9 @@ local function createAdminPortal()
 			
 			pBtn.Parent = listFrame
 			
-			-- Asynchronous Group Watch Badge Check (so yielding doesn't freeze listing/UI creation)
 			task.spawn(function()
-				local isStaff, role = getCachedStaffRole(p)
-				if isStaff then
-					pBtn.LayoutOrder = -1000 + index
+				local isStaffAsync, _ = getCachedStaffRole(p)
+				if isStaffAsync and not isStaff then
 					pBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
 					local hasStaffBadge = false
 					for _, b in ipairs(badges) do
