@@ -6173,7 +6173,7 @@ getCustomTeamColor = function(plr, isStaff)
 		if teamName:find("vix") then
 			color = Color3.fromRGB(255, 130, 0) -- Orange for Vix Universal Security
 			orderOffset = 1100
-		elseif teamName:find("police") or teamName:find("sheriff") or teamName:find("patrol") or teamName:find("investigation") or teamName:find("harbor") then
+		elseif teamName:find("police") or teamName:find("sheriff") or teamName:find("patrol") or teamName:find("investigation") or teamName:find("harbor") or teamName:find("public safety") or teamName:find("dps") then
 			color = Color3.fromRGB(255, 75, 75) -- Red for Law Enforcement
 			orderOffset = 1000
 		elseif teamName:find("fire") or teamName:find("health") or teamName:find("medical") or teamName:find("hospital") then
