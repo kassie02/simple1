@@ -6774,7 +6774,8 @@ function XOL(plr)
 				highlight.Adornee = plr.Character
 				highlight.FillColor = boxColor
 				highlight.FillTransparency = 0.85
-				highlight.OutlineTransparency = 1.0
+				highlight.OutlineColor = boxColor
+				highlight.OutlineTransparency = 0.15
 				highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 			end
 			
