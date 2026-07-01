@@ -4280,9 +4280,9 @@ if isLegacyChat then
 end
 
 Players.PlayerRemoving:Connect(function(player)
-	if ESPenabled or CHMSenabled or TESPenabled or COREGUI:FindFirstChild(player.Name..'_LC') then
+	if ESPenabled or CHMSenabled or TESPenabled or COREGUI:FindFirstChild(player.Name..'_LC') or COREGUI:FindFirstChild(player.Name..'_MOT') or COREGUI:FindFirstChild(player.Name..'_XOL') then
 		for i,v in pairs(COREGUI:GetChildren()) do
-			if v.Name == player.Name..'_ESP' or v.Name == player.Name..'_TESP' or v.Name == player.Name..'_LC' or v.Name == player.Name..'_CHMS' then
+			if v.Name == player.Name..'_ESP' or v.Name == player.Name..'_TESP' or v.Name == player.Name..'_LC' or v.Name == player.Name..'_CHMS' or v.Name == player.Name..'_MOT' or v.Name == player.Name..'_XOL' then
 				v:Destroy()
 			end
 		end
@@ -5171,6 +5171,8 @@ CMDs[#CMDs + 1] = {NAME = 'untrack / untracker [plr]', DESC = 'Removes the line 
 CMDs[#CMDs + 1] = {NAME = 'untesp / notesp', DESC = 'Disables the corner box ESP'}
 CMDs[#CMDs + 1] = {NAME = 'mot [0-4]', DESC = 'Premium always-on-top ESP (0=Adornment, 1=Health/Dist, 2=Dist Label, 3=Tracers, 4=Highlight + Corners)'}
 CMDs[#CMDs + 1] = {NAME = 'unmot / nomot', DESC = 'Disables the MOT ESP'}
+CMDs[#CMDs + 1] = {NAME = 'xol [0-3]', DESC = 'Outline and Chams ESP (0=Corners, 1=Chams, 2=Corners/Tags, 3=Corners/Tags/Tracers)'}
+CMDs[#CMDs + 1] = {NAME = 'unxol / noxol', DESC = 'Disables the XOL ESP'}
 CMDs[#CMDs + 1] = {NAME = 'radar', DESC = 'Opens the draggable minimap radar'}
 CMDs[#CMDs + 1] = {NAME = 'unradar', DESC = 'Closes the minimap radar'}
 CMDs[#CMDs + 1] = {NAME = 'viewhud', DESC = 'Enables the real-time View HUD overlay'}
@@ -5994,6 +5996,8 @@ ESPenabled = false
 CHMSenabled = false
 MOTmode = 0
 MOTenabled = false
+XOLmode = 0
+XOLenabled = false
 
 function round(num, numDecimalPlaces)
 	local mult = 10^(numDecimalPlaces or 0)
@@ -6703,11 +6707,18 @@ function MOT(plr)
 									tracer.Visible = false
 								end
 							end
+						else
+							if tracer then
+								tracer.Visible = false
+							end
 						end
 					else
 						if teamChange then teamChange:Disconnect() end
 						if addedFunc then addedFunc:Disconnect() end
 						if motLoopFunc then motLoopFunc:Disconnect() end
+						if tracer then
+							pcall(function() tracer:Remove() end)
+						end
 					end
 				end
 				motLoopFunc = RunService.RenderStepped:Connect(motLoop)
@@ -6723,6 +6734,231 @@ task.spawn(function()
 			if MOTenabled then
 				for _, v in ipairs(Players:GetPlayers()) do
 					pcall(function() MOT(v) end)
+				end
+			end
+		end)
+	end
+end)
+
+function XOL(plr)
+	if game.PlaceId ~= 98371023930528 and game.GameId ~= 98371023930528 then return end
+	task.spawn(function()
+		for i,v in pairs(COREGUI:GetChildren()) do
+			if v.Name == plr.Name..'_XOL' then
+				v:Destroy()
+			end
+		end
+		wait()
+		if plr.Character and not COREGUI:FindFirstChild(plr.Name..'_XOL') then
+			local XOLholder = Instance.new("Folder")
+			XOLholder.Name = plr.Name..'_XOL'
+			XOLholder.Parent = COREGUI
+			repeat wait(1) until plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
+			
+			local isStaff = false
+			if getCachedStaffRole then
+				isStaff, _ = getCachedStaffRole(plr)
+			end
+			
+			local boxColor
+			if plr == Players.LocalPlayer then
+				boxColor = Color3.fromRGB(255, 253, 208)
+			else
+				boxColor = getCustomTeamColor(plr, isStaff)
+			end
+			
+			if XOLmode == 1 then
+				local highlight = Instance.new("Highlight")
+				highlight.Name = plr.Name
+				highlight.Parent = XOLholder
+				highlight.Adornee = plr.Character
+				highlight.FillColor = boxColor
+				highlight.FillTransparency = 0.85
+				highlight.OutlineTransparency = 1.0
+				highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+			end
+			
+			if XOLmode == 0 or XOLmode == 2 or XOLmode == 3 then
+				local root = getRoot(plr.Character)
+				if root then
+					local cornerBbg = Instance.new("BillboardGui")
+					cornerBbg.Adornee = root
+					cornerBbg.Name = "CornerESP"
+					cornerBbg.Parent = XOLholder
+					cornerBbg.Size = UDim2.new(4.5, 0, 6, 0)
+					cornerBbg.AlwaysOnTop = true
+					cornerBbg.MaxDistance = -1
+					
+					local function createLine(pos, size)
+						local line = Instance.new("Frame")
+						line.BackgroundColor3 = boxColor
+						line.BorderSizePixel = 0
+						line.Position = pos
+						line.Size = size
+						line.Parent = cornerBbg
+					end
+					
+					local thickness = 2
+					local len = 0.2
+					
+					createLine(UDim2.new(0, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
+					createLine(UDim2.new(0, 0, 0, 0), UDim2.new(0, thickness, len, 0))
+					createLine(UDim2.new(1 - len, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
+					createLine(UDim2.new(1, -thickness, 0, 0), UDim2.new(0, thickness, len, 0))
+					createLine(UDim2.new(0, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
+					createLine(UDim2.new(0, 0, 1 - len, 0), UDim2.new(0, thickness, len, 0))
+					createLine(UDim2.new(1 - len, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
+					createLine(UDim2.new(1, -thickness, 1 - len, 0), UDim2.new(0, thickness, len, 0))
+				end
+			end
+			
+			local TextLabel
+			local distLabel
+			if (XOLmode == 2 or XOLmode == 3) and plr.Character and plr.Character:FindFirstChild('Head') then
+				local BillboardGui = Instance.new("BillboardGui")
+				TextLabel = Instance.new("TextLabel")
+				BillboardGui.Adornee = plr.Character.Head
+				BillboardGui.Name = plr.Name
+				BillboardGui.Parent = XOLholder
+				BillboardGui.Size = UDim2.new(0, 100, 0, 150)
+				BillboardGui.StudsOffset = Vector3.new(0, 1, 0)
+				BillboardGui.AlwaysOnTop = true
+				BillboardGui.MaxDistance = -1
+				
+				TextLabel.Parent = BillboardGui
+				TextLabel.BackgroundTransparency = 1
+				TextLabel.Position = UDim2.new(0, 0, 0, -50)
+				TextLabel.Size = UDim2.new(0, 100, 0, 100)
+				TextLabel.Font = Enum.Font.SourceSansSemibold
+				TextLabel.TextSize = 20
+				TextLabel.TextColor3 = boxColor
+				TextLabel.TextStrokeTransparency = 0
+				TextLabel.TextYAlignment = Enum.TextYAlignment.Bottom
+				
+				local displayName = plr.DisplayName or plr.Name
+				TextLabel.Text = (isStaff and "[STAFF] " or "")..displayName.." (@"..plr.Name..")"
+				TextLabel.ZIndex = 10
+				
+				distLabel = Instance.new("TextLabel")
+				distLabel.Name = "DistanceTag"
+				distLabel.BackgroundTransparency = 1
+				distLabel.Position = UDim2.new(0.5, -100, 1, 5)
+				distLabel.Size = UDim2.new(0, 200, 0, 18)
+				distLabel.Font = Enum.Font.SourceSansSemibold
+				distLabel.TextSize = 13
+				distLabel.TextColor3 = boxColor
+				distLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+				distLabel.TextStrokeTransparency = 0
+				distLabel.TextXAlignment = Enum.TextXAlignment.Center
+				distLabel.Text = ""
+				distLabel.Parent = BillboardGui
+			end
+			
+			local tracer
+			if XOLmode == 3 and Drawing then
+				pcall(function()
+					tracer = Drawing.new("Line")
+					tracer.Thickness = 1
+					tracer.Color = boxColor
+					tracer.Visible = false
+				end)
+			end
+			
+			local xolLoopFunc
+			local addedFunc
+			local teamChange
+			
+			addedFunc = plr.CharacterAdded:Connect(function()
+				if XOLenabled then
+					if xolLoopFunc then xolLoopFunc:Disconnect() end
+					if teamChange then teamChange:Disconnect() end
+					if tracer then pcall(function() tracer:Remove() end) end
+					XOLholder:Destroy()
+					repeat wait(1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
+					XOL(plr)
+					addedFunc:Disconnect()
+				else
+					if teamChange then teamChange:Disconnect() end
+					if tracer then pcall(function() tracer:Remove() end) end
+					addedFunc:Disconnect()
+				end
+			end)
+			
+			teamChange = plr:GetPropertyChangedSignal("TeamColor"):Connect(function()
+				if XOLenabled then
+					if xolLoopFunc then xolLoopFunc:Disconnect() end
+					if addedFunc then addedFunc:Disconnect() end
+					if tracer then pcall(function() tracer:Remove() end) end
+					XOLholder:Destroy()
+					repeat wait(1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
+					XOL(plr)
+					teamChange:Disconnect()
+				else
+					if tracer then pcall(function() tracer:Remove() end) end
+					teamChange:Disconnect()
+				end
+			end)
+			
+			local function xolLoop()
+				if COREGUI:FindFirstChild(plr.Name..'_XOL') and plr:IsDescendantOf(Players) then
+					if plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid") and Players.LocalPlayer.Character and getRoot(Players.LocalPlayer.Character) and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+						local rootPart = getRoot(plr.Character)
+						local localRoot = getRoot(Players.LocalPlayer.Character)
+						local pos = math.floor((localRoot.Position - rootPart.Position).magnitude)
+						
+						if (XOLmode == 2 or XOLmode == 3) and TextLabel then
+							local displayName = plr.DisplayName or plr.Name
+							TextLabel.Text = (isStaff and "[STAFF] " or "")..displayName.." (@"..plr.Name..") | HP: "..round(plr.Character:FindFirstChildOfClass('Humanoid').Health, 1).." | "..pos..' studs'
+							if distLabel then
+								distLabel.Text = tostring(pos).." studs"
+							end
+						end
+						
+						if tracer then
+							local camera = workspace.CurrentCamera
+							if camera then
+								local screenPos, onScreen = camera:WorldToViewportPoint(rootPart.Position)
+								if onScreen then
+									tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+									tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+									tracer.Visible = true
+								else
+									tracer.Visible = false
+								end
+							else
+								tracer.Visible = false
+							end
+						end
+					else
+						if tracer then
+							tracer.Visible = false
+						end
+					end
+				else
+					if teamChange then teamChange:Disconnect() end
+					if addedFunc then addedFunc:Disconnect() end
+					if xolLoopFunc then xolLoopFunc:Disconnect() end
+					if tracer then
+						pcall(function() tracer:Remove() end)
+					end
+					local folder = COREGUI:FindFirstChild(plr.Name..'_XOL')
+					if folder then
+						pcall(function() folder:Destroy() end)
+					end
+				end
+			end
+			xolLoopFunc = RunService.RenderStepped:Connect(xolLoop)
+		end
+	end)
+end
+
+task.spawn(function()
+	while true do
+		task.wait(60)
+		pcall(function()
+			if XOLenabled then
+				for _, v in ipairs(Players:GetPlayers()) do
+					pcall(function() XOL(v) end)
 				end
 			end
 		end)
@@ -9103,6 +9339,24 @@ addcmd('unmot',{'nomot'},function(args, speaker)
 	MOTenabled = false
 	for i,c in pairs(COREGUI:GetChildren()) do
 		if string.sub(c.Name, -4) == '_MOT' then
+			c:Destroy()
+		end
+	end
+end)
+
+addcmd('xol',{},function(args, speaker)
+	XOLmode = tonumber(args[1]) or 0
+	XOLenabled = true
+	for i,v in pairs(Players:GetPlayers()) do
+		XOL(v)
+	end
+end)
+
+addcmd('unxol',{'noxol'},function(args, speaker)
+	XOLmode = 0
+	XOLenabled = false
+	for i,c in pairs(COREGUI:GetChildren()) do
+		if string.sub(c.Name, -4) == '_XOL' then
 			c:Destroy()
 		end
 	end
