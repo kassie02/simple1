@@ -5169,6 +5169,8 @@ CMDs[#CMDs + 1] = {NAME = 'tesp / corneresp [0-3]', DESC = 'Light pink 2D corner
 CMDs[#CMDs + 1] = {NAME = 'track / tracker [plr]', DESC = 'Draws a viewport line tracer to a player'}
 CMDs[#CMDs + 1] = {NAME = 'untrack / untracker [plr]', DESC = 'Removes the line tracer (untracks all if no player named)'}
 CMDs[#CMDs + 1] = {NAME = 'untesp / notesp', DESC = 'Disables the corner box ESP'}
+CMDs[#CMDs + 1] = {NAME = 'mot [0-4]', DESC = 'Premium always-on-top ESP (0=Adornment, 1=Health/Dist, 2=Dist Label, 3=Tracers, 4=Highlight + Corners)'}
+CMDs[#CMDs + 1] = {NAME = 'unmot / nomot', DESC = 'Disables the MOT ESP'}
 CMDs[#CMDs + 1] = {NAME = 'radar', DESC = 'Opens the draggable minimap radar'}
 CMDs[#CMDs + 1] = {NAME = 'unradar', DESC = 'Closes the minimap radar'}
 CMDs[#CMDs + 1] = {NAME = 'viewhud', DESC = 'Enables the real-time View HUD overlay'}
@@ -6360,7 +6362,6 @@ function TESP(plr)
 			BillboardGui.Parent = ESPholder
 			BillboardGui.Size = UDim2.new(4.5, 0, 6, 0)
 			BillboardGui.AlwaysOnTop = true
-			BillboardGui.DistanceAlpha = false
 			BillboardGui.MaxDistance = -1
 			
 			local color = getCustomTeamColor(plr, isStaff)
@@ -6531,17 +6532,61 @@ function MOT(plr)
 				boxColor = getCustomTeamColor(plr, isStaff)
 			end
 			
-			for b,n in pairs(plr.Character:GetChildren()) do
-				if n:IsA("BasePart") then
-					local a = Instance.new("BoxHandleAdornment")
-					a.Name = plr.Name
-					a.Parent = MOTholder
-					a.Adornee = n
-					a.AlwaysOnTop = true
-					a.ZIndex = 10
-					a.Size = n.Size * 1.05
-					a.Transparency = 0.3
-					a.Color3 = boxColor
+			if MOTmode == 4 then
+				local highlight = Instance.new("Highlight")
+				highlight.Name = plr.Name
+				highlight.Parent = MOTholder
+				highlight.Adornee = plr.Character
+				highlight.FillColor = boxColor
+				highlight.FillTransparency = 0.85
+				highlight.OutlineColor = boxColor
+				highlight.OutlineTransparency = 0.15
+				highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+				
+				local root = getRoot(plr.Character)
+				if root then
+					local cornerBbg = Instance.new("BillboardGui")
+					cornerBbg.Adornee = root
+					cornerBbg.Name = "CornerESP"
+					cornerBbg.Parent = MOTholder
+					cornerBbg.Size = UDim2.new(4.5, 0, 6, 0)
+					cornerBbg.AlwaysOnTop = true
+					cornerBbg.MaxDistance = -1
+					
+					local function createLine(pos, size)
+						local line = Instance.new("Frame")
+						line.BackgroundColor3 = boxColor
+						line.BorderSizePixel = 0
+						line.Position = pos
+						line.Size = size
+						line.Parent = cornerBbg
+					end
+					
+					local thickness = 2
+					local len = 0.2
+					
+					createLine(UDim2.new(0, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
+					createLine(UDim2.new(0, 0, 0, 0), UDim2.new(0, thickness, len, 0))
+					createLine(UDim2.new(1 - len, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
+					createLine(UDim2.new(1, -thickness, 0, 0), UDim2.new(0, thickness, len, 0))
+					createLine(UDim2.new(0, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
+					createLine(UDim2.new(0, 0, 1 - len, 0), UDim2.new(0, thickness, len, 0))
+					createLine(UDim2.new(1 - len, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
+					createLine(UDim2.new(1, -thickness, 1 - len, 0), UDim2.new(0, thickness, len, 0))
+				end
+			else
+				for b,n in pairs(plr.Character:GetChildren()) do
+					if n:IsA("BasePart") then
+						local a = Instance.new("BoxHandleAdornment")
+						a.Name = plr.Name
+						a.Parent = MOTholder
+						a.Adornee = n
+						a.AlwaysOnTop = true
+						a.ZIndex = 10
+						a.Size = n.Size * 1.05
+						a.Transparency = 0.3
+						a.Color3 = boxColor
+					end
 				end
 			end
 			if plr.Character and plr.Character:FindFirstChild('Head') then
@@ -6553,7 +6598,6 @@ function MOT(plr)
 				BillboardGui.Size = UDim2.new(0, 100, 0, 150)
 				BillboardGui.StudsOffset = Vector3.new(0, 1, 0)
 				BillboardGui.AlwaysOnTop = true
-				BillboardGui.DistanceAlpha = false
 				BillboardGui.MaxDistance = -1
 				TextLabel.Parent = BillboardGui
 				TextLabel.BackgroundTransparency = 1
