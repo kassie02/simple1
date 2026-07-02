@@ -5167,7 +5167,7 @@ CMDs[#CMDs + 1] = {NAME = 'untmp', DESC = 'Disables the staff watch'}
 CMDs[#CMDs + 1] = {NAME = 'tmpleave', DESC = 'Toggles auto-kick/leave when watched staff members join'}
 CMDs[#CMDs + 1] = {NAME = 'track / tracker [plr]', DESC = 'Draws a viewport line tracer to a player'}
 CMDs[#CMDs + 1] = {NAME = 'untrack / untracker [plr]', DESC = 'Removes the line tracer (untracks all if no player named)'}
-CMDs[#CMDs + 1] = {NAME = 'xol [0-4]', DESC = 'Outline and Chams ESP (0=Corners, 1=Chams, 2=Occluded Corners/Chams, 3=Dynamic Occluded corners/Chams + Pill Name Tag, 4=Map-Wide Pill Name Tag ESP)'}
+CMDs[#CMDs + 1] = {NAME = 'xol [0-4 / 9]', DESC = 'Outline and Chams ESP (0=Corners, 1=Chams, 2=Occluded Corners/Chams, 3=Dynamic Occluded corners/Chams + Pill Name Tag, 4=Map-Wide Pill Name Tag ESP, 9=Distance Only Under Feet)'}
 CMDs[#CMDs + 1] = {NAME = 'unxol / noxol', DESC = 'Disables the XOL ESP'}
 CMDs[#CMDs + 1] = {NAME = 'chem1', DESC = 'Dynamic NPC Outline/Chams ESP finder (NPC only)'}
 CMDs[#CMDs + 1] = {NAME = 'unchem1 / nochem1', DESC = 'Disables the NPC ESP finder'}
@@ -6161,13 +6161,41 @@ function CHMS(plr)
 	end)
 end
 
+local function getPlayerCategory(plr, isStaff)
+	if isStaff then
+		return 0
+	end
+	if game.PlaceId == 98371023930528 or game.GameId == 98371023930528 then
+		local name = (plr.Team and plr.Team.Name or "Citizen"):lower()
+		if name:find("police") or name:find("sheriff") or name:find("patrol") or name:find("investigation") or name:find("harbor") or name:find("public safety") or name:find("dps") then
+			return 1 -- LEO
+		elseif name:find("vix") then
+			return 2 -- SEC (Vix Security)
+		elseif name:find("fire") or name:find("health") or name:find("medical") or name:find("hospital") then
+			return 3 -- EMS (Fire/Medical)
+		else
+			return 4 -- CIV (Civilian/Citizen)
+		end
+	else
+		if plr.Team and Players.LocalPlayer.Team then
+			if plr.Team == Players.LocalPlayer.Team then
+				return 1
+			else
+				return 2
+			end
+		elseif plr.Team then
+			return 3
+		else
+			return 4
+		end
+	end
+end
+
 getCustomTeamColor = function(plr, isStaff)
 	local color = Color3.fromRGB(255, 192, 203) -- Default Pink
-	local orderOffset = 2500
 	
 	if isStaff then
 		color = Color3.fromRGB(255, 200, 0) -- Gold for Staff
-		orderOffset = -1000
 	elseif game.PlaceId == 98371023930528 or game.GameId == 98371023930528 then
 		local teamName = (plr.Team and plr.Team.Name or "Citizen"):lower()
 		if teamName:find("vix") then
@@ -6179,55 +6207,17 @@ getCustomTeamColor = function(plr, isStaff)
 		else
 			color = Color3.fromRGB(100, 200, 255) -- Sky Blue for Civilians & Jobs
 		end
-		
-		-- Dynamic Medina team sorting: Opponents at 1000, Allies at 2000
-		local function getTeamClass(p)
-			local name = (p.Team and p.Team.Name or "Citizen"):lower()
-			if name:find("vix") or name:find("police") or name:find("sheriff") or name:find("patrol") or name:find("investigation") or name:find("harbor") or name:find("public safety") or name:find("dps") then
-				return "LEO"
-			elseif name:find("fire") or name:find("health") or name:find("medical") or name:find("hospital") then
-				return "EMS"
-			else
-				return "CIV"
-			end
-		end
-		
-		local localClass = getTeamClass(Players.LocalPlayer)
-		local targetClass = getTeamClass(plr)
-		
-		if localClass == "LEO" then
-			if targetClass == "CIV" then
-				orderOffset = 1000 -- Civilians are opponents for LEO
-			else
-				if targetClass == "LEO" then
-					orderOffset = 2000 -- Teammate LEO
-				else
-					orderOffset = 2100 -- Teammate EMS
-				end
-			end
-		else
-			-- Local player is CIV or EMS
-			if targetClass == localClass then
-				orderOffset = 2000 -- Same class is teammate
-			else
-				orderOffset = 1000 -- Different class is opponent
-			end
-		end
 	elseif plr.Team and Players.LocalPlayer.Team then
 		if plr.Team == Players.LocalPlayer.Team then
 			color = Color3.fromRGB(100, 200, 255) -- Light Blue for Teammates
-			orderOffset = 2000
 		else
-			color = Color3.fromRGB(255, 100, 100) -- Light Red for Civilians
-			orderOffset = 1000
+			color = Color3.fromRGB(255, 100, 100) -- Light Red for Enemies
 		end
 	elseif plr.Team then
 		color = plr.TeamColor.Color
-		orderOffset = 2500
-	else
-		orderOffset = 3000
 	end
 	
+	local orderOffset = getPlayerCategory(plr, isStaff) * 1000
 	return color, orderOffset
 end
 
@@ -6349,7 +6339,7 @@ function XOL(plr)
 			end
 			
 			local cornerBbg
-			if XOLmode == 0 or ((XOLmode == 2 or XOLmode == 3 or XOLmode == 4) and plr ~= Players.LocalPlayer) then
+			if XOLmode == 0 or ((XOLmode == 2 or XOLmode == 3 or XOLmode == 4 or XOLmode == 9) and plr ~= Players.LocalPlayer) then
 				local root = getRoot(plr.Character)
 				if root then
 					cornerBbg = Instance.new("BillboardGui")
@@ -6384,6 +6374,30 @@ function XOL(plr)
 			end
 			
 
+			
+			local distOnlyBbg
+			local distOnlyLabel
+			if XOLmode == 9 and plr ~= Players.LocalPlayer and plr.Character and getRoot(plr.Character) then
+				distOnlyBbg = Instance.new("BillboardGui")
+				distOnlyBbg.Adornee = getRoot(plr.Character)
+				distOnlyBbg.Name = "DistanceOnlyESP"
+				distOnlyBbg.Parent = XOLholder
+				distOnlyBbg.Size = UDim2.new(0, 100, 0, 20)
+				distOnlyBbg.StudsOffset = Vector3.new(0, -3.5, 0)
+				distOnlyBbg.AlwaysOnTop = true
+				distOnlyBbg.MaxDistance = -1
+				
+				distOnlyLabel = Instance.new("TextLabel")
+				distOnlyLabel.Size = UDim2.new(1, 0, 1, 0)
+				distOnlyLabel.BackgroundTransparency = 1
+				distOnlyLabel.Font = Enum.Font.GothamBold
+				distOnlyLabel.TextSize = 12
+				distOnlyLabel.TextColor3 = boxColor
+				distOnlyLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+				distOnlyLabel.TextStrokeTransparency = 0.4
+				distOnlyLabel.Text = ""
+				distOnlyLabel.Parent = distOnlyBbg
+			end
 			
 			local tagBbg
 			local textLabel
@@ -6532,13 +6546,14 @@ function XOL(plr)
 							end
 							
 							local hex = string.format("#%02x%02x%02x", math.floor(boxColor.R * 255), math.floor(boxColor.G * 255), math.floor(boxColor.B * 255))
+							local hpColor = health >= maxHealth and "#50d278" or "#ff4f4f"
 							textLabel.Text = string.format(
-								'<font color="%s"><b>[%s]</b></font> <b>%s</b><br/><font color="#ff4f4f">%d/%d HP</font> <font color="#aaaaaa">| %ds</font>',
+								'<font color="%s"><b>[%s]</b></font> <b>%s</b><br/><font color="%s"><b>%d HP</b></font> <font color="#aaaaaa">| %ds</font>',
 								hex,
 								prefixText,
 								displayName,
+								hpColor,
 								health,
-								maxHealth,
 								pos
 							)
 							
@@ -6546,14 +6561,16 @@ function XOL(plr)
 							if XOLmode == 4 then
 								showTag = true -- Always show tags for everyone in mode 4
 							else
-								-- Tag visibility constraint for mode 3: visible OR within distance range [15, 600]
-								if isVisible then
-									showTag = true
-								elseif pos >= 15 and pos <= 600 then
+								-- Tag visibility constraint for mode 3: strictly when nearby (under 30 studs)
+								if pos <= 30 then
 									showTag = true
 								end
 							end
 							tagBbg.Enabled = showTag
+						end
+						
+						if XOLmode == 9 and distOnlyLabel then
+							distOnlyLabel.Text = tostring(pos)
 						end
 						
 
@@ -6643,6 +6660,30 @@ function NPC(model)
 			createLine(UDim2.new(0, 0, 1 - len, 0), UDim2.new(0, thickness, len, 0))
 			createLine(UDim2.new(1 - len, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
 			createLine(UDim2.new(1, -thickness, 1 - len, 0), UDim2.new(0, thickness, len, 0))
+			
+			local distOnlyBbg
+			local distOnlyLabel
+			if XOLmode == 9 and plr ~= Players.LocalPlayer and plr.Character and getRoot(plr.Character) then
+				distOnlyBbg = Instance.new("BillboardGui")
+				distOnlyBbg.Adornee = getRoot(plr.Character)
+				distOnlyBbg.Name = "DistanceOnlyESP"
+				distOnlyBbg.Parent = XOLholder
+				distOnlyBbg.Size = UDim2.new(0, 100, 0, 20)
+				distOnlyBbg.StudsOffset = Vector3.new(0, -3.5, 0)
+				distOnlyBbg.AlwaysOnTop = true
+				distOnlyBbg.MaxDistance = -1
+				
+				distOnlyLabel = Instance.new("TextLabel")
+				distOnlyLabel.Size = UDim2.new(1, 0, 1, 0)
+				distOnlyLabel.BackgroundTransparency = 1
+				distOnlyLabel.Font = Enum.Font.GothamBold
+				distOnlyLabel.TextSize = 12
+				distOnlyLabel.TextColor3 = boxColor
+				distOnlyLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+				distOnlyLabel.TextStrokeTransparency = 0.4
+				distOnlyLabel.Text = ""
+				distOnlyLabel.Parent = distOnlyBbg
+			end
 			
 			local tagBbg = Instance.new("BillboardGui")
 			tagBbg.Adornee = model:FindFirstChild("Head") or rootPart
@@ -17661,61 +17702,13 @@ local function createAdminPortal()
 		
 		local players = Players:GetPlayers()
 		table.sort(players, function(a, b)
-			local function getCategoryVal(plr)
-				local isStaffVal = false
-				if getCachedStaffRole then
-					isStaffVal = getCachedStaffRole(plr)
-				end
-				if isStaffVal then
-					return 1
-				end
-				
-				if game.PlaceId == 98371023930528 or game.GameId == 98371023930528 then
-					local function getTeamClass(p)
-						local teamName = (p.Team and p.Team.Name or "Citizen"):lower()
-						if teamName:find("vix") or teamName:find("police") or teamName:find("sheriff") or teamName:find("patrol") or teamName:find("investigation") or teamName:find("harbor") or teamName:find("public safety") or teamName:find("dps") then
-							return "LEO"
-						elseif teamName:find("fire") or teamName:find("health") or teamName:find("medical") or teamName:find("hospital") then
-							return "EMS"
-						else
-							return "CIV"
-						end
-					end
-					
-					local localClass = getTeamClass(Players.LocalPlayer)
-					local targetClass = getTeamClass(plr)
-					
-					if localClass == "LEO" then
-						if targetClass == "CIV" then
-							return 2 -- Civilians/Citizens are opponents for LEO
-						else
-							return 3 -- Other LEO and EMS are allies/teammates
-						end
-					else
-						-- CIV or EMS local player
-						if targetClass == localClass then
-							return 3 -- Same class is teammate
-						else
-							return 2 -- Other class is opponent
-						end
-					end
-				else
-					if plr.Team and Players.LocalPlayer.Team then
-						if plr.Team == Players.LocalPlayer.Team then
-							return 3
-						else
-							return 2
-						end
-					elseif plr.Team then
-						return 4
-					else
-						return 5
-					end
-				end
-			end
+			local isStaffA = false
+			if getCachedStaffRole then isStaffA = getCachedStaffRole(a) end
+			local isStaffB = false
+			if getCachedStaffRole then isStaffB = getCachedStaffRole(b) end
 			
-			local catA = getCategoryVal(a)
-			local catB = getCategoryVal(b)
+			local catA = getPlayerCategory(a, isStaffA)
+			local catB = getPlayerCategory(b, isStaffB)
 			if catA ~= catB then
 				return catA < catB
 			end
