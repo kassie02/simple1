@@ -6770,7 +6770,7 @@ function XOL(plr)
 			end
 			
 			local highlight
-			if XOLmode == 1 or XOLmode == 5 then
+			if XOLmode == 1 or (XOLmode == 5 and plr ~= Players.LocalPlayer) then
 				highlight = Instance.new("Highlight")
 				highlight.Name = plr.Name
 				highlight.Parent = XOLholder
@@ -6786,7 +6786,7 @@ function XOL(plr)
 			end
 			
 			local cornerBbg
-			if XOLmode == 0 or XOLmode == 2 or XOLmode == 3 or XOLmode == 5 then
+			if XOLmode == 0 or XOLmode == 2 or XOLmode == 3 or (XOLmode == 5 and plr ~= Players.LocalPlayer) then
 				local root = getRoot(plr.Character)
 				if root then
 					cornerBbg = Instance.new("BillboardGui")
