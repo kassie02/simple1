@@ -5171,8 +5171,10 @@ CMDs[#CMDs + 1] = {NAME = 'untrack / untracker [plr]', DESC = 'Removes the line 
 CMDs[#CMDs + 1] = {NAME = 'untesp / notesp', DESC = 'Disables the corner box ESP'}
 CMDs[#CMDs + 1] = {NAME = 'mot [0-4]', DESC = 'Premium always-on-top ESP (0=Adornment, 1=Health/Dist, 2=Dist Label, 3=Tracers, 4=Highlight + Corners)'}
 CMDs[#CMDs + 1] = {NAME = 'unmot / nomot', DESC = 'Disables the MOT ESP'}
-CMDs[#CMDs + 1] = {NAME = 'xol [0-3]', DESC = 'Outline and Chams ESP (0=Corners, 1=Chams, 2=Corners/Tags, 3=Corners/Tags/Tracers)'}
+CMDs[#CMDs + 1] = {NAME = 'xol [0-5]', DESC = 'Outline and Chams ESP (0=Corners, 1=Chams, 2=Corners/Tags, 3=Corners/Tags/Tracers, 5=Dynamic Occluded Outline/Chams)'}
 CMDs[#CMDs + 1] = {NAME = 'unxol / noxol', DESC = 'Disables the XOL ESP'}
+CMDs[#CMDs + 1] = {NAME = 'chem1', DESC = 'Dynamic NPC Outline/Chams ESP finder (NPC only)'}
+CMDs[#CMDs + 1] = {NAME = 'unchem1 / nochem1', DESC = 'Disables the NPC ESP finder'}
 CMDs[#CMDs + 1] = {NAME = 'radar', DESC = 'Opens the draggable minimap radar'}
 CMDs[#CMDs + 1] = {NAME = 'unradar', DESC = 'Closes the minimap radar'}
 CMDs[#CMDs + 1] = {NAME = 'viewhud', DESC = 'Enables the real-time View HUD overlay'}
@@ -6767,8 +6769,9 @@ function XOL(plr)
 				boxColor = getCustomTeamColor(plr, isStaff)
 			end
 			
-			if XOLmode == 1 then
-				local highlight = Instance.new("Highlight")
+			local highlight
+			if XOLmode == 1 or XOLmode == 5 then
+				highlight = Instance.new("Highlight")
 				highlight.Name = plr.Name
 				highlight.Parent = XOLholder
 				highlight.Adornee = plr.Character
@@ -6777,12 +6780,16 @@ function XOL(plr)
 				highlight.OutlineColor = boxColor
 				highlight.OutlineTransparency = 0.15
 				highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+				if XOLmode == 5 then
+					highlight.Enabled = false
+				end
 			end
 			
-			if XOLmode == 0 or XOLmode == 2 or XOLmode == 3 then
+			local cornerBbg
+			if XOLmode == 0 or XOLmode == 2 or XOLmode == 3 or XOLmode == 5 then
 				local root = getRoot(plr.Character)
 				if root then
-					local cornerBbg = Instance.new("BillboardGui")
+					cornerBbg = Instance.new("BillboardGui")
 					cornerBbg.Adornee = root
 					cornerBbg.Name = "CornerESP"
 					cornerBbg.Parent = XOLholder
@@ -6915,6 +6922,41 @@ function XOL(plr)
 							end
 						end
 						
+						if XOLmode == 5 then
+							local isVisible = false
+							local localChar = Players.LocalPlayer.Character
+							if localChar and rootPart then
+								local camera = workspace.CurrentCamera
+								if camera then
+									pcall(function()
+										local origin = camera.CFrame.Position
+										local direction = rootPart.Position - origin
+										
+										local raycastParams = RaycastParams.new()
+										raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+										raycastParams.FilterDescendantsInstances = {localChar, plr.Character, COREGUI}
+										
+										local raycastResult = workspace:Raycast(origin, direction, raycastParams)
+										if not raycastResult then
+											isVisible = true
+										else
+											local part = raycastResult.Instance
+											if part and (part.CanCollide == false or part.Transparency > 0.9) then
+												isVisible = true
+											end
+										end
+									end)
+								end
+							end
+							
+							if highlight then
+								highlight.Enabled = isVisible
+							end
+							if cornerBbg then
+								cornerBbg.Enabled = not isVisible
+							end
+						end
+						
 						if tracer then
 							local camera = workspace.CurrentCamera
 							if camera then
@@ -6951,6 +6993,225 @@ function XOL(plr)
 			xolLoopFunc = RunService.RenderStepped:Connect(xolLoop)
 		end
 	end)
+end
+
+CHEM1enabled = false
+local chem1Connections = {}
+
+function NPC(model)
+	if not model or not model:IsDescendantOf(workspace) then return end
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	local rootPart = getRoot(model)
+	if not humanoid or not rootPart then return end
+	
+	if Players:GetPlayerFromCharacter(model) then return end
+	
+	task.spawn(function()
+		local folderName = model.Name .. "_NPC_XOL"
+		for _, v in ipairs(COREGUI:GetChildren()) do
+			if v.Name == folderName then
+				pcall(function() v:Destroy() end)
+			end
+		end
+		wait()
+		if not COREGUI:FindFirstChild(folderName) and model:IsDescendantOf(workspace) then
+			local NPCholder = Instance.new("Folder")
+			NPCholder.Name = folderName
+			NPCholder.Parent = COREGUI
+			
+			local boxColor = Color3.fromRGB(0, 255, 204)
+			
+			local highlight = Instance.new("Highlight")
+			highlight.Name = "Highlight"
+			highlight.Parent = NPCholder
+			highlight.Adornee = model
+			highlight.FillColor = boxColor
+			highlight.FillTransparency = 0.85
+			highlight.OutlineColor = boxColor
+			highlight.OutlineTransparency = 0.15
+			highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+			highlight.Enabled = false
+			
+			local cornerBbg = Instance.new("BillboardGui")
+			cornerBbg.Adornee = rootPart
+			cornerBbg.Name = "CornerESP"
+			cornerBbg.Parent = NPCholder
+			cornerBbg.Size = UDim2.new(4.5, 0, 6, 0)
+			cornerBbg.AlwaysOnTop = true
+			cornerBbg.MaxDistance = -1
+			
+			local function createLine(pos, size)
+				local line = Instance.new("Frame")
+				line.BackgroundColor3 = boxColor
+				line.BorderSizePixel = 0
+				line.Position = pos
+				line.Size = size
+				line.Parent = cornerBbg
+			end
+			
+			local thickness = 2
+			local len = 0.2
+			
+			createLine(UDim2.new(0, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
+			createLine(UDim2.new(0, 0, 0, 0), UDim2.new(0, thickness, len, 0))
+			createLine(UDim2.new(1 - len, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
+			createLine(UDim2.new(1, -thickness, 0, 0), UDim2.new(0, thickness, len, 0))
+			createLine(UDim2.new(0, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
+			createLine(UDim2.new(0, 0, 1 - len, 0), UDim2.new(0, thickness, len, 0))
+			createLine(UDim2.new(1 - len, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
+			createLine(UDim2.new(1, -thickness, 1 - len, 0), UDim2.new(0, thickness, len, 0))
+			
+			local tagBbg = Instance.new("BillboardGui")
+			tagBbg.Adornee = model:FindFirstChild("Head") or rootPart
+			tagBbg.Name = "TagESP"
+			tagBbg.Parent = NPCholder
+			tagBbg.Size = UDim2.new(0, 200, 0, 50)
+			tagBbg.StudsOffset = Vector3.new(0, 2, 0)
+			tagBbg.AlwaysOnTop = true
+			tagBbg.MaxDistance = 1000
+			
+			local container = Instance.new("Frame")
+			container.Name = "PillFrame"
+			container.Size = UDim2.new(0, 170, 0, 36)
+			container.Position = UDim2.new(0.5, -85, 0.5, -18)
+			container.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+			container.BackgroundTransparency = 0.4
+			container.BorderSizePixel = 0
+			container.Parent = tagBbg
+			
+			local uiCorner = Instance.new("UICorner")
+			uiCorner.CornerRadius = UDim.new(0, 8)
+			uiCorner.Parent = container
+			
+			local uiStroke = Instance.new("UIStroke")
+			uiStroke.Color = boxColor
+			uiStroke.Thickness = 1
+			uiStroke.Transparency = 0.5
+			uiStroke.Parent = container
+			
+			local textLabel = Instance.new("TextLabel")
+			textLabel.Size = UDim2.new(1, 0, 1, 0)
+			textLabel.BackgroundTransparency = 1
+			textLabel.Font = Enum.Font.GothamSemibold
+			textLabel.TextSize = 12
+			textLabel.TextColor3 = Color3.new(1, 1, 1)
+			textLabel.RichText = true
+			textLabel.TextXAlignment = Enum.TextXAlignment.Center
+			textLabel.TextYAlignment = Enum.TextYAlignment.Center
+			textLabel.Parent = container
+			
+			local npcLoopFunc
+			
+			local function npcLoop()
+				if COREGUI:FindFirstChild(folderName) and model:IsDescendantOf(workspace) and humanoid and humanoid.Parent and rootPart and rootPart.Parent then
+					local localChar = Players.LocalPlayer.Character
+					local localRoot = localChar and getRoot(localChar)
+					
+					if localRoot then
+						local distance = math.floor((localRoot.Position - rootPart.Position).magnitude)
+						local health = math.floor(humanoid.Health)
+						local maxHealth = math.floor(humanoid.MaxHealth)
+						
+						textLabel.Text = string.format(
+							`<font color="#00ffcc"><b>[NPC]</b></font> <b>%s</b><br/><font color="#ff4f4f">%d/%d HP</font> <font color="#aaaaaa">| %ds</font>`,
+							model.Name,
+							health,
+							maxHealth,
+							distance
+						)
+						
+						local isVisible = false
+						local camera = workspace.CurrentCamera
+						if camera then
+							pcall(function()
+								local origin = camera.CFrame.Position
+								local direction = rootPart.Position - origin
+								
+								local raycastParams = RaycastParams.new()
+								raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+								raycastParams.FilterDescendantsInstances = {localChar, model, COREGUI}
+								
+								local raycastResult = workspace:Raycast(origin, direction, raycastParams)
+								if not raycastResult then
+									isVisible = true
+								else
+									local part = raycastResult.Instance
+									if part and (part.CanCollide == false or part.Transparency > 0.9) then
+										isVisible = true
+									end
+								end
+							end)
+						end
+						
+						highlight.Enabled = isVisible
+						cornerBbg.Enabled = not isVisible
+					end
+				else
+					if npcLoopFunc then npcLoopFunc:Disconnect() end
+					local f = COREGUI:FindFirstChild(folderName)
+					if f then
+						pcall(function() f:Destroy() end)
+					end
+				end
+			end
+			
+			npcLoopFunc = RunService.RenderStepped:Connect(npcLoop)
+		end
+	end)
+end
+
+function scanAndTrackNpcs()
+	for _, v in ipairs(workspace:GetDescendants()) do
+		if v:IsA("Humanoid") and v.Parent and v.Parent:IsA("Model") then
+			local root = getRoot(v.Parent)
+			if root then
+				NPC(v.Parent)
+			end
+		end
+	end
+end
+
+function startNpcTracking()
+	if not CHEM1enabled then return end
+	scanAndTrackNpcs()
+	
+	local descAdded = workspace.DescendantAdded:Connect(function(desc)
+		if desc:IsA("Humanoid") then
+			task.wait(0.5)
+			if desc.Parent and desc.Parent:IsA("Model") then
+				local root = getRoot(desc.Parent)
+				if root then
+					NPC(desc.Parent)
+				end
+			end
+		end
+	end)
+	table.insert(chem1Connections, descAdded)
+	
+	task.spawn(function()
+		while CHEM1enabled do
+			task.wait(10)
+			pcall(function()
+				if CHEM1enabled then
+					scanAndTrackNpcs()
+				end
+			end)
+		end
+	end)
+end
+
+function stopNpcTracking()
+	CHEM1enabled = false
+	for _, conn in ipairs(chem1Connections) do
+		pcall(function() conn:Disconnect() end)
+	end
+	chem1Connections = {}
+	
+	for _, v in ipairs(COREGUI:GetChildren()) do
+		if string.sub(v.Name, -8) == "_NPC_XOL" then
+			pcall(function() v:Destroy() end)
+		end
+	end
 end
 
 task.spawn(function()
@@ -9357,10 +9618,22 @@ addcmd('unxol',{'noxol'},function(args, speaker)
 	XOLmode = 0
 	XOLenabled = false
 	for i,c in pairs(COREGUI:GetChildren()) do
-		if string.sub(c.Name, -4) == '_XOL' then
+		if string.sub(c.Name, -4) == '_XOL' and string.sub(c.Name, -8) ~= '_NPC_XOL' then
 			c:Destroy()
 		end
 	end
+end)
+
+addcmd('chem1',{},function(args, speaker)
+	stopNpcTracking()
+	CHEM1enabled = true
+	startNpcTracking()
+	notify('NPC Finder','NPC tracking is now active with dynamic outline/chams')
+end)
+
+addcmd('unchem1',{'nochem1'},function(args, speaker)
+	stopNpcTracking()
+	notify('NPC Finder','NPC tracking has been deactivated')
 end)
 
 addcmd('track', {'tracker'}, function(args, speaker)
