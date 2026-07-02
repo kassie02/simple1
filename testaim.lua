@@ -5171,7 +5171,7 @@ CMDs[#CMDs + 1] = {NAME = 'untrack / untracker [plr]', DESC = 'Removes the line 
 CMDs[#CMDs + 1] = {NAME = 'untesp / notesp', DESC = 'Disables the corner box ESP'}
 CMDs[#CMDs + 1] = {NAME = 'mot [0-4]', DESC = 'Premium always-on-top ESP (0=Adornment, 1=Health/Dist, 2=Dist Label, 3=Tracers, 4=Highlight + Corners)'}
 CMDs[#CMDs + 1] = {NAME = 'unmot / nomot', DESC = 'Disables the MOT ESP'}
-CMDs[#CMDs + 1] = {NAME = 'xol [0-5]', DESC = 'Outline and Chams ESP (0=Corners, 1=Chams, 2=Corners/Tags, 3=Corners/Tags/Tracers, 5=Dynamic Occluded Outline/Chams)'}
+CMDs[#CMDs + 1] = {NAME = 'xol [0-6]', DESC = 'Outline and Chams ESP (0=Corners, 1=Chams, 2=Corners/Tags, 3=Corners/Tags/Tracers, 5=Dynamic Occluded Outline/Chams, 6=XOL/Chem1 Hybrid Tag ESP)'}
 CMDs[#CMDs + 1] = {NAME = 'unxol / noxol', DESC = 'Disables the XOL ESP'}
 CMDs[#CMDs + 1] = {NAME = 'chem1', DESC = 'Dynamic NPC Outline/Chams ESP finder (NPC only)'}
 CMDs[#CMDs + 1] = {NAME = 'unchem1 / nochem1', DESC = 'Disables the NPC ESP finder'}
@@ -6190,16 +6190,46 @@ getCustomTeamColor = function(plr, isStaff)
 		local teamName = (plr.Team and plr.Team.Name or "Citizen"):lower()
 		if teamName:find("vix") then
 			color = Color3.fromRGB(255, 130, 0) -- Orange for Vix Universal Security
-			orderOffset = 1100
 		elseif teamName:find("police") or teamName:find("sheriff") or teamName:find("patrol") or teamName:find("investigation") or teamName:find("harbor") or teamName:find("public safety") or teamName:find("dps") then
 			color = Color3.fromRGB(255, 75, 75) -- Red for Law Enforcement
-			orderOffset = 1000
 		elseif teamName:find("fire") or teamName:find("health") or teamName:find("medical") or teamName:find("hospital") then
 			color = Color3.fromRGB(50, 220, 120) -- Green for First Responders (Fire/Medical)
-			orderOffset = 1200
 		else
 			color = Color3.fromRGB(100, 200, 255) -- Sky Blue for Civilians & Jobs
-			orderOffset = 2000
+		end
+		
+		-- Dynamic Medina team sorting: Opponents at 1000, Allies at 2000
+		local function getTeamClass(p)
+			local name = (p.Team and p.Team.Name or "Citizen"):lower()
+			if name:find("vix") or name:find("police") or name:find("sheriff") or name:find("patrol") or name:find("investigation") or name:find("harbor") or name:find("public safety") or name:find("dps") then
+				return "LEO"
+			elseif name:find("fire") or name:find("health") or name:find("medical") or name:find("hospital") then
+				return "EMS"
+			else
+				return "CIV"
+			end
+		end
+		
+		local localClass = getTeamClass(Players.LocalPlayer)
+		local targetClass = getTeamClass(plr)
+		
+		if localClass == "LEO" then
+			if targetClass == "CIV" then
+				orderOffset = 1000 -- Civilians are opponents for LEO
+			else
+				if targetClass == "LEO" then
+					orderOffset = 2000 -- Teammate LEO
+				else
+					orderOffset = 2100 -- Teammate EMS
+				end
+			end
+		else
+			-- Local player is CIV or EMS
+			if targetClass == localClass then
+				orderOffset = 2000 -- Same class is teammate
+			else
+				orderOffset = 1000 -- Different class is opponent
+			end
 		end
 	elseif plr.Team and Players.LocalPlayer.Team then
 		if plr.Team == Players.LocalPlayer.Team then
@@ -6786,7 +6816,7 @@ function XOL(plr)
 			end
 			
 			local highlight
-			if XOLmode == 1 or (XOLmode == 5 and plr ~= Players.LocalPlayer) then
+			if XOLmode == 1 or ((XOLmode == 5 or XOLmode == 6) and plr ~= Players.LocalPlayer) then
 				highlight = Instance.new("Highlight")
 				highlight.Name = plr.Name
 				highlight.Parent = XOLholder
@@ -6796,14 +6826,14 @@ function XOL(plr)
 				highlight.OutlineColor = boxColor
 				highlight.OutlineTransparency = 0.15
 				highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-				if XOLmode == 5 then
+				if XOLmode == 5 or XOLmode == 6 then
 					highlight.Enabled = false
 				end
 			end
 			
 			local cornerBbg
 			local cornerLines = {}
-			if XOLmode == 0 or XOLmode == 2 or XOLmode == 3 or (XOLmode == 5 and plr ~= Players.LocalPlayer) then
+			if XOLmode == 0 or XOLmode == 2 or XOLmode == 3 or ((XOLmode == 5 or XOLmode == 6) and plr ~= Players.LocalPlayer) then
 				local root = getRoot(plr.Character)
 				if root then
 					cornerBbg = Instance.new("BillboardGui")
@@ -6878,6 +6908,50 @@ function XOL(plr)
 				distLabel.TextXAlignment = Enum.TextXAlignment.Center
 				distLabel.Text = ""
 				distLabel.Parent = BillboardGui
+			end
+			
+			local tagBbg
+			local textLabel
+			if XOLmode == 6 and plr ~= Players.LocalPlayer and plr.Character and (plr.Character:FindFirstChild('Head') or getRoot(plr.Character)) then
+				tagBbg = Instance.new("BillboardGui")
+				tagBbg.Adornee = plr.Character:FindFirstChild("Head") or getRoot(plr.Character)
+				tagBbg.Name = "TagESP"
+				tagBbg.Parent = XOLholder
+				tagBbg.Size = UDim2.new(0, 200, 0, 50)
+				tagBbg.StudsOffset = Vector3.new(0, 2, 0)
+				tagBbg.AlwaysOnTop = true
+				tagBbg.MaxDistance = -1
+				
+				local container = Instance.new("Frame")
+				container.Name = "PillFrame"
+				container.Size = UDim2.new(0, 180, 0, 38)
+				container.Position = UDim2.new(0.5, -90, 0.5, -19)
+				container.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+				container.BackgroundTransparency = 0.4
+				container.BorderSizePixel = 0
+				container.Parent = tagBbg
+				
+				local uiCorner = Instance.new("UICorner")
+				uiCorner.CornerRadius = UDim.new(0, 8)
+				uiCorner.Parent = container
+				
+				local uiStroke = Instance.new("UIStroke")
+				uiStroke.Color = boxColor
+				uiStroke.Thickness = 1
+				uiStroke.Transparency = 0.5
+				uiStroke.Parent = container
+				
+				textLabel = Instance.new("TextLabel")
+				textLabel.Size = UDim2.new(1, -10, 1, 0)
+				textLabel.Position = UDim2.new(0, 5, 0, 0)
+				textLabel.BackgroundTransparency = 1
+				textLabel.Font = Enum.Font.GothamSemibold
+				textLabel.TextSize = 11
+				textLabel.TextColor3 = Color3.new(1, 1, 1)
+				textLabel.RichText = true
+				textLabel.TextXAlignment = Enum.TextXAlignment.Center
+				textLabel.TextYAlignment = Enum.TextYAlignment.Center
+				textLabel.Parent = container
 			end
 			
 			local tracer
@@ -7019,8 +7093,8 @@ function XOL(plr)
 							end
 						end
 						
-						if XOLmode == 5 then
-							local isVisible = false
+						local isVisible = false
+						if XOLmode == 5 or XOLmode == 6 then
 							local localChar = Players.LocalPlayer.Character
 							if localChar and rootPart then
 								local camera = workspace.CurrentCamera
@@ -7052,6 +7126,48 @@ function XOL(plr)
 							if cornerBbg then
 								cornerBbg.Enabled = not isVisible
 							end
+						end
+						
+						if XOLmode == 6 and textLabel and tagBbg then
+							local displayName = plr.DisplayName or plr.Name
+							local health = math.floor(plr.Character:FindFirstChildOfClass('Humanoid').Health)
+							local maxHealth = math.floor(plr.Character:FindFirstChildOfClass('Humanoid').MaxHealth)
+							
+							local prefixText = "CIV"
+							if isStaff then
+								prefixText = "STAFF"
+							elseif game.PlaceId == 98371023930528 or game.GameId == 98371023930528 then
+								local teamName = (plr.Team and plr.Team.Name or "Citizen"):lower()
+								if teamName:find("vix") then
+									prefixText = "VIX"
+								elseif teamName:find("police") or teamName:find("sheriff") or teamName:find("patrol") or teamName:find("investigation") or teamName:find("harbor") or teamName:find("public safety") or teamName:find("dps") then
+									prefixText = "LEO"
+								elseif teamName:find("fire") or teamName:find("health") or teamName:find("medical") or teamName:find("hospital") then
+									prefixText = "EMS"
+								end
+							else
+								prefixText = plr.Team and plr.Team.Name or "CIV"
+							end
+							
+							local hex = string.format("#%02x%02x%02x", math.floor(boxColor.R * 255), math.floor(boxColor.G * 255), math.floor(boxColor.B * 255))
+							textLabel.Text = string.format(
+								'<font color="%s"><b>[%s]</b></font> <b>%s</b><br/><font color="#ff4f4f">%d/%d HP</font> <font color="#aaaaaa">| %ds</font>',
+								hex,
+								prefixText,
+								displayName,
+								health,
+								maxHealth,
+								pos
+							)
+							
+							-- Tag visibility constraint: visible OR within distance range [15, 600]
+							local showTag = false
+							if isVisible then
+								showTag = true
+							elseif pos >= 15 and pos <= 600 then
+								showTag = true
+							end
+							tagBbg.Enabled = showTag
 						end
 						
 						if tracer then
@@ -18232,16 +18348,49 @@ local function createAdminPortal()
 				end
 				if isStaffVal then
 					return 1
-				elseif plr.Team and Players.LocalPlayer.Team then
-					if plr.Team == Players.LocalPlayer.Team then
-						return 3
-					else
-						return 2
+				end
+				
+				if game.PlaceId == 98371023930528 or game.GameId == 98371023930528 then
+					local function getTeamClass(p)
+						local teamName = (p.Team and p.Team.Name or "Citizen"):lower()
+						if teamName:find("vix") or teamName:find("police") or teamName:find("sheriff") or teamName:find("patrol") or teamName:find("investigation") or teamName:find("harbor") or teamName:find("public safety") or teamName:find("dps") then
+							return "LEO"
+						elseif teamName:find("fire") or teamName:find("health") or teamName:find("medical") or teamName:find("hospital") then
+							return "EMS"
+						else
+							return "CIV"
+						end
 					end
-				elseif plr.Team then
-					return 4
+					
+					local localClass = getTeamClass(Players.LocalPlayer)
+					local targetClass = getTeamClass(plr)
+					
+					if localClass == "LEO" then
+						if targetClass == "CIV" then
+							return 2 -- Civilians/Citizens are opponents for LEO
+						else
+							return 3 -- Other LEO and EMS are allies/teammates
+						end
+					else
+						-- CIV or EMS local player
+						if targetClass == localClass then
+							return 3 -- Same class is teammate
+						else
+							return 2 -- Other class is opponent
+						end
+					end
 				else
-					return 5
+					if plr.Team and Players.LocalPlayer.Team then
+						if plr.Team == Players.LocalPlayer.Team then
+							return 3
+						else
+							return 2
+						end
+					elseif plr.Team then
+						return 4
+					else
+						return 5
+					end
 				end
 			end
 			

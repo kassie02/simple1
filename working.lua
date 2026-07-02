@@ -5165,13 +5165,9 @@ CMDs[#CMDs + 1] = {NAME = 'stafflog / stafflogs', DESC = 'Opens the Admin Portal
 CMDs[#CMDs + 1] = {NAME = 'tmp', DESC = 'Enables the custom staff watch (Group 17180419) with warnings and lists'}
 CMDs[#CMDs + 1] = {NAME = 'untmp', DESC = 'Disables the staff watch'}
 CMDs[#CMDs + 1] = {NAME = 'tmpleave', DESC = 'Toggles auto-kick/leave when watched staff members join'}
-CMDs[#CMDs + 1] = {NAME = 'tesp / corneresp [0-3]', DESC = 'Light pink 2D corner brackets ESP (0=box, 1=names, 2=dist, 3=tracers)'}
 CMDs[#CMDs + 1] = {NAME = 'track / tracker [plr]', DESC = 'Draws a viewport line tracer to a player'}
 CMDs[#CMDs + 1] = {NAME = 'untrack / untracker [plr]', DESC = 'Removes the line tracer (untracks all if no player named)'}
-CMDs[#CMDs + 1] = {NAME = 'untesp / notesp', DESC = 'Disables the corner box ESP'}
-CMDs[#CMDs + 1] = {NAME = 'mot [0-4]', DESC = 'Premium always-on-top ESP (0=Adornment, 1=Health/Dist, 2=Dist Label, 3=Tracers, 4=Highlight + Corners)'}
-CMDs[#CMDs + 1] = {NAME = 'unmot / nomot', DESC = 'Disables the MOT ESP'}
-CMDs[#CMDs + 1] = {NAME = 'xol [0-5]', DESC = 'Outline and Chams ESP (0=Corners, 1=Chams, 2=Corners/Tags, 3=Corners/Tags/Tracers, 5=Dynamic Occluded Outline/Chams)'}
+CMDs[#CMDs + 1] = {NAME = 'xol [0-4]', DESC = 'Outline and Chams ESP (0=Corners, 1=Chams, 2=Occluded Corners/Chams, 3=Dynamic Occluded corners/Chams + Pill Name Tag, 4=Map-Wide Pill Name Tag ESP)'}
 CMDs[#CMDs + 1] = {NAME = 'unxol / noxol', DESC = 'Disables the XOL ESP'}
 CMDs[#CMDs + 1] = {NAME = 'chem1', DESC = 'Dynamic NPC Outline/Chams ESP finder (NPC only)'}
 CMDs[#CMDs + 1] = {NAME = 'unchem1 / nochem1', DESC = 'Disables the NPC ESP finder'}
@@ -6000,6 +5996,8 @@ MOTmode = 0
 MOTenabled = false
 XOLmode = 0
 XOLenabled = false
+NPCFavorites = NPCFavorites or {}
+ActiveNPCTrackers = ActiveNPCTrackers or {}
 
 function round(num, numDecimalPlaces)
 	local mult = 10^(numDecimalPlaces or 0)
@@ -6174,16 +6172,46 @@ getCustomTeamColor = function(plr, isStaff)
 		local teamName = (plr.Team and plr.Team.Name or "Citizen"):lower()
 		if teamName:find("vix") then
 			color = Color3.fromRGB(255, 130, 0) -- Orange for Vix Universal Security
-			orderOffset = 1100
 		elseif teamName:find("police") or teamName:find("sheriff") or teamName:find("patrol") or teamName:find("investigation") or teamName:find("harbor") or teamName:find("public safety") or teamName:find("dps") then
 			color = Color3.fromRGB(255, 75, 75) -- Red for Law Enforcement
-			orderOffset = 1000
 		elseif teamName:find("fire") or teamName:find("health") or teamName:find("medical") or teamName:find("hospital") then
 			color = Color3.fromRGB(50, 220, 120) -- Green for First Responders (Fire/Medical)
-			orderOffset = 1200
 		else
 			color = Color3.fromRGB(100, 200, 255) -- Sky Blue for Civilians & Jobs
-			orderOffset = 2000
+		end
+		
+		-- Dynamic Medina team sorting: Opponents at 1000, Allies at 2000
+		local function getTeamClass(p)
+			local name = (p.Team and p.Team.Name or "Citizen"):lower()
+			if name:find("vix") or name:find("police") or name:find("sheriff") or name:find("patrol") or name:find("investigation") or name:find("harbor") or name:find("public safety") or name:find("dps") then
+				return "LEO"
+			elseif name:find("fire") or name:find("health") or name:find("medical") or name:find("hospital") then
+				return "EMS"
+			else
+				return "CIV"
+			end
+		end
+		
+		local localClass = getTeamClass(Players.LocalPlayer)
+		local targetClass = getTeamClass(plr)
+		
+		if localClass == "LEO" then
+			if targetClass == "CIV" then
+				orderOffset = 1000 -- Civilians are opponents for LEO
+			else
+				if targetClass == "LEO" then
+					orderOffset = 2000 -- Teammate LEO
+				else
+					orderOffset = 2100 -- Teammate EMS
+				end
+			end
+		else
+			-- Local player is CIV or EMS
+			if targetClass == localClass then
+				orderOffset = 2000 -- Same class is teammate
+			else
+				orderOffset = 1000 -- Different class is opponent
+			end
 		end
 	elseif plr.Team and Players.LocalPlayer.Team then
 		if plr.Team == Players.LocalPlayer.Team then
@@ -6277,471 +6305,6 @@ startTrackingPlayer = function(plr)
 	}
 end
 
-TESPmode = 0
-TESPenabled = false
-local TESPConnections = {}
-
-function TESP(plr)
-	if plr == Players.LocalPlayer then return end
-	
-	task.spawn(function()
-		if TESPConnections[plr.UserId] then
-			pcall(function() TESPConnections[plr.UserId]:Disconnect() end)
-			TESPConnections[plr.UserId] = nil
-		end
-		
-		-- Unconditional destroy removed to prevent flickering/loss during 60s auto-refresh
-		
-		local isStaff = false
-		if getCachedStaffRole then
-			local staffCheck, _ = getCachedStaffRole(plr)
-			isStaff = staffCheck
-		end
-		
-		local addedConn
-		addedConn = plr.CharacterAdded:Connect(function()
-			task.wait()
-			if TESPenabled or (StaffRolewatchData and StaffRolewatchData.Active and isStaff) then
-				TESP(plr)
-			else
-				if TESPConnections[plr.UserId] == addedConn then
-					TESPConnections[plr.UserId] = nil
-				end
-				pcall(function() addedConn:Disconnect() end)
-			end
-		end)
-		TESPConnections[plr.UserId] = addedConn
-		
-		local removingConn
-		removingConn = plr.CharacterRemoving:Connect(function(char)
-			pcall(function()
-				local folder = COREGUI:FindFirstChild(plr.Name..'_TESP')
-				if folder then
-					local bbg = folder:FindFirstChild(plr.Name)
-					if bbg and bbg.Adornee and bbg.Adornee:IsDescendantOf(char) then
-						folder:Destroy()
-					end
-				end
-			end)
-			pcall(function() removingConn:Disconnect() end)
-		end)
-		
-		local char = plr.Character
-		if not char then
-			for i = 1, 50 do
-				task.wait(0.1)
-				if plr.Character then
-					char = plr.Character
-					break
-				end
-			end
-		end
-
-		if char then
-			local timeout = 0
-			repeat
-				task.wait(0.1)
-				timeout = timeout + 0.1
-			until (getRoot(char) and char:FindFirstChildOfClass("Humanoid")) or not char.Parent or timeout > 10
-			
-			local root = getRoot(char)
-			if not root then return end
-			
-			local existingFolder = COREGUI:FindFirstChild(plr.Name..'_TESP')
-			if existingFolder then
-				local bbg = existingFolder:FindFirstChild(plr.Name)
-				if bbg and bbg.Adornee == root and existingFolder:GetAttribute("Mode") == TESPmode then
-					return
-				else
-					pcall(function() existingFolder:Destroy() end)
-				end
-			end
-			
-			local ESPholder = Instance.new("Folder")
-			ESPholder.Name = plr.Name..'_TESP'
-			ESPholder:SetAttribute("Mode", TESPmode)
-			ESPholder.Parent = COREGUI
-			
-			local BillboardGui = Instance.new("BillboardGui")
-			BillboardGui.Adornee = root
-			BillboardGui.Name = plr.Name
-			BillboardGui.Parent = ESPholder
-			BillboardGui.Size = UDim2.new(4.5, 0, 6, 0)
-			BillboardGui.AlwaysOnTop = true
-			BillboardGui.MaxDistance = -1
-			
-			local color = getCustomTeamColor(plr, isStaff)
-			
-			local function createLine(pos, size)
-				local line = Instance.new("Frame")
-				line.BackgroundColor3 = color
-				line.BorderSizePixel = 0
-				line.Position = pos
-				line.Size = size
-				line.Parent = BillboardGui
-			end
-			
-			local thickness = 2
-			local len = 0.2
-			
-			createLine(UDim2.new(0, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
-			createLine(UDim2.new(0, 0, 0, 0), UDim2.new(0, thickness, len, 0))
-			createLine(UDim2.new(1 - len, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
-			createLine(UDim2.new(1, -thickness, 0, 0), UDim2.new(0, thickness, len, 0))
-			createLine(UDim2.new(0, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
-			createLine(UDim2.new(0, 0, 1 - len, 0), UDim2.new(0, thickness, len, 0))
-			createLine(UDim2.new(1 - len, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
-			createLine(UDim2.new(1, -thickness, 1 - len, 0), UDim2.new(0, thickness, len, 0))
-			
-			local showName = (TESPmode >= 1) or isStaff
-			if showName then
-				local label = Instance.new("TextLabel")
-				label.Name = "NameTag"
-				label.BackgroundTransparency = 1
-				label.Position = UDim2.new(0.5, -100, 0, -22)
-				label.Size = UDim2.new(0, 200, 0, 18)
-				label.Font = Enum.Font.SourceSansSemibold
-				label.TextSize = 14
-				label.TextColor3 = color
-				label.TextStrokeColor3 = Color3.new(0, 0, 0)
-				label.TextStrokeTransparency = 0
-				label.TextXAlignment = Enum.TextXAlignment.Center
-				local role = nil
-				if isStaff and getCachedStaffRole then
-					local _, r = getCachedStaffRole(plr)
-					role = r
-				end
-				local displayName = plr.DisplayName or plr.Name
-				label.Text = (isStaff and "[" .. (role or "STAFF") .. "] " or "") .. displayName .. " (@" .. plr.Name .. ")"
-				label.Parent = BillboardGui
-			end
-			
-			local distanceLabel
-			if TESPmode >= 2 then
-				distanceLabel = Instance.new("TextLabel")
-				distanceLabel.Name = "DistanceTag"
-				distanceLabel.BackgroundTransparency = 1
-				distanceLabel.Position = UDim2.new(0.5, -100, 1, 5)
-				distanceLabel.Size = UDim2.new(0, 200, 0, 18)
-				distanceLabel.Font = Enum.Font.SourceSansSemibold
-				distanceLabel.TextSize = 13
-				distanceLabel.TextColor3 = color
-				distanceLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-				distanceLabel.TextStrokeTransparency = 0
-				distanceLabel.TextXAlignment = Enum.TextXAlignment.Center
-				distanceLabel.Text = ""
-				distanceLabel.Parent = BillboardGui
-			end
-			
-			local tracer
-			if (TESPmode >= 3 or (isStaff and StaffRolewatchData and StaffRolewatchData.Active)) and Drawing then
-				pcall(function()
-					tracer = Drawing.new("Line")
-					tracer.Thickness = 1
-					tracer.Color = color
-					tracer.Visible = false
-				end)
-			end
-			
-			local conn
-			conn = RunService.RenderStepped:Connect(function()
-				if not ESPholder or not ESPholder.Parent then
-					conn:Disconnect()
-					if tracer then pcall(function() tracer:Destroy() end) end
-					return
-				end
-				
-				local char = plr.Character
-				local rootPart = char and getRoot(char)
-				local localChar = Players.LocalPlayer.Character
-				local localRoot = localChar and getRoot(localChar)
-				
-				if TESPmode >= 2 and distanceLabel and rootPart and localRoot then
-					local dist = math.floor((rootPart.Position - localRoot.Position).Magnitude)
-					distanceLabel.Text = tostring(dist) .. " studs"
-				elseif distanceLabel then
-					distanceLabel.Text = ""
-				end
-				
-				if tracer then
-					if rootPart then
-						local camera = workspace.CurrentCamera
-						if camera then
-							local screenPos, onScreen = camera:WorldToViewportPoint(rootPart.Position)
-							if onScreen then
-								tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-								tracer.To = Vector2.new(screenPos.X, screenPos.Y)
-								tracer.Visible = true
-							else
-								tracer.Visible = false
-							end
-						else
-							tracer.Visible = false
-						end
-					else
-						tracer.Visible = false
-					end
-				end
-			end)
-			
-			local CHMSremoved
-			CHMSremoved = ESPholder.AncestryChanged:Connect(function()
-				if not ESPholder or not ESPholder.Parent then
-					pcall(function() conn:Disconnect() end)
-					if tracer then pcall(function() tracer:Destroy() end) end
-					pcall(function() CHMSremoved:Disconnect() end)
-				end
-			end)
-		end
-	end)
-end
-
-task.spawn(function()
-	while true do
-		task.wait(60)
-		pcall(function()
-			if TESPenabled then
-				for _, v in ipairs(Players:GetPlayers()) do
-					if v ~= Players.LocalPlayer then
-						pcall(function() TESP(v) end)
-					end
-				end
-			end
-		end)
-	end
-end)
-
-function MOT(plr)
-	if game.PlaceId ~= 98371023930528 and game.GameId ~= 98371023930528 then return end
-	task.spawn(function()
-		for i,v in pairs(COREGUI:GetChildren()) do
-			if v.Name == plr.Name..'_MOT' then
-				v:Destroy()
-			end
-		end
-		wait()
-		if plr.Character and not COREGUI:FindFirstChild(plr.Name..'_MOT') then
-			local MOTholder = Instance.new("Folder")
-			MOTholder.Name = plr.Name..'_MOT'
-			MOTholder.Parent = COREGUI
-			repeat wait(1) until plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
-			
-			local isStaff = false
-			if getCachedStaffRole then
-				isStaff, _ = getCachedStaffRole(plr)
-			end
-			
-			local boxColor
-			if plr == Players.LocalPlayer then
-				boxColor = Color3.fromRGB(255, 253, 208)
-			else
-				boxColor = getCustomTeamColor(plr, isStaff)
-			end
-			
-			if MOTmode == 4 then
-				local highlight = Instance.new("Highlight")
-				highlight.Name = plr.Name
-				highlight.Parent = MOTholder
-				highlight.Adornee = plr.Character
-				highlight.FillColor = boxColor
-				highlight.FillTransparency = 0.85
-				highlight.OutlineColor = boxColor
-				highlight.OutlineTransparency = 0.15
-				highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-				
-				local root = getRoot(plr.Character)
-				if root then
-					local cornerBbg = Instance.new("BillboardGui")
-					cornerBbg.Adornee = root
-					cornerBbg.Name = "CornerESP"
-					cornerBbg.Parent = MOTholder
-					cornerBbg.Size = UDim2.new(4.5, 0, 6, 0)
-					cornerBbg.AlwaysOnTop = true
-					cornerBbg.MaxDistance = -1
-					
-					local function createLine(pos, size)
-						local line = Instance.new("Frame")
-						line.BackgroundColor3 = boxColor
-						line.BorderSizePixel = 0
-						line.Position = pos
-						line.Size = size
-						line.Parent = cornerBbg
-					end
-					
-					local thickness = 2
-					local len = 0.2
-					
-					createLine(UDim2.new(0, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
-					createLine(UDim2.new(0, 0, 0, 0), UDim2.new(0, thickness, len, 0))
-					createLine(UDim2.new(1 - len, 0, 0, 0), UDim2.new(len, 0, 0, thickness))
-					createLine(UDim2.new(1, -thickness, 0, 0), UDim2.new(0, thickness, len, 0))
-					createLine(UDim2.new(0, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
-					createLine(UDim2.new(0, 0, 1 - len, 0), UDim2.new(0, thickness, len, 0))
-					createLine(UDim2.new(1 - len, 0, 1, -thickness), UDim2.new(len, 0, 0, thickness))
-					createLine(UDim2.new(1, -thickness, 1 - len, 0), UDim2.new(0, thickness, len, 0))
-				end
-			else
-				for b,n in pairs(plr.Character:GetChildren()) do
-					if n:IsA("BasePart") then
-						local a = Instance.new("BoxHandleAdornment")
-						a.Name = plr.Name
-						a.Parent = MOTholder
-						a.Adornee = n
-						a.AlwaysOnTop = true
-						a.ZIndex = 10
-						a.Size = n.Size * 1.05
-						a.Transparency = 0.3
-						a.Color3 = boxColor
-					end
-				end
-			end
-			if plr.Character and plr.Character:FindFirstChild('Head') then
-				local BillboardGui = Instance.new("BillboardGui")
-				local TextLabel = Instance.new("TextLabel")
-				BillboardGui.Adornee = plr.Character.Head
-				BillboardGui.Name = plr.Name
-				BillboardGui.Parent = MOTholder
-				BillboardGui.Size = UDim2.new(0, 100, 0, 150)
-				BillboardGui.StudsOffset = Vector3.new(0, 1, 0)
-				BillboardGui.AlwaysOnTop = true
-				BillboardGui.MaxDistance = -1
-				TextLabel.Parent = BillboardGui
-				TextLabel.BackgroundTransparency = 1
-				TextLabel.Position = UDim2.new(0, 0, 0, -50)
-				TextLabel.Size = UDim2.new(0, 100, 0, 100)
-				TextLabel.Font = Enum.Font.SourceSansSemibold
-				TextLabel.TextSize = 20
-				TextLabel.TextColor3 = boxColor
-				TextLabel.TextStrokeTransparency = 0
-				TextLabel.TextYAlignment = Enum.TextYAlignment.Bottom
-				if plr == Players.LocalPlayer then
-					TextLabel.Text = 'You - '..plr.Name
-				else
-					local displayName = plr.DisplayName or plr.Name
-					TextLabel.Text = (isStaff and "[STAFF] " or "")..displayName.." (@"..plr.Name..")"
-				end
-				TextLabel.ZIndex = 10
-				
-				local distLabel
-				if MOTmode >= 2 then
-					distLabel = Instance.new("TextLabel")
-					distLabel.Name = "DistanceTag"
-					distLabel.BackgroundTransparency = 1
-					distLabel.Position = UDim2.new(0.5, -100, 1, 5)
-					distLabel.Size = UDim2.new(0, 200, 0, 18)
-					distLabel.Font = Enum.Font.SourceSansSemibold
-					distLabel.TextSize = 13
-					distLabel.TextColor3 = boxColor
-					distLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-					distLabel.TextStrokeTransparency = 0
-					distLabel.TextXAlignment = Enum.TextXAlignment.Center
-					distLabel.Text = ""
-					distLabel.Parent = BillboardGui
-				end
-				
-				local tracer
-				if MOTmode >= 3 and Drawing then
-					pcall(function()
-						tracer = Drawing.new("Line")
-						tracer.Thickness = 1
-						tracer.Color = boxColor
-						tracer.Visible = false
-					end)
-				end
-				
-				local motLoopFunc
-				local addedFunc
-				local teamChange
-				addedFunc = plr.CharacterAdded:Connect(function()
-					if MOTenabled then
-						if motLoopFunc then motLoopFunc:Disconnect() end
-						if teamChange then teamChange:Disconnect() end
-						MOTholder:Destroy()
-						repeat wait(1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
-						MOT(plr)
-						addedFunc:Disconnect()
-					else
-						if teamChange then teamChange:Disconnect() end
-						addedFunc:Disconnect()
-					end
-				end)
-				teamChange = plr:GetPropertyChangedSignal("TeamColor"):Connect(function()
-					if MOTenabled then
-						if motLoopFunc then motLoopFunc:Disconnect() end
-						if addedFunc then addedFunc:Disconnect() end
-						MOTholder:Destroy()
-						repeat wait(1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
-						MOT(plr)
-						teamChange:Disconnect()
-					else
-						teamChange:Disconnect()
-					end
-				end)
-				local function motLoop()
-					if COREGUI:FindFirstChild(plr.Name..'_MOT') then
-						if plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid") and Players.LocalPlayer.Character and getRoot(Players.LocalPlayer.Character) and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-							local rootPart = getRoot(plr.Character)
-							local localRoot = getRoot(Players.LocalPlayer.Character)
-							local pos = math.floor((localRoot.Position - rootPart.Position).magnitude)
-							if MOTmode >= 1 then
-								if plr == Players.LocalPlayer then
-									TextLabel.Text = 'You - '..plr.Name..' | '..pos..' studs'
-								else
-									local displayName = plr.DisplayName or plr.Name
-									TextLabel.Text = (isStaff and "[STAFF] " or "")..displayName.." (@"..plr.Name..") | HP: "..round(plr.Character:FindFirstChildOfClass('Humanoid').Health, 1).." | "..pos..' studs'
-								end
-							end
-							if MOTmode >= 2 and distLabel then
-								distLabel.Text = tostring(pos).." studs"
-							end
-							if tracer then
-								local camera = workspace.CurrentCamera
-								if camera then
-									local screenPos, onScreen = camera:WorldToViewportPoint(rootPart.Position)
-									if onScreen then
-										tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-										tracer.To = Vector2.new(screenPos.X, screenPos.Y)
-										tracer.Visible = true
-									else
-										tracer.Visible = false
-									end
-								else
-									tracer.Visible = false
-								end
-							end
-						else
-							if tracer then
-								tracer.Visible = false
-							end
-						end
-					else
-						if teamChange then teamChange:Disconnect() end
-						if addedFunc then addedFunc:Disconnect() end
-						if motLoopFunc then motLoopFunc:Disconnect() end
-						if tracer then
-							pcall(function() tracer:Remove() end)
-						end
-					end
-				end
-				motLoopFunc = RunService.RenderStepped:Connect(motLoop)
-			end
-		end
-	end)
-end
-
-task.spawn(function()
-	while true do
-		task.wait(60)
-		pcall(function()
-			if MOTenabled then
-				for _, v in ipairs(Players:GetPlayers()) do
-					pcall(function() MOT(v) end)
-				end
-			end
-		end)
-	end
-end)
-
 function XOL(plr)
 	if game.PlaceId ~= 98371023930528 and game.GameId ~= 98371023930528 then return end
 	task.spawn(function()
@@ -6770,7 +6333,7 @@ function XOL(plr)
 			end
 			
 			local highlight
-			if XOLmode == 1 or (XOLmode == 5 and plr ~= Players.LocalPlayer) then
+			if XOLmode == 1 or ((XOLmode == 2 or XOLmode == 3 or XOLmode == 4) and plr ~= Players.LocalPlayer) then
 				highlight = Instance.new("Highlight")
 				highlight.Name = plr.Name
 				highlight.Parent = XOLholder
@@ -6780,13 +6343,13 @@ function XOL(plr)
 				highlight.OutlineColor = boxColor
 				highlight.OutlineTransparency = 0.15
 				highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-				if XOLmode == 5 then
+				if XOLmode == 2 or XOLmode == 3 or XOLmode == 4 then
 					highlight.Enabled = false
 				end
 			end
 			
 			local cornerBbg
-			if XOLmode == 0 or XOLmode == 2 or XOLmode == 3 or (XOLmode == 5 and plr ~= Players.LocalPlayer) then
+			if XOLmode == 0 or ((XOLmode == 2 or XOLmode == 3 or XOLmode == 4) and plr ~= Players.LocalPlayer) then
 				local root = getRoot(plr.Character)
 				if root then
 					cornerBbg = Instance.new("BillboardGui")
@@ -6820,57 +6383,53 @@ function XOL(plr)
 				end
 			end
 			
-			local TextLabel
-			local distLabel
-			if (XOLmode == 2 or XOLmode == 3) and plr.Character and plr.Character:FindFirstChild('Head') then
-				local BillboardGui = Instance.new("BillboardGui")
-				TextLabel = Instance.new("TextLabel")
-				BillboardGui.Adornee = plr.Character.Head
-				BillboardGui.Name = plr.Name
-				BillboardGui.Parent = XOLholder
-				BillboardGui.Size = UDim2.new(0, 100, 0, 150)
-				BillboardGui.StudsOffset = Vector3.new(0, 1, 0)
-				BillboardGui.AlwaysOnTop = true
-				BillboardGui.MaxDistance = -1
+
+			
+			local tagBbg
+			local textLabel
+			if (XOLmode == 3 or XOLmode == 4) and plr ~= Players.LocalPlayer and plr.Character and (plr.Character:FindFirstChild('Head') or getRoot(plr.Character)) then
+				tagBbg = Instance.new("BillboardGui")
+				tagBbg.Adornee = plr.Character:FindFirstChild("Head") or getRoot(plr.Character)
+				tagBbg.Name = "TagESP"
+				tagBbg.Parent = XOLholder
+				tagBbg.Size = UDim2.new(0, 200, 0, 50)
+				tagBbg.StudsOffset = Vector3.new(0, 2, 0)
+				tagBbg.AlwaysOnTop = true
+				tagBbg.MaxDistance = -1
 				
-				TextLabel.Parent = BillboardGui
-				TextLabel.BackgroundTransparency = 1
-				TextLabel.Position = UDim2.new(0, 0, 0, -50)
-				TextLabel.Size = UDim2.new(0, 100, 0, 100)
-				TextLabel.Font = Enum.Font.SourceSansSemibold
-				TextLabel.TextSize = 20
-				TextLabel.TextColor3 = boxColor
-				TextLabel.TextStrokeTransparency = 0
-				TextLabel.TextYAlignment = Enum.TextYAlignment.Bottom
+				local container = Instance.new("Frame")
+				container.Name = "PillFrame"
+				container.Size = UDim2.new(0, 180, 0, 38)
+				container.Position = UDim2.new(0.5, -90, 0.5, -19)
+				container.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+				container.BackgroundTransparency = 0.4
+				container.BorderSizePixel = 0
+				container.Parent = tagBbg
 				
-				local displayName = plr.DisplayName or plr.Name
-				TextLabel.Text = (isStaff and "[STAFF] " or "")..displayName.." (@"..plr.Name..")"
-				TextLabel.ZIndex = 10
+				local uiCorner = Instance.new("UICorner")
+				uiCorner.CornerRadius = UDim.new(0, 8)
+				uiCorner.Parent = container
 				
-				distLabel = Instance.new("TextLabel")
-				distLabel.Name = "DistanceTag"
-				distLabel.BackgroundTransparency = 1
-				distLabel.Position = UDim2.new(0.5, -100, 1, 5)
-				distLabel.Size = UDim2.new(0, 200, 0, 18)
-				distLabel.Font = Enum.Font.SourceSansSemibold
-				distLabel.TextSize = 13
-				distLabel.TextColor3 = boxColor
-				distLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-				distLabel.TextStrokeTransparency = 0
-				distLabel.TextXAlignment = Enum.TextXAlignment.Center
-				distLabel.Text = ""
-				distLabel.Parent = BillboardGui
+				local uiStroke = Instance.new("UIStroke")
+				uiStroke.Color = boxColor
+				uiStroke.Thickness = 1
+				uiStroke.Transparency = 0.5
+				uiStroke.Parent = container
+				
+				textLabel = Instance.new("TextLabel")
+				textLabel.Size = UDim2.new(1, -10, 1, 0)
+				textLabel.Position = UDim2.new(0, 5, 0, 0)
+				textLabel.BackgroundTransparency = 1
+				textLabel.Font = Enum.Font.GothamSemibold
+				textLabel.TextSize = 11
+				textLabel.TextColor3 = Color3.new(1, 1, 1)
+				textLabel.RichText = true
+				textLabel.TextXAlignment = Enum.TextXAlignment.Center
+				textLabel.TextYAlignment = Enum.TextYAlignment.Center
+				textLabel.Parent = container
 			end
 			
-			local tracer
-			if XOLmode == 3 and Drawing then
-				pcall(function()
-					tracer = Drawing.new("Line")
-					tracer.Thickness = 1
-					tracer.Color = boxColor
-					tracer.Visible = false
-				end)
-			end
+
 			
 			local xolLoopFunc
 			local addedFunc
@@ -6880,14 +6439,14 @@ function XOL(plr)
 				if XOLenabled then
 					if xolLoopFunc then xolLoopFunc:Disconnect() end
 					if teamChange then teamChange:Disconnect() end
-					if tracer then pcall(function() tracer:Remove() end) end
+					
 					XOLholder:Destroy()
 					repeat wait(1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
 					XOL(plr)
 					addedFunc:Disconnect()
 				else
 					if teamChange then teamChange:Disconnect() end
-					if tracer then pcall(function() tracer:Remove() end) end
+					
 					addedFunc:Disconnect()
 				end
 			end)
@@ -6896,13 +6455,13 @@ function XOL(plr)
 				if XOLenabled then
 					if xolLoopFunc then xolLoopFunc:Disconnect() end
 					if addedFunc then addedFunc:Disconnect() end
-					if tracer then pcall(function() tracer:Remove() end) end
+					
 					XOLholder:Destroy()
 					repeat wait(1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
 					XOL(plr)
 					teamChange:Disconnect()
 				else
-					if tracer then pcall(function() tracer:Remove() end) end
+					
 					teamChange:Disconnect()
 				end
 			end)
@@ -6914,16 +6473,10 @@ function XOL(plr)
 						local localRoot = getRoot(Players.LocalPlayer.Character)
 						local pos = math.floor((localRoot.Position - rootPart.Position).magnitude)
 						
-						if (XOLmode == 2 or XOLmode == 3) and TextLabel then
-							local displayName = plr.DisplayName or plr.Name
-							TextLabel.Text = (isStaff and "[STAFF] " or "")..displayName.." (@"..plr.Name..") | HP: "..round(plr.Character:FindFirstChildOfClass('Humanoid').Health, 1).." | "..pos..' studs'
-							if distLabel then
-								distLabel.Text = tostring(pos).." studs"
-							end
-						end
+
 						
-						if XOLmode == 5 then
-							local isVisible = false
+						local isVisible = false
+						if XOLmode == 2 or XOLmode == 3 or XOLmode == 4 then
 							local localChar = Players.LocalPlayer.Character
 							if localChar and rootPart then
 								local camera = workspace.CurrentCamera
@@ -6957,21 +6510,53 @@ function XOL(plr)
 							end
 						end
 						
-						if tracer then
-							local camera = workspace.CurrentCamera
-							if camera then
-								local screenPos, onScreen = camera:WorldToViewportPoint(rootPart.Position)
-								if onScreen then
-									tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-									tracer.To = Vector2.new(screenPos.X, screenPos.Y)
-									tracer.Visible = true
-								else
-									tracer.Visible = false
+						if (XOLmode == 3 or XOLmode == 4) and textLabel and tagBbg then
+							local displayName = plr.DisplayName or plr.Name
+							local health = math.floor(plr.Character:FindFirstChildOfClass('Humanoid').Health)
+							local maxHealth = math.floor(plr.Character:FindFirstChildOfClass('Humanoid').MaxHealth)
+							
+							local prefixText = "CIV"
+							if isStaff then
+								prefixText = "STAFF"
+							elseif game.PlaceId == 98371023930528 or game.GameId == 98371023930528 then
+								local teamName = (plr.Team and plr.Team.Name or "Citizen"):lower()
+								if teamName:find("vix") then
+									prefixText = "VIX"
+								elseif teamName:find("police") or teamName:find("sheriff") or teamName:find("patrol") or teamName:find("investigation") or teamName:find("harbor") or teamName:find("public safety") or teamName:find("dps") then
+									prefixText = "LEO"
+								elseif teamName:find("fire") or teamName:find("health") or teamName:find("medical") or teamName:find("hospital") then
+									prefixText = "EMS"
 								end
 							else
-								tracer.Visible = false
+								prefixText = plr.Team and plr.Team.Name or "CIV"
 							end
+							
+							local hex = string.format("#%02x%02x%02x", math.floor(boxColor.R * 255), math.floor(boxColor.G * 255), math.floor(boxColor.B * 255))
+							textLabel.Text = string.format(
+								'<font color="%s"><b>[%s]</b></font> <b>%s</b><br/><font color="#ff4f4f">%d/%d HP</font> <font color="#aaaaaa">| %ds</font>',
+								hex,
+								prefixText,
+								displayName,
+								health,
+								maxHealth,
+								pos
+							)
+							
+							local showTag = false
+							if XOLmode == 4 then
+								showTag = true -- Always show tags for everyone in mode 4
+							else
+								-- Tag visibility constraint for mode 3: visible OR within distance range [15, 600]
+								if isVisible then
+									showTag = true
+								elseif pos >= 15 and pos <= 600 then
+									showTag = true
+								end
+							end
+							tagBbg.Enabled = showTag
 						end
+						
+
 					else
 						if tracer then
 							tracer.Visible = false
@@ -6981,9 +6566,7 @@ function XOL(plr)
 					if teamChange then teamChange:Disconnect() end
 					if addedFunc then addedFunc:Disconnect() end
 					if xolLoopFunc then xolLoopFunc:Disconnect() end
-					if tracer then
-						pcall(function() tracer:Remove() end)
-					end
+					
 					local folder = COREGUI:FindFirstChild(plr.Name..'_XOL')
 					if folder then
 						pcall(function() folder:Destroy() end)
@@ -9556,56 +9139,6 @@ addcmd('noesp',{'unesp','unespteam'},function(args, speaker)
 	end
 end)
 
-addcmd('tesp',{'corneresp'},function(args, speaker)
-	TESPmode = tonumber(args[1]) or 0
-	TESPenabled = true
-	for i,v in pairs(Players:GetPlayers()) do
-		if v.Name ~= speaker.Name then
-			TESP(v)
-		end
-	end
-end)
-
-addcmd('untesp',{'notesp','nocorneresp'},function(args, speaker)
-	TESPmode = 0
-	TESPenabled = false
-	for i,c in pairs(COREGUI:GetChildren()) do
-		if string.sub(c.Name, -5) == '_TESP' then
-			local pName = string.sub(c.Name, 1, -6)
-			local plr = Players:FindFirstChild(pName)
-			local keep = false
-			if plr and StaffRolewatchData and StaffRolewatchData.Active then
-				local isStaff, role = getCachedStaffRole(plr)
-				if isStaff then
-					keep = true
-				end
-			end
-			
-			if not keep then
-				c:Destroy()
-			end
-		end
-	end
-end)
-
-addcmd('mot',{},function(args, speaker)
-	MOTmode = tonumber(args[1]) or 0
-	MOTenabled = true
-	for i,v in pairs(Players:GetPlayers()) do
-		MOT(v)
-	end
-end)
-
-addcmd('unmot',{'nomot'},function(args, speaker)
-	MOTmode = 0
-	MOTenabled = false
-	for i,c in pairs(COREGUI:GetChildren()) do
-		if string.sub(c.Name, -4) == '_MOT' then
-			c:Destroy()
-		end
-	end
-end)
-
 addcmd('xol',{},function(args, speaker)
 	XOLmode = tonumber(args[1]) or 0
 	XOLenabled = true
@@ -9617,6 +9150,8 @@ end)
 addcmd('unxol',{'noxol'},function(args, speaker)
 	XOLmode = 0
 	XOLenabled = false
+NPCFavorites = NPCFavorites or {}
+ActiveNPCTrackers = ActiveNPCTrackers or {}
 	for i,c in pairs(COREGUI:GetChildren()) do
 		if string.sub(c.Name, -4) == '_XOL' and string.sub(c.Name, -8) ~= '_NPC_XOL' then
 			c:Destroy()
@@ -17208,6 +16743,67 @@ task.spawn(function()
 	end
 end)
 
+local function startTrackingNPC(model)
+	local path = model:GetFullName()
+	if ActiveNPCTrackers[path] then return end
+	
+	local tracer
+	if Drawing then
+		pcall(function()
+			tracer = Drawing.new("Line")
+			tracer.Thickness = 1.5
+			tracer.Color = Color3.fromRGB(6, 182, 212)
+			tracer.Visible = false
+		end)
+	end
+	
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		if not model or not model.Parent or not model:FindFirstChild("Head") then
+			if conn then conn:Disconnect() end
+			if tracer then pcall(function() tracer:Remove() end) end
+			ActiveNPCTrackers[path] = nil
+			return
+		end
+		
+		if tracer then
+			local camera = workspace.CurrentCamera
+			if camera then
+				local head = model:FindFirstChild("Head") or getRoot(model)
+				if head then
+					local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
+					if onScreen then
+						tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+						tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+						tracer.Visible = true
+					else
+						tracer.Visible = false
+					end
+				else
+					tracer.Visible = false
+				end
+			else
+				tracer.Visible = false
+			end
+		end
+	end)
+	
+	ActiveNPCTrackers[path] = {
+		Tracer = tracer,
+		Connection = conn
+	}
+end
+
+local function stopTrackingNPC(model)
+	local path = model:GetFullName()
+	local tracker = ActiveNPCTrackers[path]
+	if tracker then
+		if tracker.Connection then tracker.Connection:Disconnect() end
+		if tracker.Tracer then pcall(function() tracker.Tracer:Remove() end) end
+		ActiveNPCTrackers[path] = nil
+	end
+end
+
 local function createAdminPortal()
 	if ScaledHolder:FindFirstChild("AdminPortal") then
 		ScaledHolder.AdminPortal.Visible = true
@@ -17311,7 +16907,7 @@ local function createAdminPortal()
 	local playersTabBtn = Instance.new("TextButton")
 	playersTabBtn.Name = "PlayersTabBtn"
 	playersTabBtn.Size = UDim2.new(0, 80, 0, 25)
-	playersTabBtn.Position = UDim2.new(1, -450, 0, 8)
+	playersTabBtn.Position = UDim2.new(1, -535, 0, 8)
 	playersTabBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
 	playersTabBtn.Text = "👥 Players"
 	playersTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -17324,7 +16920,7 @@ local function createAdminPortal()
 	local mapTabBtn = Instance.new("TextButton")
 	mapTabBtn.Name = "MapTabBtn"
 	mapTabBtn.Size = UDim2.new(0, 70, 0, 25)
-	mapTabBtn.Position = UDim2.new(1, -365, 0, 8)
+	mapTabBtn.Position = UDim2.new(1, -450, 0, 8)
 	mapTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	mapTabBtn.Text = "🗺️ Map"
 	mapTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -17337,7 +16933,7 @@ local function createAdminPortal()
 	local logsTabBtn = Instance.new("TextButton")
 	logsTabBtn.Name = "LogsTabBtn"
 	logsTabBtn.Size = UDim2.new(0, 70, 0, 25)
-	logsTabBtn.Position = UDim2.new(1, -290, 0, 8)
+	logsTabBtn.Position = UDim2.new(1, -375, 0, 8)
 	logsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	logsTabBtn.Text = "📜 Logs"
 	logsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -17350,7 +16946,7 @@ local function createAdminPortal()
 	local serversTabBtn = Instance.new("TextButton")
 	serversTabBtn.Name = "ServersTabBtn"
 	serversTabBtn.Size = UDim2.new(0, 80, 0, 25)
-	serversTabBtn.Position = UDim2.new(1, -215, 0, 8)
+	serversTabBtn.Position = UDim2.new(1, -300, 0, 8)
 	serversTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	serversTabBtn.Text = "🌐 Servers"
 	serversTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -17363,7 +16959,7 @@ local function createAdminPortal()
 	local settingsTabBtn = Instance.new("TextButton")
 	settingsTabBtn.Name = "SettingsTabBtn"
 	settingsTabBtn.Size = UDim2.new(0, 85, 0, 25)
-	settingsTabBtn.Position = UDim2.new(1, -130, 0, 8)
+	settingsTabBtn.Position = UDim2.new(1, -215, 0, 8)
 	settingsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 	settingsTabBtn.Text = "⚙️ Settings"
 	settingsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
@@ -17372,6 +16968,19 @@ local function createAdminPortal()
 	settingsTabBtn.BorderSizePixel = 0
 	styleTabButton(settingsTabBtn)
 	settingsTabBtn.Parent = header
+	
+	local npcsTabBtn = Instance.new("TextButton")
+	npcsTabBtn.Name = "NPCsTabBtn"
+	npcsTabBtn.Size = UDim2.new(0, 80, 0, 25)
+	npcsTabBtn.Position = UDim2.new(1, -125, 0, 8)
+	npcsTabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	npcsTabBtn.Text = "🤖 NPCs"
+	npcsTabBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+	npcsTabBtn.Font = Enum.Font.GothamBold
+	npcsTabBtn.TextSize = 11
+	npcsTabBtn.BorderSizePixel = 0
+	styleTabButton(npcsTabBtn)
+	npcsTabBtn.Parent = header
 	
 	local close = Instance.new("TextButton")
 	close.Size = UDim2.new(0, 30, 0, 30)
@@ -18059,16 +17668,49 @@ local function createAdminPortal()
 				end
 				if isStaffVal then
 					return 1
-				elseif plr.Team and Players.LocalPlayer.Team then
-					if plr.Team == Players.LocalPlayer.Team then
-						return 3
-					else
-						return 2
+				end
+				
+				if game.PlaceId == 98371023930528 or game.GameId == 98371023930528 then
+					local function getTeamClass(p)
+						local teamName = (p.Team and p.Team.Name or "Citizen"):lower()
+						if teamName:find("vix") or teamName:find("police") or teamName:find("sheriff") or teamName:find("patrol") or teamName:find("investigation") or teamName:find("harbor") or teamName:find("public safety") or teamName:find("dps") then
+							return "LEO"
+						elseif teamName:find("fire") or teamName:find("health") or teamName:find("medical") or teamName:find("hospital") then
+							return "EMS"
+						else
+							return "CIV"
+						end
 					end
-				elseif plr.Team then
-					return 4
+					
+					local localClass = getTeamClass(Players.LocalPlayer)
+					local targetClass = getTeamClass(plr)
+					
+					if localClass == "LEO" then
+						if targetClass == "CIV" then
+							return 2 -- Civilians/Citizens are opponents for LEO
+						else
+							return 3 -- Other LEO and EMS are allies/teammates
+						end
+					else
+						-- CIV or EMS local player
+						if targetClass == localClass then
+							return 3 -- Same class is teammate
+						else
+							return 2 -- Other class is opponent
+						end
+					end
 				else
-					return 5
+					if plr.Team and Players.LocalPlayer.Team then
+						if plr.Team == Players.LocalPlayer.Team then
+							return 3
+						else
+							return 2
+						end
+					elseif plr.Team then
+						return 4
+					else
+						return 5
+					end
 				end
 			end
 			
@@ -19157,6 +18799,274 @@ local function createAdminPortal()
 		end
 	end
 
+	-- NPCs Tab Elements
+	local npcsViewFrame = Instance.new("Frame")
+	npcsViewFrame.Name = "NPCsViewFrame"
+	npcsViewFrame.Size = UDim2.new(1, -20, 1, -60)
+	npcsViewFrame.Position = UDim2.new(0, 10, 0, 50)
+	npcsViewFrame.BackgroundTransparency = 1
+	npcsViewFrame.Visible = false
+	npcsViewFrame.Parent = main
+	
+	local npcsScroll = Instance.new("ScrollingFrame")
+	npcsScroll.Name = "NPCsScroll"
+	npcsScroll.Size = UDim2.new(0, 240, 1, 0)
+	npcsScroll.BackgroundTransparency = 1
+	npcsScroll.BorderSizePixel = 0
+	npcsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	npcsScroll.ScrollBarThickness = 4
+	npcsScroll.Parent = npcsViewFrame
+	
+	local npcsLayout = Instance.new("UIListLayout")
+	npcsLayout.Padding = UDim.new(0, 5)
+	npcsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	npcsLayout.Parent = npcsScroll
+	
+	local npcSelected = nil
+	local npcTrackBtn, npcFavBtn
+	
+	local npcDetail = Instance.new("Frame")
+	npcDetail.Name = "NPCDetail"
+	npcDetail.Size = UDim2.new(1, -250, 1, 0)
+	npcDetail.Position = UDim2.new(0, 250, 0, 0)
+	npcDetail.BackgroundTransparency = 1
+	npcDetail.Parent = npcsViewFrame
+	
+	local npcAvatar = Instance.new("ImageLabel")
+	npcAvatar.Size = UDim2.new(0, 80, 0, 80)
+	npcAvatar.Position = UDim2.new(0, 10, 0, 10)
+	npcAvatar.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	npcAvatar.Image = "rbxassetid://10852084920"
+	npcAvatar.BorderSizePixel = 0
+	local naCorner = Instance.new("UICorner")
+	naCorner.CornerRadius = UDim.new(0, 8)
+	naCorner.Parent = npcAvatar
+	npcAvatar.Parent = npcDetail
+	
+	local npcNameLabel = Instance.new("TextLabel")
+	npcNameLabel.Size = UDim2.new(1, -110, 0, 25)
+	npcNameLabel.Position = UDim2.new(0, 100, 0, 15)
+	npcNameLabel.BackgroundTransparency = 1
+	npcNameLabel.Text = "Select an NPC"
+	npcNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	npcNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	npcNameLabel.Font = Enum.Font.GothamBold
+	npcNameLabel.TextSize = 16
+	npcNameLabel.Parent = npcDetail
+	
+	local npcInfoLabel = Instance.new("TextLabel")
+	npcInfoLabel.Size = UDim2.new(1, -20, 0, 100)
+	npcInfoLabel.Position = UDim2.new(0, 10, 0, 100)
+	npcInfoLabel.BackgroundTransparency = 1
+	npcInfoLabel.Text = ""
+	npcInfoLabel.TextColor3 = Color3.fromRGB(180, 180, 190)
+	npcInfoLabel.TextXAlignment = Enum.TextXAlignment.Left
+	npcInfoLabel.Font = Enum.Font.Gotham
+	npcInfoLabel.TextSize = 15
+	npcInfoLabel.RichText = true
+	npcInfoLabel.Parent = npcDetail
+	
+	local npcBtnGrid = Instance.new("Frame")
+	npcBtnGrid.Size = UDim2.new(1, -20, 0, 110)
+	npcBtnGrid.Position = UDim2.new(0, 10, 0, 220)
+	npcBtnGrid.BackgroundTransparency = 1
+	npcBtnGrid.Parent = npcDetail
+	
+	local npcGridLayout = Instance.new("UIGridLayout")
+	npcGridLayout.CellSize = UDim2.new(0, 145, 0, 30)
+	npcGridLayout.CellPadding = UDim2.new(0, 10, 0, 8)
+	npcGridLayout.Parent = npcBtnGrid
+	
+	local function selectNPC(npc)
+		npcSelected = npc
+		npcNameLabel.Text = npc.Name
+		
+		local hum = npcSelected:FindFirstChildOfClass("Humanoid")
+		local health = hum and math.floor(hum.Health) or 0
+		local maxHealth = hum and math.floor(hum.MaxHealth) or 100
+		
+		local localChar = Players.LocalPlayer.Character
+		local localRoot = localChar and getRoot(localChar)
+		local npcRoot = getRoot(npcSelected)
+		local distText = "<b><font color=\"rgb(255, 75, 75)\">Unknown</font></b>"
+		if localRoot and npcRoot then
+			local dist = math.floor((npcRoot.Position - localRoot.Position).Magnitude)
+			distText = "<b><font color=\"rgb(100, 255, 100)\">" .. dist .. " studs</font></b>"
+		end
+		
+		npcInfoLabel.Text = string.format(
+			"Health:  <b>%d / %d HP</b>\n\nDistance:  %s\n\nWorkspace Path:\n<font size=\"10\" color=\"rgb(150, 150, 160)\">%s</font>",
+			health, maxHealth, distText, npcSelected:GetFullName()
+		)
+		
+		if npcTrackBtn then
+			local isTracked = not not ActiveNPCTrackers[npcSelected:GetFullName()]
+			npcTrackBtn.Text = isTracked and "Untrack" or "Track"
+			npcTrackBtn.BackgroundColor3 = isTracked and Color3.fromRGB(180, 50, 50) or Color3.fromRGB(35, 30, 50)
+			npcTrackBtn.TextColor3 = isTracked and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(200, 180, 255)
+		end
+		if npcFavBtn then
+			local isFav = not not NPCFavorites[npcSelected:GetFullName()]
+			npcFavBtn.Text = isFav and "Unfavorite" or "Favorite"
+			npcFavBtn.BackgroundColor3 = isFav and Color3.fromRGB(180, 120, 50) or Color3.fromRGB(35, 30, 50)
+			npcFavBtn.TextColor3 = isFav and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(200, 180, 255)
+		end
+	end
+	
+	local function createNPCButton(text, onClick)
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(0, 145, 0, 30)
+		btn.BackgroundColor3 = Color3.fromRGB(35, 30, 50)
+		btn.Text = text
+		btn.TextColor3 = Color3.fromRGB(200, 180, 255)
+		btn.Font = Enum.Font.GothamMedium
+		btn.TextSize = 12
+		btn.BorderSizePixel = 0
+		
+		local btnCorner = Instance.new("UICorner")
+		btnCorner.CornerRadius = UDim.new(0, 6)
+		btnCorner.Parent = btn
+		
+		btn.MouseEnter:Connect(function() btn.BackgroundColor3 = Color3.fromRGB(50, 40, 75) end)
+		btn.MouseLeave:Connect(function() btn.BackgroundColor3 = Color3.fromRGB(35, 30, 50) end)
+		btn.MouseButton1Click:Connect(function()
+			if npcSelected then
+				onClick(npcSelected)
+			end
+		end)
+		
+		btn.Parent = npcBtnGrid
+		return btn
+	end
+	
+	npcTrackBtn = createNPCButton("Track", function(npc)
+		local path = npc:GetFullName()
+		if ActiveNPCTrackers[path] then
+			stopTrackingNPC(npc)
+		else
+			startTrackingNPC(npc)
+		end
+		selectNPC(npc)
+	end)
+	
+	createNPCButton("Go To", function(npc)
+		pcall(function()
+			local char = Players.LocalPlayer.Character
+			local root = char and getRoot(char)
+			local npcRoot = getRoot(npc)
+			if root and npcRoot then
+				root.CFrame = npcRoot.CFrame + Vector3.new(0, 3, 0)
+			end
+		end)
+	end)
+	
+	npcFavBtn = createNPCButton("Favorite", function(npc)
+		local path = npc:GetFullName()
+		NPCFavorites[path] = not NPCFavorites[path]
+		selectNPC(npc)
+	end)
+	
+	local function getNPCs()
+		local list = {}
+		for _, v in ipairs(workspace:GetDescendants()) do
+			if v:IsA("Model") and v:FindFirstChildOfClass("Humanoid") and not Players:GetPlayerFromCharacter(v) then
+				table.insert(list, v)
+			end
+		end
+		return list
+	end
+	
+	local function updateNPCsUI()
+		local savedScroll = nil
+		pcall(function() savedScroll = npcsScroll.CanvasPosition end)
+		
+		for _, child in pairs(npcsScroll:GetChildren()) do
+			if child:IsA("TextButton") then child:Destroy() end
+		end
+		
+		local npcs = getNPCs()
+		npcsScroll.CanvasSize = UDim2.new(0, 0, 0, #npcs * 40)
+		
+		for index, npc in ipairs(npcs) do
+			local npcPath = npc:GetFullName()
+			local isFav = not not NPCFavorites[npcPath]
+			local isTracked = not not ActiveNPCTrackers[npcPath]
+			
+			local npcBtn = Instance.new("TextButton")
+			npcBtn.Name = npc.Name
+			npcBtn.Size = UDim2.new(1, -10, 0, 35)
+			npcBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+			npcBtn.BorderSizePixel = 0
+			
+			local localChar = Players.LocalPlayer.Character
+			local localRoot = localChar and getRoot(localChar)
+			local npcRoot = getRoot(npc)
+			local dist = 999999
+			if localRoot and npcRoot then
+				dist = math.floor((npcRoot.Position - localRoot.Position).Magnitude)
+			end
+			
+			local distText = dist < 999999 and (" [" .. dist .. "s]") or " [N/A]"
+			local displayName = npc.Name
+			if isFav then
+				displayName = "⭐ " .. displayName
+			end
+			
+			npcBtn.Text = displayName .. distText
+			npcBtn.TextColor3 = isTracked and Color3.fromRGB(6, 182, 212) or (isFav and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(220, 220, 230))
+			npcBtn.Font = Enum.Font.GothamMedium
+			npcBtn.TextSize = 12
+			npcBtn.TextXAlignment = Enum.TextXAlignment.Left
+			npcBtn.LayoutOrder = (isFav and -10000 or 0) + dist
+			
+			local btnCorner = Instance.new("UICorner")
+			btnCorner.CornerRadius = UDim.new(0, 6)
+			btnCorner.Parent = npcBtn
+			
+			local pad = Instance.new("UIPadding")
+			pad.PaddingLeft = UDim.new(0, 15)
+			pad.Parent = npcBtn
+			
+			npcBtn.MouseButton1Click:Connect(function()
+				selectNPC(npc)
+			end)
+			
+			npcBtn.Parent = npcsScroll
+		end
+		
+		if savedScroll then
+			pcall(function() npcsScroll.CanvasPosition = savedScroll end)
+		end
+	end
+	
+	task.spawn(function()
+		while true do
+			local success, isVisible = pcall(function() return main and main.Parent and main.Visible and npcsViewFrame.Visible end)
+			if not success or not isVisible then
+				task.wait(1)
+			else
+				pcall(function()
+					if npcSelected and npcSelected.Parent then
+						selectNPC(npcSelected)
+					end
+				end)
+				task.wait(0.5)
+			end
+		end
+	end)
+	
+	task.spawn(function()
+		while true do
+			local success, isVisible = pcall(function() return main and main.Parent and main.Visible and npcsViewFrame.Visible end)
+			if not success or not isVisible then
+				task.wait(1)
+			else
+				pcall(updateNPCsUI)
+				task.wait(3)
+			end
+		end
+	end)
+
 	local function setTab(tabName)
 		portalLogsActive = (tabName == "Logs")
 		
@@ -19165,6 +19075,7 @@ local function createAdminPortal()
 		setTabActive(logsTabBtn, tabName == "Logs")
 		setTabActive(settingsTabBtn, tabName == "Settings")
 		setTabActive(serversTabBtn, tabName == "Servers")
+		setTabActive(npcsTabBtn, tabName == "NPCs")
 		
 		listFrame.Visible = (tabName == "Players")
 		searchFrame.Visible = (tabName == "Players")
@@ -19175,12 +19086,15 @@ local function createAdminPortal()
 		logsViewFrame.Visible = (tabName == "Logs")
 		settingsViewFrame.Visible = (tabName == "Settings")
 		serversViewFrame.Visible = (tabName == "Servers")
+		npcsViewFrame.Visible = (tabName == "NPCs")
 		
 		if tabName == "Logs" then
 			updateLogsUI()
 			if updateHelpRequestsUI then pcall(updateHelpRequestsUI) end
 		elseif tabName == "Servers" then
 			updateServersUI()
+		elseif tabName == "NPCs" then
+			updateNPCsUI()
 		end
 	end
 	
@@ -19189,6 +19103,7 @@ local function createAdminPortal()
 	logsTabBtn.MouseButton1Click:Connect(function() setTab("Logs") end)
 	settingsTabBtn.MouseButton1Click:Connect(function() setTab("Settings") end)
 	serversTabBtn.MouseButton1Click:Connect(function() setTab("Servers") end)
+	npcsTabBtn.MouseButton1Click:Connect(function() setTab("NPCs") end)
 	
 	triggerLogsTab = function() setTab("Logs") end
 	
