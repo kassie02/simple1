@@ -1,1 +1,11 @@
+-- =============================================================================
+-- INFINITE YIELD CUSTOM LOADERS
+-- =============================================================================
+
+-- MAIN PRODUCTION LOADER (Unpatched & Standard Custom Features)
+-- Loadstring:
 loadstring(game:HttpGet("https://raw.githubusercontent.com/kassie02/simple1/refs/heads/main/working.lua"))()
+
+-- EXPERIMENTAL AIMBOT LOADER (With Aimbot, Silent Aim, & Hit Indicators)
+-- Loadstring:
+loadstring(game:HttpGet("https://raw.githubusercontent.com/kassie02/simple1/refs/heads/main/testaim.lua"))()
